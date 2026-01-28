@@ -18,7 +18,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0d0d0d; /* Dark background */
+            background-color: #0d0d0d;
             color: #ffffff;
             display: flex;
             justify-content: center;
@@ -41,7 +41,7 @@
             height: 140px;
             margin: 0 auto 15px auto;
             border-radius: 50%;
-            border: 4px solid #4a90e2; /* Programmer Blue Accent */
+            border: 4px solid #4a90e2;
             overflow: hidden; 
             background-color: #222;
             display: flex;
@@ -49,11 +49,10 @@
             align-items: center;
         }
 
-        /* THE ACTUAL IMAGE */
         .profile-wrapper img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Ensures image fills the circle perfectly */
+            object-fit: cover;
         }
 
         /* HEADINGS */
@@ -70,7 +69,7 @@
             font-size: 16px;
             margin-bottom: 20px;
             display: block;
-            font-family: monospace; /* Monospace font for "coding" vibe */
+            font-family: monospace;
         }
 
         /* SOCIALS ROW */
@@ -89,11 +88,16 @@
             height: 42px;
             background-color: #1a1a1a;
             border-radius: 50%;
-            color: white;
-            text-decoration: none;
-            font-size: 20px;
-            transition: all 0.2s ease;
             border: 1px solid #333;
+            transition: all 0.2s ease;
+            overflow: hidden; /* Keeps image inside circle */
+        }
+
+        /* Style for the images inside social buttons */
+        .social-icon img {
+            width: 60%;
+            height: 60%;
+            object-fit: contain;
         }
 
         .social-icon:hover {
@@ -140,7 +144,9 @@
         }
 
         .link-btn {
-            display: block;
+            display: flex; /* Changed to flex to align icon and text */
+            align-items: center;
+            justify-content: flex-start; /* Align content to the left */
             width: 100%;
             padding: 16px;
             background-color: #1e1e1e;
@@ -150,10 +156,19 @@
             font-weight: 600;
             transition: all 0.2s;
             border: 1px solid #333;
+            text-align: left;
+        }
+
+        /* Small icon inside the main buttons */
+        .btn-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 15px; /* Space between icon and text */
+            object-fit: contain;
         }
 
         .link-btn:hover {
-            background-color: #4a90e2; /* Blue hover */
+            background-color: #4a90e2;
             color: white;
             transform: scale(1.02);
             border-color: #4a90e2;
@@ -179,11 +194,21 @@
         <span class="handle">&lt;master_programmer /&gt;</span>
 
         <div class="socials-row">
-            <a href="#" class="social-icon" title="YouTube">data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABJklEQVR4Ae2WpVaFQRSFcaeS4QVwIjTiLbgk7D1w9xeg4FQcOu6acHeXtNnDmsFd7in/WetLI+f7dbYDAFEsAUvgoeAQ5k5iSQFpIH1kkMyQFXJMTsgpwTuc6jlHes2M3qNP71mge7g76DLNg8gygZ1QckGmuSdZJ7Azq8RDCSQTCJGgBCoFBWqVQLegQJcSmPnWIr9oICMXcIr4C4FJJbD9rUX+NtzX+CIQlfVbgS0lcP4jAVNt/UCA7acCZ0oAPxfQdXMLFNUBvpHflvgbAVM7h0B6zrfeD3kB+Ucg/xLKf4biPyLJX3GH9GFUogRSBQUSTSBZEwskQpFs1USyl6E0gRSRJtJPhsnci1B69oVQeqzXzOo9+kmj3juBeDw2BkSxBCyBO+9s03HRLVCoAAAAAElFTkSuQmCC</a>
-            <a href="#" class="social-icon" title="GitLab">data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKYAAACUCAMAAAAu5KLjAAAAb1BMVEX8/v81Oj4VHSO1uLojKS4xNjouMzcrMTXz9fb3+fooLjLf4eIdJCnp6+waISdfYmamqKpLT1NYW17Oz9HV19gQGR+trrG+wMJESExzdXl/goUAAAB4en1tcHOdoKIACRORlZYAAAiKjZA9QUYGEho21bsjAAADo0lEQVR4nO2a6ZLqIBCFxQDZN1yiuUYzmvd/xhvHZbJpIKFxpqq//119wqEbAiwWCIIgCIIgCIIgCIIgCIIgyG/EMRY0gzAXYqsatBUiDyHUvMIVEWP/LLUg6x9jkXBhFA2yrgghPFYLinkdVK1hFA1y8OqMZKeUcr27xngHKE19wuu4EBIkKkFJ8B3Ezc3O7fdg1iOjULnO4R6kXHlTcQqb3FL68kH+TSWxC1NdacVuGclSYWS2y3sQW8Epa3EM7hm5kA8S/B4UHOGUNXEpeXCSrofw9AzyzLieVc+MVLrWk59vqzJIdU9i/szIC9mgohGkuCxMY01+YLIdfr1jjTATK9HRaySkkuu6RRtBnoEiChue1xn3UvXgHprfxmP4lSiLSBMqlTGkraAIvogO7YwbKdetTfvbwPcfzqmVULLDC96OOkG3ziRoJ5RyveO56t5qAoJ1MsrseLZeJ4gprLJTyEgXuxj/bdjbvTDYIiq79hGWjjZrP+1aQGgJqTLsJyTRaK1bUS+IpZCts9NYbpNzP+K6u+9OTSLbyCaS9idZbeBId3F6E6XGTuFU+l8DCet5Zr2lP5+vfCn8oChyHkxI6PItL4LOUCrDXtOcARNQRWQNlMJ0PKAicvNh+yZCc5jjJF+rylonTBEd+116FhHMJv6isYCusAuESl/zYNbDCeF6onlqqvzlK5APLZSzsHP9Kp2CjydWg0tsVZVlxvplxvp/ibSulDcg1su/IhPCdP0y/8jcHPo9nIm9169yUWrdxl3xSgCZq+55x2wCkMsC/YslhMruWdx8lTDncv5yPLUKS5htsbvX+5MxdgwxlZVOlYSA3baVGos9KKFULlxPW4u3PcBnCv5F04rJL3BnMzUrW8s+idnA18CrSsN48gr8stoXs9sSFaCO3wjzalzJOypDj5G2ZEbB28TYY491PLmBBrHBh0i18ZMqnpky/EFGJuySPeDroAEmGG/U8AfOWc14Vp1Nv4u8ke0UjPd2xg1/4BcD11nDbAoDLf0VbhlIrZ08KE2+2+yzSiXWTpqaenD2Ej8eNX4Tf9DwB27C366dNk8+a/iD7J3xNP1YhXfxi5fXB9EnK7zHkQ0abzNDryBlyXYDxtPPtfRXODHtrJ2MQpxfzubIWzoZ/2WGP1h7DeOp94HtkBzhzykT3Zvd/6qR0O81noPc82kkIwFjgflduipOLkT+Gyu8i/MXRCIIgiAIgiAIgiAIgiAIgiBN/gNbyCw7/1MBfgAAAABJRU5ErkJggg==</a>
-            <a href="#" class="social-icon" title="Xbox">https://emojis.slackmojis.com/emojis/images/1647807732/56378/xbox.png?1647807732</a>
-            <a href="#" class="social-icon" title="CodeHS">▶data:image/png;base64,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</a>
-            <a href="#" class="social-icon" title="Scratch">data:image/png;base64,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</a>
+            <a href="https://www.youtube.com/@Theguywiththeheadsetdent" class="social-icon" title="YouTube">
+                <img src="https://codehs.com/uploads/48e067131fa7db9a230f215de314d198" alt="YouTube">
+            </a>
+            <a href="#" class="social-icon" title="Git">
+                <img src="https://codehs.com/uploads/944391ed870d330381540ffbc985b287" alt="GitLab">
+            </a>
+            <a href="https://xboxgamertag.com/search/ElArCJTheGmr" class="social-icon" title="Xbox">
+                <img src="https://codehs.com/uploads/7c5020b432c2b3e4fd67b19a5aed5a26" alt="Xbox">
+            </a>
+            <a href="https://codehs.com/sandbox/poyoversedevs" class="social-icon" title="CodeHS">
+                <img src="https://codehs.com/uploads/169d0f00f17bb5126db76e431b033ce4" alt="CodeHS">
+            </a>
+            <a href="https://scratch.mit.edu/users/CJTheGamer999/" class="social-icon" title="Scratch">
+                <img src="https://codehs.com/uploads/3348b5e08204a4e6364b60be411585c9" alt="Scratch">
+            </a>
         </div>
 
         <div class="about-section">
@@ -197,16 +222,42 @@
         </div>
 
         <div class="links-container">
-            <a href="https://fgc-17572139.codehs.me/index.html" class="link-btn">The Funkin' Game Collection</a>
-            <a href="https://github-repo-viewer-17822387.codehs.me/index.html" class="link-btn">GitHub "client" (unblocked)</a>
-            <a href="https://codehs.com/sandbox/poyoversedevs" class="link-btn">CodeHS Projects</a>
-            <a href="https://www.youtube.com/@Theguywiththeheadsetdent" class="link-btn">My YouTube Channel (cringe)</a>
-            <a href="https://xboxgamertag.com/search/ElArCJTheGmr" class="link-btn">Xbox Profile</a>
-            <a href="https://scratch.mit.edu/users/CJTheGamer999/" class="link-btn">Scratch</a>
+            <a href="https://fgc-17572139.codehs.me/index.html" class="link-btn">
+                <img src="https://codehs.com/uploads/e5b2b8f2fc477df42cd42adfe2d861f2" class="btn-icon" alt="FGC"> The Funkin' Game Collection
+            </a>
+
+            <a href="https://github-repo-viewer-17822387.codehs.me/index.html" class="link-btn">
+                <img src="https://codehs.com/uploads/60db59a2d66d55c3ced82b1d1350d230" class="btn-icon" alt="Git">
+                GitHub "client" (unblocked)
+            </a>
+
+            <a href="https://codehs.com/sandbox/poyoversedevs" class="link-btn">
+                <img src="https://codehs.com/uploads/169d0f00f17bb5126db76e431b033ce4" class="btn-icon" alt="CodeHS">
+                CodeHS Projects
+            </a>
+
+            <a href="https://www.youtube.com/@Theguywiththeheadsetdent" class="link-btn">
+                <img src="https://codehs.com/uploads/48e067131fa7db9a230f215de314d198" class="btn-icon" alt="YouTube">
+                My YouTube Channel (cringe)
+            </a>
+
+            <a href="https://xboxgamertag.com/search/ElArCJTheGmr" class="link-btn">
+                <img src="https://codehs.com/uploads/7c5020b432c2b3e4fd67b19a5aed5a26" class="btn-icon" alt="Xbox">
+                Xbox Profile
+            </a>
+
+            <a href="https://scratch.mit.edu/users/CJTheGamer999/" class="link-btn">
+                <img src="https://codehs.com/uploads/3348b5e08204a4e6364b60be411585c9" class="btn-icon" alt="Scratch">
+                Scratch
+            </a>
+
             <a href="#" class="link-btn">empty.. for now</a>
             <a href="#" class="link-btn">empty.. for now</a>
             <a href="#" class="link-btn">empty.. for now</a>
-            <a href="mailto:cjthegamer999@gmail.com" class="link-btn">Contact Me</a>
+            
+            <a href="mailto:cjthegamer999@gmail.com" class="link-btn">
+                <span style="font-size:20px; margin-right:15px;">✉️</span> Contact Me
+            </a>
         </div>
 
         <div class="footer">
