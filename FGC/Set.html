@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Set</title>
+    <style>
+        :root {
+            --card-width: 100px;
+            --card-height: 140px;
+            --bg-color: #f0f2f5;
+            --select-color: #e6f7ff;
+            --border-color: #ccc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; color: #333; }
+        
+        #controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        #score-board { font-size: 1.2rem; font-weight: bold; }
+
+        /* Game Board Grid */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            justify-items: center;
+        }
+
+        /* Card Styling */
+        .card {
+            width: var(--card-width);
+            height: var(--card-height);
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .card:hover { transform: translateY(-2px); }
+
+        .card.selected {
+            background-color: var(--select-color);
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+        }
+
+        /* Animations */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        .card.invalid {
+            animation: shake 0.4s ease-in-out;
+            border-color: #dc3545;
+            background-color: #ffe6e6;
+        }
+
+        .shape-svg {
+            width: 80%;
+            height: 25%;
+        }
+        
+        /* SVG Definitions are hidden */
+        #svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+        #message {
+            height: 20px;
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <svg id="svg-defs">
+        <defs>
+            <pattern id="stripe-red" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:red; stroke-width:1" />
+            </pattern>
+            <pattern id="stripe-purple" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:purple; stroke-width:1" />
+            </pattern>
+            <pattern id="stripe-green" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:green; stroke-width:1" />
+            </pattern>
+        </defs>
+    </svg>
+
+    <header>
+        <h1>Set</h1>
+        <div id="controls">
+            <div id="score-board">Sets Found: <span id="score">0</span> | Deck: <span id="deck-count">81</span></div>
+            <button onclick="addThreeCards()" id="btn-add">Add 3 Cards</button>
+            <button onclick="initGame()">New Game</button>
+        </div>
+        <div id="message"></div>
+    </header>
+
+    <div id="game-board"></div>
+
+    <script>
+        // --- Configuration ---
+        const TYPES = {
+            count: [1, 2, 3],
+            shape: ['diamond', 'oval', 'squiggle'],
+            color: ['red', 'green', 'purple'],
+            shade: ['solid', 'striped', 'open']
+        };
+
+        let deck = [];
+        let board = [];
+        let selectedIndices = [];
+        let score = 0;
+
+        // --- Game Logic ---
+
+        function createDeck() {
+            deck = [];
+            for (let c of TYPES.count) {
+                for (let s of TYPES.shape) {
+                    for (let clr of TYPES.color) {
+                        for (let sh of TYPES.shade) {
+                            deck.push({ count: c, shape: s, color: clr, shade: sh });
+                        }
+                    }
+                }
+            }
+        }
+
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function initGame() {
+            createDeck();
+            shuffleDeck();
+            board = [];
+            score = 0;
+            selectedIndices = [];
+            document.getElementById('score').innerText = score;
+            document.getElementById('message').innerText = "";
+            
+            // Initial Deal: 12 cards
+            dealCards(12);
+            renderBoard();
+        }
+
+        function dealCards(num) {
+            if (deck.length === 0) return;
+            for (let i = 0; i < num; i++) {
+                if (deck.length > 0) board.push(deck.pop());
+            }
+            updateDeckCount();
+        }
+
+        function updateDeckCount() {
+            document.getElementById('deck-count').innerText = deck.length;
+            document.getElementById('btn-add').disabled = deck.length === 0;
+        }
+
+        function addThreeCards() {
+            if (deck.length > 0) {
+                dealCards(3);
+                renderBoard();
+            }
+        }
+
+        // --- The Core "Set" Validation Logic ---
+        function checkSet(c1, c2, c3) {
+            const properties = ['count', 'shape', 'color', 'shade'];
+            
+            for (let prop of properties) {
+                // For a property to be valid, all 3 must be equal OR all 3 must be different
+                const allSame = (c1[prop] === c2[prop] && c2[prop] === c3[prop]);
+                const allDiff = (c1[prop] !== c2[prop] && c1[prop] !== c3[prop] && c2[prop] !== c3[prop]);
+                
+                if (!allSame && !allDiff) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function handleSelection(index) {
+            const cardElement = document.getElementById(`card-${index}`);
+            
+            // Toggle selection
+            if (selectedIndices.includes(index)) {
+                selectedIndices = selectedIndices.filter(i => i !== index);
+                cardElement.classList.remove('selected');
+            } else {
+                if (selectedIndices.length < 3) {
+                    selectedIndices.push(index);
+                    cardElement.classList.add('selected');
+                }
+            }
+
+            // Check if 3 are selected
+            if (selectedIndices.length === 3) {
+                // Small delay to let user see the 3rd selection
+                setTimeout(processAttempt, 100);
+            }
+        }
+
+        function processAttempt() {
+            const [i1, i2, i3] = selectedIndices;
+            const c1 = board[i1];
+            const c2 = board[i2];
+            const c3 = board[i3];
+
+            if (checkSet(c1, c2, c3)) {
+                // Success!
+                score++;
+                document.getElementById('score').innerText = score;
+                document.getElementById('message').innerText = "SET FOUND!";
+                document.getElementById('message').style.color = "green";
+
+                // Logic: If board > 12, just remove. If <= 12, try to replace from deck.
+                // We sort indices descending to remove from end first (avoids index shift issues)
+                const indicesToRemove = [i1, i2, i3].sort((a, b) => b - a);
+
+                indicesToRemove.forEach(idx => {
+                    // If we have less than 12 cards, or exactly 12, we want to replace if deck has cards
+                    if (board.length <= 12 && deck.length > 0) {
+                        board[idx] = deck.pop(); // Replace logic
+                    } else {
+                        board.splice(idx, 1); // Remove logic
+                    }
+                });
+
+                updateDeckCount();
+                renderBoard();
+                
+                setTimeout(() => document.getElementById('message').innerText = "", 2000);
+
+            } else {
+                // Failure
+                document.getElementById('message').innerText = "Not a Set.";
+                document.getElementById('message').style.color = "#dc3545";
+                
+                // Visual feedback
+                selectedIndices.forEach(idx => {
+                    document.getElementById(`card-${idx}`).classList.add('invalid');
+                });
+
+                // Clear feedback after animation
+                setTimeout(() => {
+                    selectedIndices.forEach(idx => {
+                        const el = document.getElementById(`card-${idx}`);
+                        if(el) { // check if exists (edge case)
+                            el.classList.remove('invalid', 'selected');
+                        }
+                    });
+                    selectedIndices = [];
+                    document.getElementById('message').innerText = "";
+                }, 500);
+                
+                return; // Exit here so we don't clear selectedIndices immediately for invalid
+            }
+
+            selectedIndices = [];
+        }
+
+        // --- Rendering ---
+
+        function getShapeSVG(shape, color, shade) {
+            let path = '';
+            // Define Paths
+            if (shape === 'diamond') {
+                path = "M10 50 L50 10 L90 50 L50 90 Z";
+            } else if (shape === 'oval') {
+                path = "M10 30 L10 70 A20 20 0 0 0 90 70 L90 30 A20 20 0 0 0 10 30 Z";
+            } else if (shape === 'squiggle') {
+                path = "M10,50 C10,10 40,10 40,30 S70,30 70,10 S100,10 90,50 C90,90 60,90 60,70 S30,70 30,90 S0,90 10,50 Z";
+            }
+
+            // Define Fill/Stroke
+            let fill = 'transparent';
+            let stroke = color;
+            
+            if (shade === 'solid') {
+                fill = color;
+            } else if (shade === 'striped') {
+                fill = `url(#stripe-${color})`;
+            }
+
+            return `
+                <svg class="shape-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <path d="${path}" stroke="${stroke}" stroke-width="3" fill="${fill}" />
+                </svg>
+            `;
+        }
+
+        function renderBoard() {
+            const boardEl = document.getElementById('game-board');
+            boardEl.innerHTML = '';
+
+            board.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.id = `card-${index}`;
+                
+                // If this index is in selectedIndices (rare re-render case), add class
+                if (selectedIndices.includes(index)) cardEl.classList.add('selected');
+
+                cardEl.onclick = () => handleSelection(index);
+
+                // Render shapes based on count
+                for (let i = 0; i < card.count; i++) {
+                    cardEl.innerHTML += getShapeSVG(card.shape, card.color, card.shade);
+                }
+
+                boardEl.appendChild(cardEl);
+            });
+        }
+
+        // Start
+        initGame();
+
+    </script>
+</body>
+</html>
