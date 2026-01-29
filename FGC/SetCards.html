@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set - Card Game</title>
+    <style>
+        /* --- COLOR THEMES --- */
+        :root {
+            /* Dark Mode (Default) */
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #333;
+            --select-bg: #2c3e50;
+            --select-border: #5dade2;
+            --msg-color: #ff6b6b;
+            --btn-bg: #333;
+            --btn-text: #fff;
+            
+            /* High Contrast Shape Colors */
+            --c-red: #ff6b6b;   
+            --c-green: #5ce65c; 
+            --c-purple: #dfa8ff; 
+        }
+
+        body.light-mode {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #ccc;
+            --select-bg: #e6f7ff;
+            --select-border: #007bff;
+            --msg-color: #dc3545;
+            --btn-bg: #007bff;
+            --btn-text: #fff;
+
+            --c-red: #d00000;
+            --c-green: #008000;
+            --c-purple: #6a0dad;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+            
+            /* Centering Logic */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Vertical Center */
+        }
+
+        /* Wrapper to keep Header and Board together and centered */
+        #game-container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: var(--btn-bg);
+            color: var(--btn-text);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        button:hover { filter: brightness(1.1); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* --- GRID AND CARD FIXES --- */
+        #game-board {
+            display: grid;
+            /* minmax(0, 1fr) prevents columns from expanding based on content size */
+            grid-template-columns: repeat(4, minmax(0, 1fr)); 
+            gap: 12px; 
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 600px) {
+            #game-board {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            
+            /* Strict Aspect Ratio */
+            aspect-ratio: 5 / 7; 
+            width: 100%; 
+            
+            /* Hide overflow to prevent card from growing if content is too big */
+            overflow: hidden; 
+            
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between; 
+            
+            padding: 10px 5px 5px 5px; /* Top padding for shapes, bottom for text */
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.2s, background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .card:hover { transform: translateY(-2px); }
+
+        .card.selected {
+            background-color: var(--select-bg);
+            border-color: var(--select-border);
+            box-shadow: 0 0 0 2px var(--select-border);
+        }
+
+        .card.invalid {
+            animation: shake 0.4s ease-in-out;
+            border-color: var(--msg-color);
+        }
+
+        .shapes-container {
+            flex: 1; /* Take up all available space */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Center shapes vertically in their area */
+            align-items: center;
+            width: 100%;
+            gap: 4px; /* Small gap between shapes */
+            overflow: hidden; /* Ensure shapes don't spill out */
+        }
+
+        .shape-svg {
+            width: 80%; 
+            /* Max height ensures 3 shapes fit (3x25 = 75%) leaving room for gaps/padding */
+            height: auto;
+            max-height: 25%; 
+            display: block;
+        }
+
+        .color-label {
+            height: 15px; /* Fixed height for text area */
+            font-size: 0.65rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2px;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            50% { transform: translateX(3px); }
+            75% { transform: translateX(-3px); }
+            100% { transform: translateX(0); }
+        }
+        
+        #svg-defs { position: absolute; width: 0; height: 0; }
+        
+        #message {
+            height: 25px;
+            color: var(--msg-color);
+            font-weight: bold;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        .text-red { color: var(--c-red); }
+        .text-green { color: var(--c-green); }
+        .text-purple { color: var(--c-purple); }
+
+    </style>
+</head>
+<body>
+
+    <svg id="svg-defs">
+        <defs>
+            <pattern id="stripe-red" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:var(--c-red); stroke-width:1" />
+            </pattern>
+            <pattern id="stripe-purple" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:var(--c-purple); stroke-width:1" />
+            </pattern>
+            <pattern id="stripe-green" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:var(--c-green); stroke-width:1" />
+            </pattern>
+        </defs>
+    </svg>
+
+    <div id="game-container">
+        <header>
+            <div id="score-board">Sets: <b id="score">0</b> | Deck: <b id="deck-count">81</b></div>
+            <div id="message"></div>
+            <div id="controls">
+                <button onclick="toggleTheme()" id="btn-theme">Switch to Light Mode</button>
+                <button onclick="addThreeCards()" id="btn-add">Add 3 Cards</button>
+                <button onclick="initGame()" style="background-color: #28a745; color:white; border-color: #28a745;">New Game</button>
+            </div>
+        </header>
+
+        <div id="game-board"></div>
+    </div>
+
+    <script>
+        const TYPES = {
+            count: [1, 2, 3],
+            shape: ['diamond', 'oval', 'squiggle'],
+            color: ['red', 'green', 'purple'],
+            shade: ['solid', 'striped', 'open']
+        };
+
+        let deck = [];
+        let board = [];
+        let selectedIndices = [];
+        let score = 0;
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const btn = document.getElementById('btn-theme');
+            if (document.body.classList.contains('light-mode')) {
+                btn.innerText = "Switch to Dark Mode";
+            } else {
+                btn.innerText = "Switch to Light Mode";
+            }
+        }
+
+        function createDeck() {
+            deck = [];
+            for (let c of TYPES.count) {
+                for (let s of TYPES.shape) {
+                    for (let clr of TYPES.color) {
+                        for (let sh of TYPES.shade) {
+                            deck.push({ count: c, shape: s, color: clr, shade: sh });
+                        }
+                    }
+                }
+            }
+        }
+
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function initGame() {
+            createDeck();
+            shuffleDeck();
+            board = [];
+            score = 0;
+            selectedIndices = [];
+            document.getElementById('score').innerText = score;
+            document.getElementById('message').innerText = "";
+            dealCards(12);
+            renderBoard();
+        }
+
+        function dealCards(num) {
+            if (deck.length === 0) return;
+            for (let i = 0; i < num; i++) {
+                if (deck.length > 0) board.push(deck.pop());
+            }
+            updateDeckCount();
+        }
+
+        function updateDeckCount() {
+            document.getElementById('deck-count').innerText = deck.length;
+            document.getElementById('btn-add').disabled = deck.length === 0;
+        }
+
+        function addThreeCards() {
+            if (deck.length > 0) {
+                dealCards(3);
+                renderBoard();
+            }
+        }
+
+        function checkSet(c1, c2, c3) {
+            const properties = ['count', 'shape', 'color', 'shade'];
+            for (let prop of properties) {
+                const allSame = (c1[prop] === c2[prop] && c2[prop] === c3[prop]);
+                const allDiff = (c1[prop] !== c2[prop] && c1[prop] !== c3[prop] && c2[prop] !== c3[prop]);
+                if (!allSame && !allDiff) return false;
+            }
+            return true;
+        }
+
+        function handleSelection(index) {
+            const cardElement = document.getElementById(`card-${index}`);
+            
+            if (selectedIndices.includes(index)) {
+                selectedIndices = selectedIndices.filter(i => i !== index);
+                cardElement.classList.remove('selected');
+            } else {
+                if (selectedIndices.length < 3) {
+                    selectedIndices.push(index);
+                    cardElement.classList.add('selected');
+                }
+            }
+
+            if (selectedIndices.length === 3) {
+                setTimeout(processAttempt, 100);
+            }
+        }
+
+        function processAttempt() {
+            const [i1, i2, i3] = selectedIndices;
+            const c1 = board[i1];
+            const c2 = board[i2];
+            const c3 = board[i3];
+
+            if (checkSet(c1, c2, c3)) {
+                score++;
+                document.getElementById('score').innerText = score;
+                document.getElementById('message').innerText = "SET FOUND!";
+                document.getElementById('message').style.color = "var(--c-green)";
+
+                // Refresh Board Logic
+                const remainingCards = board.filter((_, idx) => !selectedIndices.includes(idx));
+                deck.push(...remainingCards);
+                shuffleDeck();
+                board = [];
+                dealCards(12);
+
+                selectedIndices = [];
+                updateDeckCount();
+                renderBoard();
+                
+                setTimeout(() => document.getElementById('message').innerText = "", 1500);
+
+            } else {
+                document.getElementById('message').innerText = "Not a Set.";
+                document.getElementById('message').style.color = "var(--msg-color)";
+                
+                selectedIndices.forEach(idx => {
+                    const el = document.getElementById(`card-${idx}`);
+                    if(el) el.classList.add('invalid');
+                });
+
+                setTimeout(() => {
+                    selectedIndices.forEach(idx => {
+                        const el = document.getElementById(`card-${idx}`);
+                        if(el) el.classList.remove('invalid', 'selected');
+                    });
+                    selectedIndices = [];
+                    document.getElementById('message').innerText = "";
+                }, 500);
+            }
+        }
+
+        function getShapeSVG(shape, color, shade) {
+            let path = '';
+            // Standardizing Shape Paths
+            if (shape === 'diamond') path = "M10 50 L50 10 L90 50 L50 90 Z";
+            else if (shape === 'oval') path = "M15 20 L15 80 A15 15 0 0 0 85 80 L85 20 A15 15 0 0 0 15 20 Z"; // Improved Oval
+            else if (shape === 'squiggle') path = "M15,50 C15,10 40,10 40,30 S70,30 70,10 S95,10 85,50 C85,90 60,90 60,70 S30,70 30,90 S5,90 15,50 Z"; // Improved Squiggle
+
+            let stroke = `var(--c-${color})`;
+            let fill = 'transparent';
+
+            if (shade === 'solid') fill = `var(--c-${color})`;
+            else if (shade === 'striped') fill = `url(#stripe-${color})`;
+
+            return `<svg class="shape-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <path d="${path}" stroke="${stroke}" stroke-width="4" fill="${fill}" />
+                </svg>`;
+        }
+
+        function renderBoard() {
+            const boardEl = document.getElementById('game-board');
+            boardEl.innerHTML = '';
+            board.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card';
+                cardEl.id = `card-${index}`;
+                if (selectedIndices.includes(index)) cardEl.classList.add('selected');
+                cardEl.onclick = () => handleSelection(index);
+                
+                let shapesHTML = '<div class="shapes-container">';
+                for (let i = 0; i < card.count; i++) {
+                    shapesHTML += getShapeSVG(card.shape, card.color, card.shade);
+                }
+                shapesHTML += '</div>';
+
+                const labelHTML = `<div class="color-label text-${card.color}">${card.color}</div>`;
+
+                cardEl.innerHTML = shapesHTML + labelHTML;
+                boardEl.appendChild(cardEl);
+            });
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
