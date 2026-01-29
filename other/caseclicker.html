@@ -3,279 +3,624 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title>master programmer - home</title>
-    
-    <link rel="icon" href="https://codehs.com/uploads/c69638d51ac51123c4b70ad422b59760">
-
+    <title>Caseoh Clicker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* RESET & BASICS */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0d0d0d;
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            text-align: center;
-            padding: 40px 0;
+            font-family: 'Inter', sans-serif;
+            background: #1a1a1a url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF2oc8GCaSIfnY2Oy2Eq12kV0BxS7pNPTIbw&s');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
-
-        /* CONTAINER */
-        .container {
-            width: 90%;
-            max-width: 480px;
-            padding: 10px;
+        .bangers-font {
+            font-family: 'Bangers', cursive;
         }
-
-        /* PROFILE IMAGE CONTAINER */
-        .profile-wrapper {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 15px auto;
-            border-radius: 50%;
-            border: 4px solid #4a90e2;
-            overflow: hidden; 
-            background-color: #222;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .unselectable {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
-
-        .profile-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* HEADINGS */
-        h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-        }
-
-        .handle {
-            color: #4a90e2;
+        .floating-text {
+            position: absolute;
+            animation: float-up 1s ease-out forwards;
+            pointer-events: none;
+            font-size: 2rem;
             font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 20px;
-            display: block;
-            font-family: monospace;
-        }
-
-        /* SOCIALS ROW */
-        .socials-row {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .social-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 42px;
-            height: 42px;
-            background-color: #1a1a1a;
-            border-radius: 50%;
-            border: 1px solid #333;
-            transition: all 0.2s ease;
-            overflow: hidden; /* Keeps image inside circle */
-        }
-
-        /* Style for the images inside social buttons */
-        .social-icon img {
-            width: 60%;
-            height: 60%;
-            object-fit: contain;
-        }
-
-        .social-icon:hover {
-            background-color: #4a90e2;
-            transform: translateY(-3px);
-            border-color: #4a90e2;
-        }
-
-        /* ABOUT ME SECTION */
-        .about-section {
-            background-color: #161616;
-            padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            border: 1px solid #333;
-            text-align: left;
-        }
-
-        .about-section h2 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: #fff;
-            border-bottom: 2px solid #4a90e2;
-            display: inline-block;
-            padding-bottom: 3px;
-        }
-
-        .about-section p {
-            font-size: 14px;
-            color: #ccc;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }
-
-        .about-section p:last-child {
-            margin-bottom: 0;
-        }
-
-        /* LINK BUTTONS */
-        .links-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .link-btn {
-            display: flex; /* Changed to flex to align icon and text */
-            align-items: center;
-            justify-content: flex-start; /* Align content to the left */
-            width: 100%;
-            padding: 16px;
-            background-color: #1e1e1e;
-            color: #eee;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.2s;
-            border: 1px solid #333;
-            text-align: left;
-        }
-
-        /* Small icon inside the main buttons */
-        .btn-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 15px; /* Space between icon and text */
-            object-fit: contain;
-        }
-
-        .link-btn:hover {
-            background-color: #4a90e2;
             color: white;
-            transform: scale(1.02);
-            border-color: #4a90e2;
+            text-shadow: 2px 2px 4px black;
         }
-
-        /* FOOTER */
-        .footer {
-            margin-top: 40px;
-            font-size: 12px;
-            color: #555;
-            font-family: monospace;
+        @keyframes float-up {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-80px);
+            }
+        }
+        .upgrade-button:disabled {
+            cursor: not-allowed;
+            filter: grayscale(80%);
+        }
+        #caseoh-image {
+             transition: transform 0.1s ease;
+        }
+        #caseoh-image:active {
+            transform: scale(0.95);
+        }
+        .clue-highlight {
+            color: #facc15; /* Tailwind's yellow-400 */
+            font-weight: 600;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4 unselectable">
 
-    <div class="container">
-        <div class="profile-wrapper">
-            <img src="https://codehs.com/uploads/c69638d51ac51123c4b70ad422b59760" alt="Master Programmer Logo">
+    <div class="w-full max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Left Column: The Clicker -->
+        <div class="lg:col-span-2 bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center justify-center border-4 border-yellow-500 relative">
+            <div id="message-display" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white p-4 rounded-lg shadow-lg text-2xl font-bold opacity-0 transition-opacity duration-500 pointer-events-none z-50"></div>
+            <h1 class="bangers-font text-5xl md:text-7xl text-yellow-400 text-center tracking-wider" style="text-shadow: 4px 4px 0 #000;">CASEOH CLICKER</h1>
+            <p id="clue-display" class="text-gray-300 mb-4 text-center italic"></p>
+
+            <div class="my-6 text-center">
+                <h2 id="burgers-display" class="bangers-font text-6xl md:text-8xl tracking-wider">0</h2>
+                <p class="text-gray-400 font-semibold">Burgers</p>
+                <p id="bps-display" class="text-yellow-400 mt-2">0 burgers per second</p>
+            </div>
+            
+            <div id="click-area" class="relative flex items-center justify-center h-64 w-64">
+                <img id="caseoh-image" src="https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcSdjymjJGSwNlSmhri0rZ3r4RQxkp4Fg_R7ZDjRmKKVmFhQBAyEFqiLj0qsm8fcxqQ07Y7-SbJgQfLtqBF0SDhadoxqHiUAj68-4seKgha0UQ" alt="Click Caseoh!" class="cursor-pointer rounded-full w-48 h-48 md:w-64 md:h-64 object-cover border-8 border-yellow-500 shadow-lg hover:animate-pulse">
+            </div>
         </div>
 
-        <h1>Master Programmer</h1>
-        <span class="handle">&lt;master_programmer /&gt;</span>
-
-        <div class="socials-row">
-            <a href="https://www.youtube.com/@Theguywiththeheadsetdent" class="social-icon" title="YouTube">
-                <img src="https://codehs.com/uploads/48e067131fa7db9a230f215de314d198" alt="YouTube">
-            </a>
-            <a href="#" class="social-icon" title="Git">
-                <img src="https://codehs.com/uploads/944391ed870d330381540ffbc985b287" alt="GitLab">
-            </a>
-            <a href="https://xboxgamertag.com/search/ElArCJTheGmr" class="social-icon" title="Xbox">
-                <img src="https://codehs.com/uploads/7c5020b432c2b3e4fd67b19a5aed5a26" alt="Xbox">
-            </a>
-            <a href="https://codehs.com/sandbox/poyoversedevs" class="social-icon" title="CodeHS">
-                <img src="https://codehs.com/uploads/169d0f00f17bb5126db76e431b033ce4" alt="CodeHS">
-            </a>
-            <a href="https://scratch.mit.edu/users/CJTheGamer999/" class="social-icon" title="Scratch">
-                <img src="https://codehs.com/uploads/3348b5e08204a4e6364b60be411585c9" alt="Scratch">
-            </a>
-        </div>
-
-        <div class="about-section">
-            <h2>About Me</h2>
-            <p>
-                Hello world! I'm a developer (if you can call it that) who turns ideas into clean code. Whether it's porting a PC game to browsers or building easy to use tools, I'm always on the grind.
-            </p>
-            <p>
-                Check out my Games, projects, and latest sites below.
-            </p>
-        </div>
-
-        <div class="links-container">
-            <a href="https://codehs.com/sandbox/poyoversedevs" class="link-btn">
-                <img src="https://codehs.com/uploads/169d0f00f17bb5126db76e431b033ce4" class="btn-icon" alt="CodeHS">
-                All My Projects
-            </a>
-
-            <a href="FGC/FGC.html" class="link-btn">
-                <img src="https://codehs.com/uploads/e5b2b8f2fc477df42cd42adfe2d861f2" class="btn-icon" alt="FGC"> The Funkin' Game Collection
-            </a>
-
-            <a href="other/GithubExplorer.html" class="link-btn">
-                <img src="https://codehs.com/uploads/3c66f6b229a0997520df1bdbb2b08f41" class="btn-icon" alt="Git">
-                GitHub "client" (unblocked)
-            </a>
-
-            <a href="other/ClockTabPlus.html" class="link-btn">
-                <img src="https://codehs.com/uploads/0606e890fddc88c021365781db11d410" class="btn-icon" alt="Clock Tab +">
-                Clock Tab +
-            </a>
-
-            <a href="other/YTNAV.html" class="link-btn">
-                <img src="https://codehs.com/uploads/faad0eecf875d65cad75eff7e3dcd87b" class="btn-icon" alt="Xbox">
-                YouTube with No Ads
-            </a>
-
-            <a href="other/Eaglercraft.html" class="link-btn">
-                <img src="https://codehs.com/uploads/dc4da852646183e892d5c86c6b5e802d" class="btn-icon" alt="Eagler">
-                Eaglercraft (1.8 WASM)
-            </a>
-            
-            <a href="other/mp4-scratch.html" class="link-btn">
-                <img src="https://codehs.com/uploads/39332be0d425c8232c72c4ecbd505457" class="btn-icon" alt="mp4->scratch">
-                Convert Video -> Scratch Sprite
-            </a>
-            
-            <a href="pc2web/pc2web.html" class="link-btn">
-                <img src="https://codehs.com/uploads/f5149df79026085998cb6d8ba7c4195f" class="btn-icon" alt="pc2web">
-                pc2web- pc games ported to browsers
-            </a>
-            
-            <a href="other/caseclicker.html" class="link-btn">
-                <img src="https://codehs.com/uploads/81d245890f7ed660e2db035f8eb4ca9d" class="btn-icon" alt="caseclicker">
-                caseoh_ clicker
-            </a>
-            
-            <a href="mailto:cjthegamer999@gmail.com" class="link-btn">
-                <img src="https://codehs.com/uploads/743db9803f44a08a3ad0ab659602dc79" class="btn-icon" alt="Gmail">
-                Contact Me
-            </a>
-        </div>
-
-        <div class="footer">
-            &copy; 2026 CJ Shaffer
+        <!-- Right Column: Upgrades & Rebirth -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 md:p-8 border-4 border-gray-700">
+            <h3 class="bangers-font text-4xl text-center mb-6 text-yellow-400 tracking-wider" style="text-shadow: 2px 2px 0 #000;">Upgrades</h3>
+            <div id="upgrades-container" class="space-y-3 overflow-y-auto max-h-[55vh] pr-2">
+                <!-- Upgrades will be dynamically inserted here -->
+            </div>
+             <!-- Rebirth Section -->
+            <div id="rebirth-section" class="mt-6 text-center border-t-2 border-gray-700 pt-4">
+                <!-- Rebirth info will be injected here -->
+            </div>
         </div>
     </div>
+
+     <!-- Cheat Code Modal -->
+    <div id="cheat-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl border-2 border-yellow-500 w-full max-w-sm">
+            <h3 class="bangers-font text-3xl text-yellow-400 mb-4 text-center">Enter Cheat Code</h3>
+            <input id="cheat-input" type="text" class="w-full bg-gray-900 text-white p-2 rounded mb-4 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500" placeholder="Code...">
+            <div class="flex justify-end space-x-2">
+                 <button id="cheat-cancel" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 font-semibold">Cancel</button>
+                <button id="cheat-submit" class="px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-400 font-semibold">Submit</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Free Rebirth Claim Button -->
+    <button id="free-rebirth-claim-button" class="hidden fixed bottom-5 right-5 bg-gradient-to-br from-purple-600 to-blue-500 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-300 z-50">
+        ✨ Claim Free Rebirth ✨
+    </button>
+
+    <!-- Save/Load Buttons -->
+    <div class="fixed bottom-5 left-5 flex space-x-2 z-50">
+        <button id="export-save-button" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-500 transition-colors">Export Save</button>
+        <button id="import-save-button" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-green-500 transition-colors">Import Save</button>
+    </div>
+
+
+    <script>
+        const burgersDisplay = document.getElementById('burgers-display');
+        const bpsDisplay = document.getElementById('bps-display');
+        const caseohImage = document.getElementById('caseoh-image');
+        const upgradesContainer = document.getElementById('upgrades-container');
+        const rebirthSection = document.getElementById('rebirth-section');
+        const messageDisplay = document.getElementById('message-display');
+        const clueDisplay = document.getElementById('clue-display');
+        
+        const cheatModal = document.getElementById('cheat-modal');
+        const cheatInput = document.getElementById('cheat-input');
+        const cheatSubmit = document.getElementById('cheat-submit');
+        const cheatCancel = document.getElementById('cheat-cancel');
+        const freeRebirthClaimButton = document.getElementById('free-rebirth-claim-button');
+        const exportSaveButton = document.getElementById('export-save-button');
+        const importSaveButton = document.getElementById('import-save-button');
+
+
+        let burgers = 0;
+        let burgersPerClick = 1;
+        let burgersPerSecond = 0;
+        let rebirths = 0;
+        let rebirthMultiplier = 1;
+        const rebirthCost = 1000000;
+        
+        const usedCheats = new Set();
+        let freeRebirthAwarded = false;
+        let currentClueIndex = 0;
+
+        const cheatCodes = [
+            { 
+                clue: `"They say I'm built like a <span class='clue-highlight'>1x1 lego piece</span>."`, 
+                code: "1x1 lego piece",
+                reward: () => {
+                    burgersPerSecond *= 2;
+                    showTemporaryMessage("BPS Doubled!");
+                }
+            },
+            {
+                clue: `"My favorite place to eat is the <span class='clue-highlight'>Waffle House</span>."`,
+                code: "waffle house",
+                reward: () => {
+                    burgers += 15000;
+                    showTemporaryMessage("+15K Burgers!");
+                }
+            },
+            {
+                clue: `"A sweet treat from the <span class='clue-highlight'>Cheesecake Factory</span>."`,
+                code: "cheesecake factory",
+                reward: () => {
+                    burgersPerClick *= 2;
+                    showTemporaryMessage("BPC Doubled!");
+                }
+            },
+            {
+                clue: `"My favorite anime is <span class='clue-highlight'>Jujutsu Kaisen</span>."`,
+                code: "jujutsu kaisen",
+                reward: () => {
+                    burgers += burgersPerSecond > 0 ? burgersPerSecond * 30 : 10000;
+                    showTemporaryMessage("Domain Expansion!");
+                }
+            },
+            {
+                clue: `"What I say when I take your food... <span class='clue-highlight'>SQOYIA</span>!"`,
+                code: "sqoyia",
+                reward: () => {
+                    burgers += 1000;
+                    showTemporaryMessage("+1K Burgers!");
+                }
+            },
+            {
+                clue: `"What happens if you're not careful in chat... <span class='clue-highlight'>BANNED</span>!"`,
+                code: "banned",
+                reward: () => {
+                    burgersPerClick += 10;
+                    showTemporaryMessage("+10 BPC!");
+                }
+            },
+            {
+                clue: `"Sometimes chat says I look like a <span class='clue-highlight'>galaxy</span>."`,
+                code: "galaxy",
+                reward: () => {
+                    burgers += 50000;
+                    showTemporaryMessage("+50K Burgers!");
+                }
+            },
+            {
+                clue: `"My arms are kinda short, like a <span class='clue-highlight'>T-Rex</span>."`,
+                code: "t-rex",
+                reward: () => {
+                    burgersPerClick = Math.ceil(burgersPerClick * 1.5);
+                    showTemporaryMessage("BPC Boost!");
+                }
+            },
+            {
+                clue: `"You need to be a <span class='clue-highlight'>certified forklift driver</span> to move me."`,
+                code: "certified forklift driver",
+                reward: () => {
+                    burgersPerSecond = Math.ceil(burgersPerSecond * 1.25);
+                    showTemporaryMessage("BPS Boost!");
+                }
+            },
+            {
+                clue: `"What majestic bird do I resemble? A <span class='clue-highlight'>bald eagle</span>."`,
+                code: "bald eagle",
+                reward: () => {
+                    burgers += 25000;
+                    showTemporaryMessage("+25K Burgers!");
+                }
+            },
+            {
+                clue: `"I have a strong opinion about <span class='clue-highlight'>e-daters</span> in my chat."`,
+                code: "e-daters",
+                reward: () => {
+                    burgersPerSecond += 100;
+                    showTemporaryMessage("+100 BPS!");
+                }
+            },
+            {
+                clue: `"My family-friendly catchphrase is <span class='clue-highlight'>what the flip</span>!"`,
+                code: "what the flip",
+                reward: () => {
+                    burgersPerClick += 25;
+                    showTemporaryMessage("+25 BPC!");
+                }
+            },
+            {
+                clue: `"My brother's name is <span class='clue-highlight'>Dean</span>."`,
+                code: "dean",
+                reward: () => {
+                    burgers += 5000;
+                    showTemporaryMessage("+5K Burgers!");
+                }
+            },
+            {
+                code: "devcode",
+                reward: () => {
+                    // Apply every other cheat code's effect only once
+                    cheatCodes.forEach(cheat => {
+                        if (cheat.code !== 'devcode' && !usedCheats.has(cheat.code)) {
+                            cheat.reward(); // Apply the reward directly
+                            usedCheats.add(cheat.code);
+                        }
+                    });
+
+                    // Award the free rebirth if it hasn't been already
+                    if (!freeRebirthAwarded) {
+                        freeRebirthAwarded = true;
+                        freeRebirthClaimButton.classList.remove('hidden');
+                    }
+                    
+                    showTemporaryMessage("DEV MODE ACTIVATED!");
+                    updateDisplay();
+                }
+            }
+        ];
+
+        // Filter out hidden codes for the clue display
+        const visibleClues = cheatCodes.filter(c => c.clue);
+
+        let upgrades = [
+            { id: 0, name: "Jujutsu-Sized Soda", cost: 15, bps: 0, bpc: 1, count: 0, baseCost: 15 },
+            { id: 1, name: "1x1 Lego Piece", cost: 100, bps: 1, bpc: 0, count: 0, baseCost: 100 },
+            { id: 2, name: "Bigger Plate", cost: 550, bps: 5, bpc: 0, count: 0, baseCost: 550 },
+            { id: 3, name: "Industrial Deep Fryer", cost: 3000, bps: 25, bpc: 0, count: 0, baseCost: 3000 },
+            { id: 4, name: "Waffle House Franchise", cost: 15000, bps: 120, bpc: 0, count: 0, baseCost: 15000 },
+            { id: 5, name: "Cheesecake Factory Deed", cost: 100000, bps: 800, bpc: 0, count: 0, baseCost: 100000 },
+            { id: 6, name: "Gravitational Anomaly", cost: 1000000, bps: 5000, bpc: 0, count: 0, baseCost: 1000000 },
+            { id: 7, name: "Certified Forklift Fleet", cost: 8500000, bps: 30000, bpc: 0, count: 0, baseCost: 8500000 },
+            { id: 8, name: "Global Burger Conglomerate", cost: 50000000, bps: 180000, bpc: 0, count: 0, baseCost: 50000000 },
+            { id: 9, name: "Burger Asteroid Belt", cost: 320000000, bps: 1000000, bpc: 0, count: 0, baseCost: 320000000 },
+            { id: 10, name: "Snack Hole Singularity", cost: 2500000000, bps: 7500000, bpc: 0, count: 0, baseCost: 2500000000 },
+        ];
+        
+        function formatNumber(num) {
+            if (num < 1000) return num.toFixed(0);
+            if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
+            if (num < 1000000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num < 1000000000000) return (num / 1000000000).toFixed(1) + 'B';
+            return (num / 1000000000000).toFixed(1) + 'T';
+        }
+
+        function clickCaseoh(event) {
+            burgers += burgersPerClick;
+            updateDisplay();
+            createFloatingText(event.clientX, event.clientY);
+        }
+
+        function createFloatingText(x, y) {
+            const text = document.createElement('div');
+            text.textContent = `+${formatNumber(burgersPerClick)}`;
+            text.className = 'floating-text unselectable';
+            text.style.left = `${x - text.clientWidth / 2}px`;
+            text.style.top = `${y - text.clientHeight / 2}px`;
+            document.body.appendChild(text);
+            setTimeout(() => text.remove(), 1000);
+        }
+
+        function buyUpgrade(upgradeId) {
+            const upgrade = upgrades.find(u => u.id === upgradeId);
+            if (burgers >= upgrade.cost) {
+                burgers -= upgrade.cost;
+                upgrade.count++;
+                burgersPerSecond += (upgrade.bps * rebirthMultiplier);
+                burgersPerClick += (upgrade.bpc * rebirthMultiplier);
+                upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(1.15, upgrade.count));
+                updateDisplay();
+                renderUpgrades();
+            }
+        }
+
+        function performRebirth() {
+            if (burgers >= rebirthCost) {
+                burgers = 0;
+                burgersPerClick = 1;
+                burgersPerSecond = 0;
+                rebirths++;
+                rebirthMultiplier = Math.pow(2, rebirths);
+                upgrades.forEach(u => {
+                    u.count = 0;
+                    u.cost = u.baseCost;
+                });
+                updateDisplay();
+                renderUpgrades();
+                renderRebirthInfo();
+            }
+        }
+        
+        function handleCheatCode() {
+            const enteredCode = cheatInput.value.trim().toLowerCase();
+            const cheat = cheatCodes.find(c => c.code === enteredCode);
+
+            if (cheat && !usedCheats.has(cheat.code)) {
+                cheat.reward();
+                // We only add non-dev codes to the "used" set for the purpose of unlocking the free rebirth
+                if (cheat.code !== 'devcode') {
+                    usedCheats.add(cheat.code);
+                }
+
+                // Check for free rebirth reward after a normal cheat is used
+                const allNormalCheatsUsed = visibleClues.every(c => usedCheats.has(c.code));
+                if (allNormalCheatsUsed && !freeRebirthAwarded) {
+                    freeRebirthAwarded = true; // Mark it as awarded so this doesn't trigger again
+                    freeRebirthClaimButton.classList.remove('hidden');
+                    showTemporaryMessage("FREE REBIRTH UNLOCKED!");
+                }
+
+                updateDisplay();
+            } else if (usedCheats.has(enteredCode)) {
+                showTemporaryMessage("Cheat already used!", true);
+            } else {
+                showTemporaryMessage("Invalid Code", true);
+            }
+            cheatInput.value = '';
+            cheatModal.classList.add('hidden');
+        }
+
+        function claimFreeRebirth() {
+            rebirths++;
+            rebirthMultiplier = Math.pow(2, rebirths);
+            
+            // Recalculate BPS and BPC with the new multiplier
+            let baseBps = 0;
+            let baseBpc = 1; // Start with the base click of 1
+            upgrades.forEach(u => {
+                baseBps += u.bps * u.count;
+                baseBpc += u.bpc * u.count;
+            });
+            burgersPerSecond = baseBps * rebirthMultiplier;
+            burgersPerClick = baseBpc * rebirthMultiplier;
+
+            freeRebirthClaimButton.classList.add('hidden');
+            showTemporaryMessage("Free Rebirth Claimed!");
+            renderRebirthInfo();
+            updateDisplay();
+            renderUpgrades(); // Re-render upgrades to show new BPS/BPC values
+        }
+        
+        function showTemporaryMessage(message, isError = false) {
+            messageDisplay.textContent = message;
+            messageDisplay.classList.remove('bg-green-500', 'bg-red-500', 'opacity-0');
+            messageDisplay.classList.add(isError ? 'bg-red-500' : 'bg-green-500');
+            setTimeout(() => messageDisplay.classList.add('opacity-0'), 2500);
+        }
+
+        function updateDisplay() {
+            burgersDisplay.textContent = formatNumber(burgers);
+            bpsDisplay.textContent = `${formatNumber(burgersPerSecond)} burgers per second`;
+        }
+        
+        function renderUpgrades() {
+            upgradesContainer.innerHTML = '';
+            upgrades.forEach(upgrade => {
+                const button = document.createElement('button');
+                button.className = `upgrade-button w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${burgers >= upgrade.cost ? 'bg-yellow-500 border-yellow-400 text-gray-900 hover:bg-yellow-400' : 'bg-gray-700 border-gray-600 text-gray-400'}`;
+                button.onclick = () => buyUpgrade(upgrade.id);
+                button.disabled = burgers < upgrade.cost;
+
+                let dynamicDescription = "+0";
+                if (upgrade.bpc > 0) {
+                    dynamicDescription = `+${formatNumber(upgrade.bpc * rebirthMultiplier)} Burger Per Click`;
+                } else if (upgrade.bps > 0) {
+                    dynamicDescription = `+${formatNumber(upgrade.bps * rebirthMultiplier)} BPS`;
+                }
+
+                button.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-md">${upgrade.name} <span class="text-sm font-normal opacity-80">(${upgrade.count})</span></p>
+                            <p class="text-xs opacity-90">${dynamicDescription}</p>
+                        </div>
+                        <p class="font-semibold text-lg">${formatNumber(upgrade.cost)}</p>
+                    </div>
+                `;
+                upgradesContainer.appendChild(button);
+            });
+        }
+
+        function renderRebirthInfo() {
+            rebirthSection.innerHTML = ''; 
+            const infoText = document.createElement('p');
+            infoText.className = 'text-sm text-gray-400 mb-2';
+            infoText.innerHTML = `Rebirths: <span class="font-bold text-yellow-400">${rebirths}</span><br>Burger Multiplier: <span class="font-bold text-yellow-400">${formatNumber(rebirthMultiplier)}x</span>`;
+            rebirthSection.appendChild(infoText);
+
+            const button = document.createElement('button');
+            button.id = 'rebirth-button';
+            button.className = `w-full p-3 rounded-lg border-2 transition-all duration-200 font-bold`;
+            button.onclick = performRebirth;
+            
+            if (burgers >= rebirthCost) {
+                button.disabled = false;
+                button.className += ' bg-red-600 border-red-500 text-white hover:bg-red-500';
+                button.innerHTML = `Rebirth!`;
+            } else {
+                button.disabled = true;
+                button.className += ' bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed';
+                button.innerHTML = `Reach ${formatNumber(rebirthCost)} burgers`;
+            }
+            rebirthSection.appendChild(button);
+        }
+        
+        function setClue() {
+            clueDisplay.innerHTML = visibleClues[currentClueIndex].clue;
+        }
+
+        function cycleClues() {
+            currentClueIndex = (currentClueIndex + 1) % visibleClues.length;
+            setClue();
+        }
+
+        function getSaveState() {
+             return {
+                burgers: burgers,
+                rebirths: rebirths,
+                upgrades: upgrades.map(u => ({ id: u.id, count: u.count})),
+                usedCheats: Array.from(usedCheats),
+                freeRebirthAwarded: freeRebirthAwarded,
+            };
+        }
+
+        function exportSave() {
+            const saveData = getSaveState();
+            const saveString = JSON.stringify(saveData);
+            const encodedSave = btoa(saveString);
+            prompt("Here's your save code! Copy it to your clipboard:", encodedSave);
+        }
+        
+        function calculateAllStats(data) {
+            let bpc = 1;
+            let bps = 0;
+            const mult = Math.pow(2, data.rebirths);
+
+            data.upgrades.forEach(savedUpgrade => {
+                const gameUpgrade = upgrades.find(u => u.id === savedUpgrade.id);
+                if(gameUpgrade) {
+                    bpc += gameUpgrade.bpc * savedUpgrade.count;
+                    bps += gameUpgrade.bps * savedUpgrade.count;
+                }
+            });
+            
+            bpc *= mult;
+            bps *= mult;
+
+            return { bpc, bps, mult};
+        }
+
+        function loadGameState(data) {
+            burgers = data.burgers;
+            rebirths = data.rebirths;
+            freeRebirthAwarded = data.freeRebirthAwarded;
+            
+            upgrades.forEach(gameUpgrade => {
+                const saved = data.upgrades.find(u => u.id === gameUpgrade.id);
+                if (saved) {
+                    gameUpgrade.count = saved.count;
+                    gameUpgrade.cost = Math.ceil(gameUpgrade.baseCost * Math.pow(1.15, saved.count));
+                } else {
+                    gameUpgrade.count = 0;
+                    gameUpgrade.cost = gameUpgrade.baseCost;
+                }
+            });
+
+            usedCheats.clear();
+            if(data.usedCheats) {
+                data.usedCheats.forEach(cheat => usedCheats.add(cheat));
+            }
+            
+            const stats = calculateAllStats(data);
+            burgersPerClick = stats.bpc;
+            burgersPerSecond = stats.bps;
+            rebirthMultiplier = stats.mult;
+
+            if (freeRebirthAwarded) {
+                freeRebirthClaimButton.classList.remove('hidden');
+            } else {
+                freeRebirthClaimButton.classList.add('hidden');
+            }
+
+            updateDisplay();
+            renderUpgrades();
+            renderRebirthInfo();
+        }
+
+
+        function importSave() {
+            const encodedSave = prompt("Please paste your save code here:");
+            if (!encodedSave) return; 
+
+            try {
+                const saveString = atob(encodedSave);
+                const saveData = JSON.parse(saveString);
+
+                if (typeof saveData.burgers !== 'number' || !Array.isArray(saveData.upgrades) || typeof saveData.rebirths !== 'number') {
+                    throw new Error("Invalid save data format.");
+                }
+
+                loadGameState(saveData);
+                showTemporaryMessage("Save imported successfully!");
+
+            } catch (error) {
+                console.error("Failed to import save:", error);
+                showTemporaryMessage("Invalid or corrupt save code!", true);
+            }
+        }
+
+
+        function gameLoop() {
+            burgers += burgersPerSecond / 10;
+            updateDisplay();
+            let needsRender = false;
+            upgrades.forEach(upgrade => {
+                const button = upgradesContainer.querySelector(`button:nth-child(${upgrade.id + 1})`);
+                if (button) {
+                     if((burgers >= upgrade.cost) !== !button.disabled) needsRender = true;
+                }
+            });
+            if (needsRender) renderUpgrades();
+
+            const rebirthButton = document.getElementById('rebirth-button');
+            if (rebirthButton) {
+                if ((burgers >= rebirthCost) !== !rebirthButton.disabled) renderRebirthInfo();
+            }
+        }
+        
+        // Event Listeners
+        caseohImage.addEventListener('click', clickCaseoh);
+
+        document.addEventListener('keydown', function(e) {
+            if (!cheatModal.classList.contains('hidden')) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                const rect = caseohImage.getBoundingClientRect();
+                const fakeEvent = { clientX: rect.left + (rect.width / 2), clientY: rect.top + (rect.height / 2) };
+                clickCaseoh(fakeEvent);
+                caseohImage.style.transform = 'scale(0.95)';
+                setTimeout(() => { caseohImage.style.transform = 'scale(1)'; }, 100);
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+             if (e.key.toLowerCase() === 'c' && document.activeElement.tagName.toLowerCase() !== 'input') {
+                e.preventDefault();
+                cheatModal.classList.remove('hidden');
+                cheatInput.focus();
+             }
+        });
+        
+        cheatSubmit.addEventListener('click', handleCheatCode);
+        cheatCancel.addEventListener('click', () => cheatModal.classList.add('hidden'));
+        cheatInput.addEventListener('keyup', e => { if (e.key === 'Enter') handleCheatCode(); });
+        freeRebirthClaimButton.addEventListener('click', claimFreeRebirth);
+        exportSaveButton.addEventListener('click', exportSave);
+        importSaveButton.addEventListener('click', importSave);
+        
+        // Initialize Game
+        setClue();
+        renderUpgrades();
+        renderRebirthInfo();
+        setInterval(gameLoop, 100);
+        setInterval(cycleClues, 10000); // Change clue every 10 seconds
+
+    </script>
 
 </body>
 </html>
