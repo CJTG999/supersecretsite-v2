@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video to Sprite3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+    <style>
+        /* DARK MODE THEME */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; background-color: #121212; color: #e0e0e0; }
+        .container { border: 1px solid #333; padding: 2rem; border-radius: 12px; background: #1e1e1e; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { color: #bb86fc; margin-top: 0; text-align: center; }
+        
+        /* Input Groups */
+        .settings-section { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        
+        .input-group { display: flex; flex-direction: column; margin-bottom: 10px; }
+        label { font-size: 0.85rem; font-weight: bold; margin-bottom: 0.4rem; color: #aaa; }
+        
+        /* Dark Inputs */
+        input[type="text"], select { 
+            padding: 10px; border: 1px solid #444; border-radius: 6px; 
+            font-size: 1rem; width: 100%; box-sizing: border-box; 
+            background-color: #2c2c2c; color: white; outline: none;
+        }
+        input[type="text"]:focus, select:focus { border-color: #bb86fc; }
+
+        .value-display { font-size: 0.8rem; color: #bb86fc; float: right; }
+
+        /* Custom Range Slider */
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #bb86fc; cursor: pointer; margin-top: -6px; }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #444; border-radius: 2px; }
+
+        /* File Input */
+        input[type="file"] { margin-top: 1rem; width: 100%; color: #aaa; }
+        input[type="file"]::file-selector-button { background: #333; color: white; border: 1px solid #444; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 15px; }
+
+        button { background: #bb86fc; color: #000; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s; width: 100%; margin-top: 1.5rem; }
+        button:hover { background: #a370f7; transform: translateY(-1px); }
+        button:disabled { background: #444; color: #777; cursor: not-allowed; transform: none; }
+
+        #status { margin-top: 1rem; font-weight: bold; text-align: center; color: #bb86fc; min-height: 24px; }
+        #progress { width: 100%; height: 10px; background: #333; margin-top: 15px; border-radius: 12px; overflow: hidden; display: none; }
+        #bar { height: 100%; background: #03dac6; width: 0%; transition: width 0.1s linear; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Video to Sprite Converter</h2>
+    
+    <div class="settings-section">
+        <div class="settings-grid">
+            <div class="input-group">
+                <label>Sprite Name</label>
+                <input type="text" id="spriteName" value="Video Player" placeholder="e.g. Movie Clip">
+            </div>
+            <div class="input-group">
+                <label>Audio Track Name</label>
+                <input type="text" id="audioTrackName" value="Music" placeholder="e.g. Song 1">
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-grid">
+        <div class="input-group">
+            <label>Resolution</label>
+            <select id="optResolution">
+                <option value="480">480x360 (High)</option>
+                <option value="240" selected>240x180 (Medium)</option>
+                <option value="120">120x90 (Low)</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Frame Rate</label>
+            <select id="optFps">
+                <option value="30">30 FPS</option>
+                <option value="20" selected>20 FPS (Recommended)</option>
+                <option value="15">15 FPS</option>
+                <option value="10">10 FPS</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Image Quality <span id="valQuality" class="value-display">40%</span></label>
+            <input type="range" id="optQuality" min="0.1" max="1.0" step="0.1" value="0.4">
+        </div>
+
+        <div class="input-group">
+            <label>Audio Quality</label>
+            <select id="optAudio">
+                <option value="44100">44.1 kHz (High)</option>
+                <option value="22050">22.0 kHz (Medium)</option>
+                <option value="11025" selected>11.0 kHz (Low)</option>
+                <option value="0">Mute</option>
+            </select>
+        </div>
+    </div>
+
+    <input type="file" id="videoInput" accept="video/*">
+    <button id="convertBtn" onclick="startConversion()" disabled>Convert Video</button>
+
+    <div id="progress"><div id="bar"></div></div>
+    <div id="status">Waiting for file...</div>
+</div>
+
+<video id="videoPlayer" class="hidden" muted playsinline></video>
+<canvas id="canvas" class="hidden"></canvas>
+
+<script>
+    const videoInput = document.getElementById('videoInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const status = document.getElementById('status');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const progressBar = document.getElementById('progress');
+    const bar = document.getElementById('bar');
+    
+    // Inputs
+    const spriteNameInput = document.getElementById('spriteName');
+    const audioNameInput = document.getElementById('audioTrackName');
+    const optResolution = document.getElementById('optResolution');
+    const optFps = document.getElementById('optFps');
+    const optQuality = document.getElementById('optQuality');
+    const optAudio = document.getElementById('optAudio');
+    const valQuality = document.getElementById('valQuality');
+
+    optQuality.addEventListener('input', (e) => valQuality.textContent = Math.round(e.target.value * 100) + "%");
+
+    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    videoInput.addEventListener('change', () => {
+        if (videoInput.files.length > 0) {
+            convertBtn.disabled = false;
+            status.textContent = "Ready to convert";
+        }
+    });
+
+    async function startConversion() {
+        const file = videoInput.files[0];
+        if (!file) return;
+
+        // 1. GATHER SETTINGS
+        const settings = {
+            spriteName: spriteNameInput.value.trim() || "VideoSprite",
+            audioName: audioNameInput.value.trim() || "Audio Track",
+            width: parseInt(optResolution.value),
+            height: parseInt(optResolution.value) * 0.75,
+            fps: parseInt(optFps.value),
+            quality: parseFloat(optQuality.value),
+            audioRate: parseInt(optAudio.value)
+        };
+
+        // Reset UI
+        convertBtn.disabled = true;
+        progressBar.style.display = 'block';
+        bar.style.width = '0%';
+        status.textContent = "Initializing...";
+        
+        const videoURL = URL.createObjectURL(file);
+        videoPlayer.src = videoURL;
+        await new Promise(resolve => videoPlayer.onloadedmetadata = resolve);
+
+        canvas.width = settings.width;
+        canvas.height = settings.height;
+
+        // 2. AUDIO PROCESSING
+        let wavBlob = null;
+        let audioMd5 = null;
+
+        if (settings.audioRate > 0) {
+            status.textContent = "Processing audio...";
+            try {
+                const rawAudio = await extractAudio(file);
+                const downsampled = await downsampleAudio(rawAudio, settings.audioRate);
+                wavBlob = audioBufferToWav(downsampled);
+                audioMd5 = await blobToMD5(wavBlob);
+            } catch (e) {
+                console.warn("No audio track found or error:", e);
+                settings.audioRate = 0; 
+            }
+        }
+
+        // 3. FRAME PROCESSING
+        status.textContent = "Processing frames...";
+        const duration = videoPlayer.duration;
+        const totalFrames = Math.floor(duration * settings.fps);
+        const frames = [];
+
+        for (let i = 0; i < totalFrames; i++) {
+            const time = i / settings.fps;
+            videoPlayer.currentTime = time;
+            
+            await new Promise(resolve => {
+                const onSeek = () => {
+                    videoPlayer.removeEventListener('seeked', onSeek);
+                    resolve();
+                };
+                videoPlayer.addEventListener('seeked', onSeek);
+            });
+
+            ctx.drawImage(videoPlayer, 0, 0, settings.width, settings.height);
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', settings.quality));
+            const md5 = await blobToMD5(blob);
+            
+            // Note: Scratch starts counting at 1, but file names don't matter much for internal logic
+            frames.push({ file: blob, md5: md5, name: `frame_${i}` });
+
+            if (i % 5 === 0) {
+                const percent = Math.round((i / totalFrames) * 100);
+                bar.style.width = `${percent}%`;
+                status.textContent = `Processing frame ${i + 1}/${totalFrames}`;
+            }
+        }
+
+        // 4. GENERATE
+        status.textContent = "Building .sprite3 file...";
+        await generateSprite3(frames, wavBlob, audioMd5, settings, totalFrames);
+
+        status.textContent = "Done! Download started.";
+        convertBtn.disabled = false;
+        bar.style.width = '100%';
+    }
+
+    async function extractAudio(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        return await audioContext.decodeAudioData(arrayBuffer);
+    }
+
+    async function downsampleAudio(audioBuffer, targetRate) {
+        const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetRate, targetRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(offlineCtx.destination);
+        source.start();
+        return await offlineCtx.startRendering();
+    }
+
+    function audioBufferToWav(buffer) {
+        const numOfChan = buffer.numberOfChannels;
+        const length = buffer.length * numOfChan * 2 + 44;
+        const bufferArr = new ArrayBuffer(length);
+        const view = new DataView(bufferArr);
+        const channels = [];
+        let sample, offset = 0, pos = 0;
+
+        setUint32(0x46464952); 
+        setUint32(length - 8); 
+        setUint32(0x45564157); 
+        setUint32(0x20746d66); 
+        setUint32(16); 
+        setUint16(1); 
+        setUint16(numOfChan);
+        setUint32(buffer.sampleRate);
+        setUint32(buffer.sampleRate * 2 * numOfChan);
+        setUint16(numOfChan * 2);
+        setUint16(16); 
+        setUint32(0x61746164); 
+        setUint32(length - pos - 4);
+
+        for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+
+        while (pos < buffer.length) {
+            for (let i = 0; i < numOfChan; i++) {
+                sample = Math.max(-1, Math.min(1, channels[i][pos])); 
+                sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0;
+                view.setInt16(44 + offset, sample, true);
+                offset += 2;
+            }
+            pos++;
+        }
+        return new Blob([bufferArr], { type: 'audio/wav' });
+
+        function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+        function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+    }
+
+    function blobToMD5(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(blob);
+            reader.onload = (e) => {
+                const spark = new SparkMD5.ArrayBuffer();
+                spark.append(e.target.result);
+                resolve(spark.end());
+            };
+            reader.onerror = reject;
+        });
+    }
+
+    async function generateSprite3(frames, audioBlob, audioMd5, settings, totalFrames) {
+        const zip = new JSZip();
+        const scalePercent = (480 / settings.width) * 100; 
+        
+        // --- 1. ASSETS ---
+        const soundList = [];
+        if (audioBlob && audioMd5) {
+            zip.file(`${audioMd5}.wav`, audioBlob);
+            soundList.push({
+                assetId: audioMd5,
+                name: settings.audioName,
+                dataFormat: "wav",
+                rate: settings.audioRate,
+                sampleCount: 0,
+                md5ext: `${audioMd5}.wav`
+            });
+        }
+
+        const costumesJSON = [];
+        frames.forEach((frame) => {
+            zip.file(`${frame.md5}.jpg`, frame.file);
+            costumesJSON.push({
+                assetId: frame.md5,
+                name: frame.name,
+                bitmapResolution: 1,
+                md5ext: `${frame.md5}.jpg`,
+                dataFormat: "jpg",
+                rotationCenterX: settings.width / 2,
+                rotationCenterY: settings.height / 2
+            });
+        });
+
+        // --- 2. CODE GENERATION (Timer Sync Method) ---
+        const fpsVarId = "var_fps_rate"; 
+
+        const spriteJSON = {
+            isStage: false,
+            name: settings.spriteName,
+            variables: { 
+                [fpsVarId]: ["FPS", settings.fps] 
+            }, 
+            lists: {}, broadcasts: {},
+            blocks: {
+                // WHEN FLAG CLICKED
+                "START": {
+                    opcode: "event_whenflagclicked",
+                    next: "SET_SIZE",
+                    parent: null, topLevel: true, x: 50, y: 50
+                },
+                // SET SIZE
+                "SET_SIZE": {
+                    opcode: "looks_setsizeto",
+                    next: "GO_FRONT",
+                    parent: "START",
+                    inputs: { "SIZE": [1, [4, scalePercent.toString()]] }
+                },
+                // GO TO FRONT
+                "GO_FRONT": {
+                    opcode: "looks_goforwardbackwardlayers",
+                    next: "GO_XY",
+                    parent: "SET_SIZE",
+                    inputs: { "NUM": [1, [4, "1"]] },
+                    fields: { "FORWARD_BACKWARD": ["front", null] }
+                },
+                // GO TO X:0 Y:0
+                "GO_XY": {
+                    opcode: "motion_gotoxy",
+                    next: "RESET_COSTUME",
+                    parent: "GO_FRONT",
+                    inputs: { "X": [1, [4, "0"]], "Y": [1, [4, "0"]] }
+                },
+                // SWITCH COSTUME TO frame_0 (Reset)
+                "RESET_COSTUME": {
+                    opcode: "looks_switchcostumeto",
+                    next: "SET_FPS",
+                    parent: "GO_XY",
+                    inputs: { "COSTUME": [1, "frame_0"] }
+                },
+                // SET FPS VARIABLE
+                "SET_FPS": {
+                    opcode: "data_setvariableto",
+                    next: "RESET_TIMER",
+                    parent: "RESET_COSTUME",
+                    inputs: { "VALUE": [1, [4, settings.fps.toString()]] },
+                    fields: { "VARIABLE": ["FPS", fpsVarId] }
+                },
+                // RESET TIMER
+                "RESET_TIMER": {
+                    opcode: "sensing_resettimer",
+                    next: audioMd5 ? "PLAY_SOUND" : "REPEAT_UNTIL",
+                    parent: "SET_FPS"
+                },
+                // PLAY SOUND (Start sound, not until done)
+                ...(audioMd5 ? {
+                    "PLAY_SOUND": {
+                        opcode: "sound_play",
+                        next: "REPEAT_UNTIL",
+                        parent: "RESET_TIMER",
+                        inputs: { "SOUND_MENU": [1, "SOUND_MENU_BLOCK"] }
+                    },
+                    "SOUND_MENU_BLOCK": {
+                        opcode: "sound_sounds_menu",
+                        parent: "PLAY_SOUND",
+                        fields: { "SOUND_MENU": [settings.audioName, null] }, 
+                        shadow: true
+                    }
+                } : {}),
+                
+                // --- THE SYNC LOOP ---
+                // Repeat Until (Costume Number = Total Frames)
+                "REPEAT_UNTIL": {
+                    opcode: "control_repeat_until",
+                    next: "STOP_SOUNDS",
+                    parent: audioMd5 ? "PLAY_SOUND" : "RESET_TIMER",
+                    inputs: { 
+                        "CONDITION": [2, "CHECK_DONE"],
+                        "SUBSTACK": [2, "SYNC_FRAME"]
+                    }
+                },
+                // Condition: Costume# = Total Frames
+                "CHECK_DONE": {
+                    opcode: "operator_equals",
+                    parent: "REPEAT_UNTIL",
+                    inputs: {
+                        "OPERAND1": [3, "GET_COSTUME_NUM", [10, ""]], // FIXED: Points to actual block
+                        "OPERAND2": [1, [10, totalFrames.toString()]] // Dynamic Frame Count
+                    }
+                },
+                // Action: Switch Costume to (floor(timer * FPS) + 1)
+                "SYNC_FRAME": {
+                    opcode: "looks_switchcostumeto",
+                    parent: "REPEAT_UNTIL",
+                    inputs: { "COSTUME": [1, "MATH_ADD"] }
+                },
+                // Math: (...) + 1
+                "MATH_ADD": {
+                    opcode: "operator_add",
+                    parent: "SYNC_FRAME",
+                    inputs: {
+                        "NUM1": [2, "MATH_FLOOR"],
+                        "NUM2": [1, [4, "1"]] // Scratch is 1-indexed
+                    }
+                },
+                // Math: floor(...)
+                "MATH_FLOOR": {
+                    opcode: "operator_mathop",
+                    parent: "MATH_ADD",
+                    inputs: { "NUM": [2, "MATH_MULT"] },
+                    fields: { "OPERATOR": ["floor", null] }
+                },
+                // Math: Timer * FPS
+                "MATH_MULT": {
+                    opcode: "operator_multiply",
+                    parent: "MATH_FLOOR",
+                    inputs: {
+                        "NUM1": [3, "GET_TIMER", [10, ""]], // FIXED: Points to actual block
+                        "NUM2": [3, [12, "FPS", fpsVarId], [10, ""]]
+                    }
+                },
+
+                // --- HELPER BLOCKS (The fix you needed) ---
+                "GET_TIMER": {
+                    opcode: "sensing_timer",
+                    parent: null,
+                    next: null,
+                    inputs: {},
+                    fields: {},
+                    shadow: true, topLevel: false
+                },
+                "GET_COSTUME_NUM": {
+                    opcode: "looks_costumenumbername",
+                    parent: null,
+                    next: null,
+                    inputs: {},
+                    fields: { "NUMBER_NAME": ["number", null] },
+                    shadow: true, topLevel: false
+                },
+
+                // --- ENDING ---
+                "STOP_SOUNDS": {
+                    opcode: "sound_stopallsounds",
+                    parent: "REPEAT_UNTIL",
+                    next: null
+                }
+            },
+            comments: {},
+            currentCostume: 0,
+            costumes: costumesJSON,
+            sounds: soundList,
+            volume: 100, visible: true, x: 0, y: 0, size: scalePercent, direction: 90, draggable: false, rotationStyle: "all around"
+        };
+
+        zip.file("sprite.json", JSON.stringify(spriteJSON));
+
+        const content = await zip.generateAsync({type:"blob"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
+        
+        const safeName = settings.spriteName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `${safeName}.sprite3`;
+        link.click();
+    }
+</script>
+
+</body>
+</html>
