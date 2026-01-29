@@ -277,5 +277,17 @@
         </div>
     </div>
 
+    <script>
+        document.addEventListener('keydown', function(event) {
+            // Check if Ctrl + Shift + P is pressed
+            if (event.ctrlKey && event.shiftKey && (event.key === 'p' || event.key === 'P')) {
+                // Prevent default browser behavior (usually Print or Private Window)
+                event.preventDefault();
+                // Redirect to the secret page
+                window.location.href = 'https://proxy-1-17852175.codehs.me/index.html';
+            }
+        });
+    </script>
+
 </body>
 </html>
