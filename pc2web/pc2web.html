@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pc2web</title>
+    <style>
+        /* --- RESET & BASIC STYLES --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212; /* Dark background */
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        /* --- HEADER --- */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #4a90e2, #9013fe); /* Cool gradient text */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        /* --- GAME GRID CONTAINER --- */
+        .game-grid {
+            display: grid;
+            /* Auto-fit columns: creates as many columns as will fit */
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 1000px; /* Limits width on big screens */
+        }
+
+        /* --- BUTTON STYLES --- */
+        .game-btn {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 20px 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1rem;
+            border: 1px solid #333;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            
+            /* Center text vertically if it wraps */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px; 
+        }
+
+        .game-btn:hover {
+            background-color: #4a90e2; /* Blue hover effect */
+            color: #fff;
+            transform: translateY(-5px); /* Moves up slightly */
+            border-color: #4a90e2;
+            box-shadow: 0 8px 15px rgba(74, 144, 226, 0.3);
+        }
+
+        /* Special style for the instructions button to make it stand out */
+        .instructions-btn {
+            grid-column: 1 / -1; /* Spans the full width */
+            background-color: #2c2c2c;
+            border-color: #555;
+            color: #ffcc00; /* Yellow text */
+        }
+        
+        .instructions-btn:hover {
+            background-color: #ffcc00;
+            color: #000;
+            border-color: #ffcc00;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            margin-top: 50px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>pc2web</h1>
+        <p class="subtitle">PC Games Ported to Web</p>
+    </header>
+
+    <div class="game-grid">
+        <a href="https://instrutionsinstrutions-17775945.codehs.me/index.html" class="game-btn instructions-btn">INSTRUTIONSINSTRUTIONS</a>
+
+        <a href="https://buckshot-roulette-17775856.codehs.me/index.html" class="game-btn">Buckshot Roulette</a>
+        <a href="https://getting-over-it-17775870.codehs.me/index.html" class="game-btn">Getting Over It</a>
+        <a href="https://raldi-17775872.codehs.me/index.html" class="game-btn">Raldi's Crackhouse</a>
+        <a href="#" class="game-btn">Ultrakill</a>
+        <a href="#" class="game-btn">Fears to Fathom</a>
+        <a href="#" class="game-btn">Andy's Apple Farm</a>
+        <a href="#" class="game-btn">REPO</a>
+        <a href="#" class="game-btn">That's Not My Neighbor</a>
+        <a href="#" class="game-btn">Baldi's Basics Plus</a>
+        <a href="#" class="game-btn">Baldi's Basics CR</a>
+        <a href="#" class="game-btn">The Man in The Window</a>
+        <a href="#" class="game-btn">Sonic.EXE</a>
+        <a href="#" class="game-btn">Schoolboy Runaway</a>
+        <a href="#" class="game-btn">FNAF 1</a>
+        <a href="#" class="game-btn">FNAF 2</a>
+        <a href="#" class="game-btn">FNAF 3</a>
+        <a href="#" class="game-btn">FNAF 4</a>
+        <a href="#" class="game-btn">Amanda the Adventurer</a>
+        <a href="#" class="game-btn">Karlson</a>
+        <a href="#" class="game-btn">Kindergarten 1</a>
+        <a href="#" class="game-btn">Kindergarten 2</a>
+        <a href="#" class="game-btn">Granny</a>
+        <a href="#" class="game-btn">Granny 2</a>
+        <a href="#" class="game-btn">Minesweeper Plus</a>
+    </div>
+
+    <footer>
+        &copy; 2024 pc2web
+    </footer>
+
+</body>
+</html>

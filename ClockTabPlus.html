@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock Tab +</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;600;800&family=JetBrains+Mono:wght@400;700&family=Lora:ital,wght@0,400;1,400&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --bg-color: #0f0f0f;
+            --text-color: #ffffff;
+            --accent-color: #3b82f6;
+            --glass-bg: rgba(20, 20, 20, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --font-main: 'Inter', sans-serif;
+            --clock-scale: 1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        /* VIRTUAL CURSOR SYSTEM */
+        body.custom-cursor-active, 
+        body.custom-cursor-active * {
+            cursor: none !important;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            width: 100vw;
+            position: relative; 
+            overflow: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* --- SNAP GUIDES --- */
+        .snap-guide {
+            position: fixed;
+            background-color: var(--accent-color);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 50;
+            transition: opacity 0.15s ease;
+        }
+        .snap-guide.visible { opacity: 0.6; }
+        
+        /* Vertical Guide (Center X) */
+        .snap-guide.vertical {
+            top: 0; bottom: 0; left: 50%; width: 2px;
+            transform: translateX(-50%);
+        }
+        /* Horizontal Guide (Center Y) */
+        .snap-guide.horizontal {
+            left: 0; right: 0; top: 50%; height: 2px;
+            transform: translateY(-50%);
+        }
+
+        /* --- VIRTUAL CURSOR ELEMENT --- */
+        #virtual-cursor {
+            position: fixed;
+            top: 0; left: 0;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+            will-change: transform;
+            width: 32px; height: auto;
+        }
+        body.custom-cursor-active #virtual-cursor { display: block; }
+
+        /* --- THE CLOCK --- */
+        #clock-container {
+            text-align: center;
+            z-index: 2;
+            position: absolute;
+            text-shadow: 0 4px 30px rgba(0,0,0,0.3);
+            transform-origin: center center;
+            cursor: default;
+        }
+        
+        /* Default centered state */
+        #clock-container.centered {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(var(--clock-scale));
+        }
+
+        /* Custom position state */
+        #clock-container.custom-pos {
+            transform: scale(var(--clock-scale));
+        }
+        
+        /* Dragging State */
+        body.is-dragging #clock-container {
+            cursor: move;
+            outline: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 20px;
+            background: rgba(0,0,0,0.1);
+        }
+
+        #time {
+            font-size: 15vw; 
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #ampm {
+            font-size: 3vw; font-weight: 300; opacity: 0.6; margin-left: 10px; display: none; 
+        }
+
+        #date {
+            font-size: 2vw; font-weight: 300; margin-top: 1rem; opacity: 0.8; letter-spacing: 0.05em; text-transform: uppercase;
+        }
+
+        /* --- UI CONTROLS --- */
+        .controls {
+            position: absolute; bottom: 30px; right: 30px; z-index: 10;
+            display: flex; gap: 15px; opacity: 0; transition: opacity 0.3s ease;
+        }
+        body:not(.ui-hidden):hover .controls { opacity: 1; }
+        body.ui-hidden .controls, body.ui-hidden #virtual-cursor { display: none !important; }
+        body.ui-hidden { cursor: none !important; }
+
+        .icon-btn {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            color: var(--text-color); padding: 12px; border-radius: 50%;
+            cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease;
+            width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+        }
+        .icon-btn:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+        .icon-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+        /* --- DRAG DONE BUTTON (Floating) --- */
+        #btn-finish-drag {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            background: var(--accent-color); color: white; padding: 10px 25px;
+            border-radius: 30px; border: none; font-weight: bold; cursor: pointer;
+            z-index: 200; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+        }
+        #btn-finish-drag:hover { transform: translateX(-50%) scale(1.05); }
+
+        /* --- SETTINGS MODAL --- */
+        #settings-panel {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+            width: 90%; max-width: 550px; max-height: 85vh; overflow-y: auto;
+            background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border); border-radius: 24px; padding: 40px;
+            z-index: 100; opacity: 0; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        #settings-panel::-webkit-scrollbar { width: 6px; }
+        #settings-panel::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        #settings-panel::-webkit-scrollbar-track { background: transparent; }
+        #settings-panel.active { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+            border-bottom: 1px solid var(--glass-border); padding-bottom: 15px;
+            position: sticky; top: -40px; background: rgba(20,20,20,0.95); z-index: 5;
+        }
+
+        .setting-group { margin-bottom: 30px; }
+        .setting-group label {
+            display: block; font-size: 0.85rem; opacity: 0.7; margin-bottom: 8px;
+            text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+        }
+        .sub-label { font-size: 0.75rem; opacity: 0.5; margin-bottom: 5px; display: block; }
+        .status-msg { font-size: 0.75rem; margin-top: 5px; display: block; height: 1em; }
+        .status-success { color: #4ade80; } .status-error { color: #f87171; }
+
+        .shortcut-box {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--accent-color);
+            color: var(--accent-color); padding: 10px; border-radius: 8px;
+            text-align: center; font-size: 0.9rem; font-weight: 600; margin-bottom: 20px;
+        }
+
+        .actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-top: 20px; border-top: 1px solid var(--glass-border); }
+
+        /* --- INPUTS --- */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        select, input[type="text"], input[type="color"] {
+            width: 100%; padding: 10px; background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border); border-radius: 8px; color: white;
+            font-family: inherit; outline: none; margin-bottom: 10px;
+        }
+        .input-row { display: flex; gap: 10px; align-items: flex-start; }
+        .file-upload-row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; }
+        
+        .custom-file-upload {
+            border: 1px solid var(--glass-border); display: inline-block; padding: 8px 12px;
+            cursor: pointer; border-radius: 8px; background: rgba(255,255,255,0.05);
+            font-size: 0.9rem; transition: background 0.2s; flex-grow: 1;
+            text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .custom-file-upload:hover { background: rgba(255,255,255,0.15); }
+        input[type="file"] { display: none; }
+
+        .btn-small { padding: 10px 15px; background: var(--accent-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+        .btn-small:hover { opacity: 0.9; }
+        .btn-secondary { background: #444; }
+        .btn-action { background: #333; width: 100%; padding: 12px; }
+        .btn-action:hover { background: #444; }
+
+        /* Other Projects Link */
+        .project-link {
+            display: block; width: 100%; padding: 15px; background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--accent-color); color: var(--text-color);
+            text-align: center; text-decoration: none; border-radius: 12px;
+            font-weight: 600; transition: all 0.2s; margin-top: 10px;
+        }
+        .project-link:hover { background: var(--accent-color); color: white; }
+
+        input[type="range"] { width: 100%; cursor: pointer; }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        #overlay.active { opacity: 1; pointer-events: all; }
+
+    </style>
+</head>
+<body>
+
+    <div id="snap-guide-v" class="snap-guide vertical"></div>
+    <div id="snap-guide-h" class="snap-guide horizontal"></div>
+
+    <img id="virtual-cursor" src="" alt="Custom Cursor">
+
+    <button id="btn-finish-drag">Done Moving</button>
+
+    <div id="clock-container" class="centered">
+        <div id="time">12:00</div>
+        <span id="ampm">PM</span>
+        <div id="date">Monday, January 1</div>
+    </div>
+
+    <div class="controls">
+        <button class="icon-btn" id="btn-fullscreen" title="Toggle Fullscreen">
+            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </button>
+        <button class="icon-btn" id="btn-settings" title="Customize">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.04.17 0 .34.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.04-.22 0-.45-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+    </div>
+
+    <div id="overlay"></div>
+
+    <div id="settings-panel">
+        <div class="panel-header">
+            <h2>Clock Settings</h2>
+            <button class="icon-btn" id="btn-close-settings" style="width: 40px; height: 40px;">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+
+        <div class="shortcut-box">Press [ H ] to Hide UI & Cursor</div>
+
+        <div class="setting-group">
+            <label>More</label>
+            <a href="https://codehs.com/sandbox/poyoversedevs/" target="_blank" class="project-link">
+                Check out other projects<br>
+                <span style="font-size:0.8em; opacity:0.7; font-weight:400;">(Poyoverse Devs Sandbox)</span>
+            </a>
+        </div>
+
+        <div class="setting-group">
+            <label>General</label>
+            <div class="toggle-row">
+                <span>24-Hour Format</span>
+                <label class="toggle-switch"><input type="checkbox" id="opt-24h"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span>Show Seconds</span>
+                <label class="toggle-switch"><input type="checkbox" id="opt-seconds"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span>Show Date</span>
+                <label class="toggle-switch"><input type="checkbox" id="opt-date" checked><span class="slider"></span></label>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <label>UI Position</label>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-small" id="btn-move-ui" style="flex:1;">Reposition Clock</button>
+                    <button class="btn-small btn-secondary" id="btn-reset-pos">Reset</button>
+                </div>
+                <div class="sub-label" style="margin-top:5px;">Click "Reposition" to drag the clock.</div>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <label>Clock Size</label>
+                <input type="range" id="opt-size" min="0.5" max="2" step="0.1" value="1">
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>Typography</label>
+            <select id="opt-font-select">
+                <option value="default" selected>Choose a preset...</option>
+                <option value="'Inter', sans-serif">Inter (Modern)</option>
+                <option value="'JetBrains Mono', monospace">JetBrains (Code)</option>
+                <option value="'Lora', serif">Lora (Elegant)</option>
+                <option value="'Oswald', sans-serif">Oswald (Bold)</option>
+            </select>
+            <div class="input-row">
+                <input type="text" id="opt-google-font" placeholder="Google Font Name">
+                <button class="btn-small" id="btn-load-google">Load</button>
+            </div>
+            <span class="sub-label" style="margin-top:10px;">Upload Font</span>
+            <div class="file-upload-row">
+                <label for="opt-upload-font" class="custom-file-upload">Choose Font File</label>
+                <input type="file" id="opt-upload-font" accept=".ttf, .otf, .woff, .woff2">
+            </div>
+            <span id="font-status" class="status-msg"></span>
+        </div>
+
+        <div class="setting-group">
+            <label>Background</label>
+            <span class="sub-label">Solid Color / Text Color</span>
+            <div class="input-row">
+                <input type="color" id="opt-bg-color" value="#0f0f0f" style="flex:1">
+                <input type="color" id="opt-text-color" value="#ffffff" style="flex:1">
+            </div>
+            <span class="sub-label" style="margin-top: 15px;">Manual Path or URL</span>
+            <div class="input-row">
+                <input type="text" id="opt-bg-url" placeholder="https://... OR file:///C:/...">
+                <button class="btn-small" id="btn-set-bg-url">Set</button>
+            </div>
+            <span class="sub-label" style="margin-top: 10px;">Upload Image</span>
+            <div class="file-upload-row">
+                <label for="opt-upload-bg" class="custom-file-upload">Choose Image</label>
+                <input type="file" id="opt-upload-bg" accept="image/*">
+                <button class="btn-small btn-secondary" id="btn-clear-bg">Clear</button>
+            </div>
+            <span id="bg-status" class="status-msg"></span>
+        </div>
+
+        <div class="setting-group">
+            <label>Custom Cursor</label>
+            <span class="sub-label">Manual Path or URL</span>
+            <div class="input-row">
+                <input type="text" id="opt-cursor-url" placeholder="https://... OR file:///C:/...">
+                <button class="btn-small" id="btn-set-cursor-url">Set</button>
+            </div>
+            <span class="sub-label" style="margin-top:10px;">Upload Cursor</span>
+            <div class="file-upload-row">
+                <label for="opt-upload-cursor" class="custom-file-upload">Choose Cursor</label>
+                <input type="file" id="opt-upload-cursor" accept=".cur, image/png, image/gif">
+                <button class="btn-small btn-secondary" id="btn-clear-cursor">Reset</button>
+            </div>
+            <span id="cursor-status" class="status-msg"></span>
+            <div id="cursor-size-control" style="margin-top: 15px; opacity: 0.5; pointer-events: none;">
+                <label>Cursor Size</label>
+                <input type="range" id="opt-cursor-size" min="16" max="128" step="4" value="32">
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>Backup & Restore</label>
+            <div class="actions-row">
+                <button class="btn-small btn-action" id="btn-export-json">
+                    Export Backup<br><span class="sub-label" style="margin:0; opacity:0.6;">(Download .JSON)</span>
+                </button>
+                <div style="position: relative;">
+                    <label for="btn-import-json" class="btn-small btn-action" style="display:block; text-align:center;">
+                        Import Backup<br><span class="sub-label" style="margin:0; opacity:0.6;">(Select .JSON)</span>
+                    </label>
+                    <input type="file" id="btn-import-json" accept=".json" style="display:none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        const config = {
+            is24h: false, showSeconds: false, showDate: true,
+            font: "'Inter', sans-serif", scale: 1,
+            bg: "#0f0f0f", bgType: "color", bgValue: "",     
+            textColor: "#ffffff",
+            googleFontName: "", fontType: "google", fontBase64: "", 
+            cursorActive: false, cursorType: "none", cursorValue: "", cursorSize: 32,
+            posType: "center", posX: 0, posY: 0
+        };
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            time: document.getElementById('time'),
+            ampm: document.getElementById('ampm'),
+            date: document.getElementById('date'),
+            body: document.body,
+            clockContainer: document.getElementById('clock-container'),
+            virtualCursor: document.getElementById('virtual-cursor'),
+            cursorSizeGroup: document.getElementById('cursor-size-control'),
+            settingsPanel: document.getElementById('settings-panel'),
+            overlay: document.getElementById('overlay'),
+            btnFinishDrag: document.getElementById('btn-finish-drag'),
+            // Snap Guides
+            snapV: document.getElementById('snap-guide-v'),
+            snapH: document.getElementById('snap-guide-h'),
+            // Inputs
+            in24h: document.getElementById('opt-24h'),
+            inSeconds: document.getElementById('opt-seconds'),
+            inDate: document.getElementById('opt-date'),
+            inSize: document.getElementById('opt-size'),
+            inFontSelect: document.getElementById('opt-font-select'),
+            inGoogleFont: document.getElementById('opt-google-font'),
+            inTextColor: document.getElementById('opt-text-color'),
+            inBgColor: document.getElementById('opt-bg-color'),
+            inBgUrl: document.getElementById('opt-bg-url'),
+            inCursorUrl: document.getElementById('opt-cursor-url'),
+            inCursorSize: document.getElementById('opt-cursor-size'),
+            // Statuses
+            bgStatus: document.getElementById('bg-status'),
+            cursorStatus: document.getElementById('cursor-status'),
+            fontStatus: document.getElementById('font-status'),
+            // Buttons
+            btnLoadGoogle: document.getElementById('btn-load-google'),
+            btnSetBgUrl: document.getElementById('btn-set-bg-url'),
+            btnSetCursorUrl: document.getElementById('btn-set-cursor-url'),
+            uplBg: document.getElementById('opt-upload-bg'),
+            uplCursor: document.getElementById('opt-upload-cursor'),
+            uplFont: document.getElementById('opt-upload-font'),
+            btnClearBg: document.getElementById('btn-clear-bg'),
+            btnClearCursor: document.getElementById('btn-clear-cursor'),
+            btnExport: document.getElementById('btn-export-json'),
+            btnImport: document.getElementById('btn-import-json'),
+            btnMoveUI: document.getElementById('btn-move-ui'),
+            btnResetPos: document.getElementById('btn-reset-pos')
+        };
+
+        // --- MOUSE TRACKING ---
+        document.addEventListener('mousemove', (e) => {
+            if (config.cursorActive) {
+                els.virtualCursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+            }
+        });
+
+        // --- LOAD / SAVE ---
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('clockTabPlusConfig_v7');
+                if (saved) Object.assign(config, JSON.parse(saved));
+            } catch (e) { console.error("Load error:", e); }
+            
+            if(config.googleFontName) injectGoogleFont(config.googleFontName, false);
+            if(config.fontType === 'base64' && config.fontBase64) loadBase64Font(config.fontBase64);
+            applySettings();
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem('clockTabPlusConfig_v7', JSON.stringify(config));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') alert("Storage full! Image/Font too large.");
+            }
+            applySettings();
+        }
+
+        function applySettings() {
+            // Update Inputs
+            els.in24h.checked = config.is24h;
+            els.inSeconds.checked = config.showSeconds;
+            els.inDate.checked = config.showDate;
+            els.inSize.value = config.scale;
+            els.inTextColor.value = config.textColor;
+            els.inBgColor.value = config.bg;
+            els.inCursorSize.value = config.cursorSize;
+            
+            if(config.bgType === 'url') els.inBgUrl.value = config.bgValue;
+            if(config.cursorType === 'url') els.inCursorUrl.value = config.cursorValue;
+            if(config.fontType === 'preset') els.inFontSelect.value = config.font;
+
+            // Visuals
+            document.documentElement.style.setProperty('--font-main', config.font);
+            document.documentElement.style.setProperty('--clock-scale', config.scale);
+            document.documentElement.style.setProperty('--text-color', config.textColor);
+            
+            // BACKGROUND
+            els.body.style.backgroundImage = '';
+            if (config.bgType === 'url' || config.bgType === 'base64') {
+                if(config.bgValue) els.body.style.backgroundImage = `url('${config.bgValue}')`;
+            } else {
+                document.documentElement.style.setProperty('--bg-color', config.bg);
+            }
+
+            // POSITIONING
+            if(config.posType === 'center') {
+                els.clockContainer.className = "centered";
+                els.clockContainer.style.left = "";
+                els.clockContainer.style.top = "";
+            } else {
+                els.clockContainer.className = "custom-pos";
+                els.clockContainer.style.left = config.posX + "px";
+                els.clockContainer.style.top = config.posY + "px";
+            }
+
+            // CURSOR
+            if (config.cursorActive && config.cursorValue) {
+                els.body.classList.add('custom-cursor-active');
+                els.virtualCursor.src = config.cursorValue;
+                els.virtualCursor.style.width = config.cursorSize + 'px';
+                els.cursorSizeGroup.style.opacity = '1';
+                els.cursorSizeGroup.style.pointerEvents = 'all';
+            } else {
+                els.body.classList.remove('custom-cursor-active');
+                els.cursorSizeGroup.style.opacity = '0.5';
+                els.cursorSizeGroup.style.pointerEvents = 'none';
+            }
+
+            els.date.style.display = config.showDate ? 'block' : 'none';
+            els.ampm.style.display = config.is24h ? 'none' : 'inline-block';
+            updateClock();
+        }
+
+        // --- MOVE UI & SNAPPING LOGIC ---
+        let isMoving = false;
+        let dragOffsets = { x: 0, y: 0 };
+        const SNAP_THRESHOLD = 25; // pixels to snap
+
+        els.btnMoveUI.addEventListener('click', () => {
+            toggleSettings();
+            isMoving = true;
+            els.body.classList.add('is-dragging');
+            els.btnFinishDrag.style.display = 'block';
+
+            if(config.posType === 'center') {
+                const rect = els.clockContainer.getBoundingClientRect();
+                config.posX = rect.left;
+                config.posY = rect.top;
+                els.clockContainer.className = "custom-pos";
+                els.clockContainer.style.left = rect.left + "px";
+                els.clockContainer.style.top = rect.top + "px";
+            }
+        });
+
+        let isMouseDown = false;
+        els.clockContainer.addEventListener('mousedown', (e) => {
+            if(!isMoving) return;
+            isMouseDown = true;
+            const rect = els.clockContainer.getBoundingClientRect();
+            dragOffsets.x = e.clientX - rect.left;
+            dragOffsets.y = e.clientY - rect.top;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if(!isMoving || !isMouseDown) return;
+            
+            // Raw calculated position
+            let newLeft = e.clientX - dragOffsets.x;
+            let newTop = e.clientY - dragOffsets.y;
+
+            // --- SNAPPING LOGIC ---
+            const rect = els.clockContainer.getBoundingClientRect();
+            const elCenterX = newLeft + (rect.width / 2);
+            const elCenterY = newTop + (rect.height / 2);
+            
+            const viewportCenterX = window.innerWidth / 2;
+            const viewportCenterY = window.innerHeight / 2;
+
+            // Snap X (Vertical Line)
+            if (Math.abs(elCenterX - viewportCenterX) < SNAP_THRESHOLD) {
+                newLeft = viewportCenterX - (rect.width / 2);
+                els.snapV.classList.add('visible');
+            } else {
+                els.snapV.classList.remove('visible');
+            }
+
+            // Snap Y (Horizontal Line)
+            if (Math.abs(elCenterY - viewportCenterY) < SNAP_THRESHOLD) {
+                newTop = viewportCenterY - (rect.height / 2);
+                els.snapH.classList.add('visible');
+            } else {
+                els.snapH.classList.remove('visible');
+            }
+
+            els.clockContainer.style.left = newLeft + "px";
+            els.clockContainer.style.top = newTop + "px";
+            els.clockContainer.className = "custom-pos";
+        });
+
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            // Hide guides on release
+            els.snapV.classList.remove('visible');
+            els.snapH.classList.remove('visible');
+        });
+
+        const finishMoving = () => {
+            isMoving = false;
+            els.body.classList.remove('is-dragging');
+            els.btnFinishDrag.style.display = 'none';
+            els.snapV.classList.remove('visible');
+            els.snapH.classList.remove('visible');
+            
+            config.posType = 'custom';
+            config.posX = parseFloat(els.clockContainer.style.left);
+            config.posY = parseFloat(els.clockContainer.style.top);
+            
+            // Force immediate update so time doesn't stay stale
+            updateClock();
+            saveSettings();
+        };
+
+        els.btnFinishDrag.addEventListener('click', finishMoving);
+        document.addEventListener('keydown', (e) => {
+            if(isMoving && e.key === 'Enter') finishMoving();
+        });
+
+        els.btnResetPos.addEventListener('click', () => {
+            config.posType = 'center';
+            saveSettings();
+        });
+
+        // --- JSON IMPORT / EXPORT ---
+        els.btnExport.addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config));
+            const node = document.createElement('a');
+            node.setAttribute("href", dataStr); node.setAttribute("download", "clock_config.json");
+            document.body.appendChild(node); node.click(); node.remove();
+        });
+        els.btnImport.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const loadedConfig = JSON.parse(event.target.result);
+                    Object.assign(config, loadedConfig);
+                    if(config.fontType === 'base64' && config.fontBase64) loadBase64Font(config.fontBase64);
+                    if(config.googleFontName) injectGoogleFont(config.googleFontName, false);
+                    saveSettings();
+                    alert("Settings loaded successfully!");
+                } catch(err) { alert("Error loading JSON."); }
+            };
+            reader.readAsText(file);
+        });
+
+        // --- FILE HANDLING ---
+        function handleFileUpload(file, type) {
+            if(!file) return;
+            if(file.size > 5000000) { alert("File too large (>5MB)."); return; }
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const res = evt.target.result;
+                if(type === 'bg') { config.bgType = 'base64'; config.bgValue = res; setStatus(els.bgStatus, "Background saved!", true); }
+                else if(type === 'cursor') { config.cursorActive = true; config.cursorType = 'base64'; config.cursorValue = res; setStatus(els.cursorStatus, "Cursor saved!", true); }
+                else if(type === 'font') { config.fontType = 'base64'; config.fontBase64 = res; config.googleFontName = ""; loadBase64Font(res); setStatus(els.fontStatus, "Font saved!", true); }
+                saveSettings();
+            };
+            reader.readAsDataURL(file);
+        }
+        function setStatus(el, msg, success) {
+            el.textContent = msg; el.className = success ? "status-msg status-success" : "status-msg status-error";
+            setTimeout(() => el.textContent='', 3000);
+        }
+        function loadBase64Font(base64String) {
+            const fontFace = new FontFace('CustomSavedFont', `url(${base64String})`);
+            fontFace.load().then((loadedFace) => {
+                document.fonts.add(loadedFace);
+                config.font = "'CustomSavedFont', sans-serif";
+                applySettings();
+            }).catch(e => console.error("Font error", e));
+        }
+
+        // --- EVENTS ---
+        els.uplBg.addEventListener('change', (e) => handleFileUpload(e.target.files[0], 'bg'));
+        els.uplCursor.addEventListener('change', (e) => handleFileUpload(e.target.files[0], 'cursor'));
+        els.uplFont.addEventListener('change', (e) => handleFileUpload(e.target.files[0], 'font'));
+        els.btnSetBgUrl.addEventListener('click', () => { if(els.inBgUrl.value.trim()) { config.bgType = 'url'; config.bgValue = els.inBgUrl.value.trim(); saveSettings(); }});
+        els.btnClearBg.addEventListener('click', () => { config.bgType = 'color'; config.bgValue = ""; els.inBgUrl.value = ""; saveSettings(); });
+        els.btnSetCursorUrl.addEventListener('click', () => { if(els.inCursorUrl.value.trim()) { config.cursorActive = true; config.cursorType = 'url'; config.cursorValue = els.inCursorUrl.value.trim(); saveSettings(); }});
+        els.btnClearCursor.addEventListener('click', () => { config.cursorActive = false; config.cursorType = 'none'; config.cursorValue = ""; els.inCursorUrl.value = ""; saveSettings(); });
+        els.inBgColor.addEventListener('input', (e) => { config.bgType = 'color'; config.bg = e.target.value; saveSettings(); });
+        els.inCursorSize.addEventListener('input', (e) => { config.cursorSize = e.target.value; saveSettings(); });
+        els.btnLoadGoogle.addEventListener('click', () => injectGoogleFont(els.inGoogleFont.value.trim()));
+        els.inFontSelect.addEventListener('change', (e) => { if(e.target.value !== 'default') { config.fontType = 'preset'; config.font = e.target.value; config.googleFontName = ""; saveSettings(); }});
+        document.addEventListener('keydown', (e) => { if(e.key.toLowerCase() === 'h' && !isMoving) els.body.classList.toggle('ui-hidden'); });
+        els.in24h.addEventListener('change', (e) => { config.is24h = e.target.checked; saveSettings(); });
+        els.inSeconds.addEventListener('change', (e) => { config.showSeconds = e.target.checked; saveSettings(); });
+        els.inDate.addEventListener('change', (e) => { config.showDate = e.target.checked; saveSettings(); });
+        els.inSize.addEventListener('input', (e) => { config.scale = e.target.value; saveSettings(); });
+        els.inTextColor.addEventListener('input', (e) => { config.textColor = e.target.value; saveSettings(); });
+        function injectGoogleFont(fontName, shouldSave=true) {
+            if(!fontName) return;
+            const link = document.createElement('link');
+            link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}&display=swap`;
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+            config.font = `"${fontName}", sans-serif`;
+            config.googleFontName = fontName; config.fontType = 'google';
+            els.inFontSelect.value = 'default';
+            if(shouldSave) saveSettings();
+        }
+        const toggleSettings = () => { els.settingsPanel.classList.toggle('active'); els.overlay.classList.toggle('active'); };
+        document.getElementById('btn-settings').addEventListener('click', toggleSettings);
+        document.getElementById('btn-close-settings').addEventListener('click', toggleSettings);
+        els.overlay.addEventListener('click', toggleSettings);
+        document.getElementById('btn-fullscreen').addEventListener('click', () => { !document.fullscreenElement ? document.documentElement.requestFullscreen() : document.exitFullscreen(); });
+        
+        function updateClock() {
+            // STOP UPDATE IF DRAGGING
+            if(isMoving) return; 
+
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            let ampmStr = '';
+            if (!config.is24h) { ampmStr = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12; } 
+            else hours = String(hours).padStart(2, '0');
+            let timeStr = `${hours}:${minutes}`;
+            if (config.showSeconds) timeStr += `:${seconds}`;
+            els.time.textContent = timeStr;
+            els.ampm.textContent = ampmStr;
+            if (config.showDate) els.date.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+        }
+        loadSettings();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>

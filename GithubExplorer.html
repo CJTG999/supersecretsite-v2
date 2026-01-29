@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global GitHub Explorer</title>
+    <style>
+        :root { --primary: #2ea44f; --blue: #0969da; --bg: #f6f8fa; --border: #d0d7de; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1f2328; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 8px 24px rgba(140,149,159,0.2); border: 1px solid var(--border); }
+        
+        /* Search Bar Styles */
+        .search-area { background: #f1f3f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        select, input { padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+        input { flex: 1; }
+        button { padding: 10px 18px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button.secondary { background: var(--blue); }
+        button.back-btn { background: #6e7781; margin-bottom: 15px; padding: 5px 12px; font-size: 12px; }
+
+        /* Navigation / Breadcrumbs */
+        .nav-crumbs { margin-bottom: 15px; font-size: 14px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+        .crumb { cursor: pointer; color: var(--blue); font-weight: 600; }
+        .crumb:hover { text-decoration: underline; }
+
+        /* List Styles */
+        .item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f0f1f2; }
+        .item:hover { background: #f9f9f9; }
+        .item-info { flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; overflow: hidden; }
+        .item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .badge { font-size: 11px; background: #eff1f3; padding: 2px 6px; border-radius: 10px; color: #656d76; }
+
+        /* Modal Preview */
+        #previewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; max-width: 90%; max-height: 90%; overflow: auto; text-align: center; position: relative; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; }
+        .preview-media { max-width: 100%; max-height: 65vh; border-radius: 4px; margin-top: 10px; }
+        
+        .loader { display: none; text-align: center; padding: 20px; font-style: italic; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>GitHub Explorer</h2>
+    
+    <div class="search-area">
+        <div class="input-row">
+            <select id="searchType">
+                <option value="repositories">Repos</option>
+                <option value="users">Users</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Search GitHub or paste a URL...">
+            <button onclick="performSearch()">Search</button>
+        </div>
+        <input type="text" id="filterInput" placeholder="Filter current results..." oninput="renderCurrentList()">
+    </div>
+
+    <div id="navCrumbs" class="nav-crumbs"></div>
+    <div id="loader" class="loader">Fetching from GitHub...</div>
+    <div id="results"></div>
+</div>
+
+<div id="previewModal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">File Preview</h3>
+        <div id="modalBody"></div>
+        <div style="margin-top: 20px;">
+            <button id="modalDownload" class="secondary">Download File</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentData = [];
+    let historyStack = []; // For the Back button/Breadcrumbs
+    let currentContext = { type: 'root', owner: '', repo: '', path: '' };
+
+    // --- Search Logic ---
+
+    async function performSearch() {
+        const query = document.getElementById('searchInput').value.trim();
+        const type = document.getElementById('searchType').value;
+        if (!query) return;
+
+        // Check if user pasted a full URL
+        if (query.includes('github.com/')) {
+            const path = query.replace(/https?:\/\/github.com\//, '').replace(/\/$/, '');
+            const parts = path.split('/');
+            if (parts.length === 1) return fetchUserRepos(parts[0]);
+            if (parts.length >= 2) return fetchFolder(parts[0], parts[1], '');
+        }
+
+        // Otherwise, do a global search
+        showLoader(true);
+        try {
+            const res = await fetch(`https://api.github.com/search/${type}?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            currentData = data.items || [];
+            currentContext = { type: type === 'users' ? 'user-search' : 'repo-search' };
+            updateBreadcrumbs();
+            renderCurrentList();
+        } catch (e) {
+            alert("Search failed. You might be rate-limited.");
+        }
+        showLoader(false);
+    }
+
+    // --- Data Fetching ---
+
+    async function fetchUserRepos(username) {
+        showLoader(true);
+        try {
+            const res = await fetch(`https://api.github.com/users/${username}/repos?sort=updated`);
+            currentData = await res.json();
+            currentContext = { type: 'user-repos', owner: username };
+            updateBreadcrumbs();
+            renderCurrentList();
+        } catch (e) { alert("Error fetching user."); }
+        showLoader(false);
+    }
+
+    async function fetchFolder(owner, repo, path) {
+        showLoader(true);
+        try {
+            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`);
+            currentData = await res.json();
+            currentContext = { type: 'files', owner, repo, path };
+            updateBreadcrumbs();
+            renderCurrentList();
+        } catch (e) { alert("Error fetching folder contents."); }
+        showLoader(false);
+    }
+
+    // --- UI Rendering ---
+
+    function renderCurrentList() {
+        const filterText = document.getElementById('filterInput').value.toLowerCase();
+        const container = document.getElementById('results');
+        
+        const filtered = currentData.filter(item => {
+            const name = item.name || item.login || '';
+            return name.toLowerCase().includes(filterText);
+        });
+
+        container.innerHTML = filtered.map(item => {
+            const isUser = !!item.login;
+            const isRepo = !!item.full_name && !item.type;
+            const isFile = item.type === 'file';
+            const isDir = item.type === 'dir';
+
+            let icon = '📄';
+            let action = '';
+            let name = item.name || item.login;
+
+            if (isUser) {
+                icon = `<img src="${item.avatar_url}" style="width:20px;border-radius:50%">`;
+                action = `fetchUserRepos('${item.login}')`;
+            } else if (isRepo || isDir) {
+                icon = isRepo ? '📦' : '📁';
+                const owner = isRepo ? item.owner.login : currentContext.owner;
+                const repoName = isRepo ? item.name : currentContext.repo;
+                const path = isRepo ? '' : item.path;
+                action = `fetchFolder('${owner}', '${repoName}', '${path}')`;
+            } else if (isFile) {
+                icon = getFileIcon(name);
+            }
+
+            return `
+                <div class="item">
+                    <div class="item-info" onclick="${action}">
+                        <span>${icon}</span>
+                        <span class="item-name">${name}</span>
+                        ${item.language ? `<span class="badge">${item.language}</span>` : ''}
+                    </div>
+                    <div class="actions">
+                        ${isFile ? `<button onclick="handlePreview('${item.download_url}', '${name}')">Preview</button>` : ''}
+                        ${isFile ? `<button class="secondary" onclick="downloadViaProxy('${item.download_url}', '${name}')">💾</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateBreadcrumbs() {
+        const nav = document.getElementById('navCrumbs');
+        let html = `<span class="crumb" onclick="location.reload()">Home</span>`;
+        
+        if (currentContext.owner) {
+            html += ` ➔ <span class="crumb" onclick="fetchUserRepos('${currentContext.owner}')">${currentContext.owner}</span>`;
+        }
+        if (currentContext.repo) {
+            html += ` ➔ <span class="crumb" onclick="fetchFolder('${currentContext.owner}', '${currentContext.repo}', '')">${currentContext.repo}</span>`;
+        }
+        if (currentContext.path) {
+            html += ` ➔ <span>${currentContext.path}</span>`;
+        }
+        nav.innerHTML = html;
+    }
+
+    // --- Helper Utils ---
+
+    function getFileIcon(name) {
+        const ext = name.split('.').pop().toLowerCase();
+        if (['jpg','jpeg','png','gif','svg','webp'].includes(ext)) return '🖼️';
+        if (['mp4','webm','ogg'].includes(ext)) return '🎬';
+        if (['mp3','wav','aac'].includes(ext)) return '🎵';
+        return '📄';
+    }
+
+    async function downloadViaProxy(url, name) {
+        const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        const res = await fetch(proxy);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+    }
+
+    async function handlePreview(url, name) {
+        const modal = document.getElementById('previewModal');
+        const body = document.getElementById('modalBody');
+        const dlBtn = document.getElementById('modalDownload');
+        
+        body.innerHTML = "Loading preview...";
+        modal.style.display = 'flex';
+
+        const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        const res = await fetch(proxy);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const ext = name.split('.').pop().toLowerCase();
+
+        if (['jpg','jpeg','png','gif','svg','webp'].includes(ext)) {
+            body.innerHTML = `<img src="${blobUrl}" class="preview-media">`;
+        } else if (['mp4','webm'].includes(ext)) {
+            body.innerHTML = `<video src="${blobUrl}" controls class="preview-media"></video>`;
+        } else if (['mp3','wav','ogg'].includes(ext)) {
+            body.innerHTML = `<audio src="${blobUrl}" controls style="width:100%"></audio>`;
+        } else {
+            body.innerHTML = "Preview not available for this file type.";
+        }
+
+        dlBtn.onclick = () => {
+            const a = document.createElement('a');
+            a.href = blobUrl; a.download = name; a.click();
+        };
+    }
+
+    function closeModal() { document.getElementById('previewModal').style.display = 'none'; }
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+</script>
+
+</body>
+</html>
