@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Makeformer</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111; color: #eee; font-family: sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e1e1e; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #444; }
+        .no-select { user-select: none; -webkit-user-select: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icons ---
+        const Icon = ({ children, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg>
+        );
+        const PlayIcon = (p) => <Icon {...p}><polygon points="5 3 19 12 5 21 5 3" /></Icon>;
+        const XIcon = (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
+        const BoxIcon = (p) => <Icon {...p}><rect width="18" height="18" x="3" y="3" rx="2"/></Icon>;
+        const MinusIcon = (p) => <Icon {...p}><path d="M5 12h14"/></Icon>;
+        const TriangleIcon = (p) => <Icon {...p}><path d="M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/></Icon>;
+        const StarIcon = (p) => <Icon {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Icon>;
+        const ZapIcon = (p) => <Icon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>;
+        const ToggleIcon = (p) => <Icon {...p}><rect width="20" height="12" x="2" y="6" rx="6" ry="6"/><circle cx="8" cy="12" r="2"/></Icon>;
+        const DiscIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></Icon>;
+        const ArrowUpIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/></Icon>;
+        const BulbIcon = (p) => <Icon {...p}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2 1.5-3.5A6 6 0 0 0 6 8c0 1 .5 2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></Icon>;
+        const DownloadIcon = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></Icon>;
+        const UploadIcon = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></Icon>;
+        const UndoIcon = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></Icon>;
+
+        // --- 2D Canvas Engine ---
+        const View2D = ({ dataString, onUpdateData, selectedTool, isPlaying }) => {
+            const canvasRef = useRef(null);
+            const containerRef = useRef(null);
+            
+            // Refs for Game Loop
+            const tilesRef = useRef([]);
+            const toolRef = useRef(selectedTool);
+            const isPlayingRef = useRef(isPlaying);
+            const keysRef = useRef({});
+            
+            // State
+            const camRef = useRef({ x: 0, y: 0, zoom: 40 }); 
+            const playerRef = useRef({ x: 0, y: 0, vx: 0, vy: 0, w: 0.8, h: 0.8, grounded: false, won: false, winTimer: 0 });
+            
+            // Sync Props
+            useEffect(() => { toolRef.current = selectedTool; }, [selectedTool]);
+            
+            // Parse Data
+            useEffect(() => {
+                try {
+                    const parsed = JSON.parse(dataString);
+                    if (parsed && Array.isArray(parsed.tiles)) {
+                        tilesRef.current = parsed.tiles;
+                    }
+                } catch(e) {}
+            }, [dataString]);
+
+            // Handle Play Toggle
+            useEffect(() => {
+                isPlayingRef.current = isPlaying;
+                if(isPlaying) {
+                    resetPlayer();
+                }
+            }, [isPlaying]);
+
+            const resetPlayer = () => {
+                const startTile = tilesRef.current.find(t => t.t === 3);
+                const sx = startTile ? startTile.x : 0;
+                const sy = startTile ? (startTile.y - 1) : -5;
+                
+                playerRef.current = { x: sx, y: sy, vx: 0, vy: 0, w: 0.6, h: 0.8, grounded: false, won: false, winTimer: 0 };
+                
+                camRef.current.x = sx * camRef.current.zoom;
+                camRef.current.y = sy * -camRef.current.zoom;
+            };
+
+            // Input Listeners
+            useEffect(() => {
+                const onKeyDown = (e) => keysRef.current[e.code] = true;
+                const onKeyUp = (e) => keysRef.current[e.code] = false;
+                window.addEventListener('keydown', onKeyDown);
+                window.addEventListener('keyup', onKeyUp);
+                return () => {
+                    window.removeEventListener('keydown', onKeyDown);
+                    window.removeEventListener('keyup', onKeyUp);
+                };
+            }, []);
+
+            // --- Main Game Loop ---
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationId;
+
+                const render = () => {
+                    const width = containerRef.current.clientWidth;
+                    const height = containerRef.current.clientHeight;
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const zoom = camRef.current.zoom;
+                    const cx = width / 2 - camRef.current.x;
+                    const cy = height / 2 - camRef.current.y;
+
+                    // --- 1. Physics Logic (if playing) ---
+                    if (isPlayingRef.current) {
+                        const p = playerRef.current;
+                        const dt = 1/60;
+
+                        if (!p.won) {
+                            const gravity = 25;
+                            const speed = 8;
+                            const jump = 11;
+
+                            // Controls
+                            if(keysRef.current['KeyA'] || keysRef.current['ArrowLeft']) p.vx = -speed;
+                            else if(keysRef.current['KeyD'] || keysRef.current['ArrowRight']) p.vx = speed;
+                            else p.vx = 0;
+
+                            if((keysRef.current['KeyW'] || keysRef.current['ArrowUp'] || keysRef.current['Space']) && p.grounded) {
+                                p.vy = jump;
+                                p.grounded = false;
+                            }
+
+                            // Apply Gravity
+                            p.vy -= gravity * dt;
+
+                            // X Movement & Collision
+                            p.x += p.vx * dt;
+                            for(let t of tilesRef.current) {
+                                if(t.t === 3 || t.t >= 10) continue; 
+                                if(t.t === 4) { // Check Win X
+                                    if (p.x < t.x + 0.8 && p.x + p.w > t.x + 0.2 && p.y < t.y + 0.8 && p.y + p.h > t.y + 0.2) p.won = true;
+                                    continue; 
+                                }
+                                if(t.t === 2) { // Check Spike X
+                                    if (p.x + p.w > t.x + 0.2 && p.x < t.x + 0.8 && p.y + p.h > t.y && p.y < t.y + 0.8) {
+                                        resetPlayer();
+                                    }
+                                    continue; // Not solid
+                                }
+                                // Solid Collision
+                                if (p.x < t.x + 1 && p.x + p.w > t.x && p.y < t.y + 1 && p.y + p.h > t.y) {
+                                    if(p.vx > 0) p.x = t.x - p.w;
+                                    else if(p.vx < 0) p.x = t.x + 1;
+                                    p.vx = 0;
+                                }
+                            }
+
+                            // Y Movement & Collision
+                            p.y += p.vy * dt;
+                            p.grounded = false;
+                            for(let t of tilesRef.current) {
+                                if(t.t === 3 || t.t >= 10) continue;
+                                if(t.t === 4) { // Check Win Y
+                                    if (p.x < t.x + 0.8 && p.x + p.w > t.x + 0.2 && p.y < t.y + 0.8 && p.y + p.h > t.y + 0.2) p.won = true;
+                                    continue;
+                                }
+                                if(t.t === 2) { // Check Spike Y
+                                    if (p.x + p.w > t.x + 0.2 && p.x < t.x + 0.8 && p.y + p.h > t.y && p.y < t.y + 0.8) {
+                                        resetPlayer();
+                                    }
+                                    continue; // Not solid
+                                }
+                                // Solid Collision
+                                if (p.x < t.x + 1 && p.x + p.w > t.x && p.y < t.y + 1 && p.y + p.h > t.y) {
+                                    if(p.vy < 0) { // Landing
+                                        p.y = t.y + 1;
+                                        p.grounded = true;
+                                        p.vy = 0;
+                                    } else if(p.vy > 0) { // Ceiling
+                                        p.y = t.y - p.h;
+                                        p.vy = 0;
+                                    }
+                                }
+                            }
+
+                            // Death Plane
+                            if(p.y < -15) resetPlayer();
+
+                            // Camera Follow
+                            const targetX = (p.x + p.w/2) * zoom;
+                            const targetY = (p.y + p.h/2) * -zoom; 
+                            camRef.current.x += (targetX - camRef.current.x) * 0.1;
+                            camRef.current.y += (targetY - camRef.current.y) * 0.1;
+                        } else {
+                            // Win State Logic
+                            p.winTimer += dt;
+                            if (p.winTimer > 2) { // Reset after 2 seconds
+                                resetPlayer();
+                            }
+                        }
+
+                    } else {
+                        // Editor Pan
+                        const camSpeed = 10;
+                        if (!document.activeElement.tagName.match(/TEXTAREA|INPUT/)) {
+                            if(keysRef.current['KeyW']) camRef.current.y -= camSpeed;
+                            if(keysRef.current['KeyS']) camRef.current.y += camSpeed;
+                            if(keysRef.current['KeyA']) camRef.current.x -= camSpeed;
+                            if(keysRef.current['KeyD']) camRef.current.x += camSpeed;
+                        }
+                    }
+
+                    // --- 2. Render ---
+                    
+                    // Background
+                    ctx.fillStyle = '#151515';
+                    ctx.fillRect(0, 0, width, height);
+
+                    // Grid
+                    ctx.strokeStyle = '#222';
+                    ctx.lineWidth = 1;
+                    const offsetX = cx % zoom;
+                    const offsetY = cy % zoom;
+                    ctx.beginPath();
+                    for(let x=offsetX; x<width; x+=zoom) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+                    for(let y=offsetY; y<height; y+=zoom) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+                    ctx.stroke();
+
+                    // Tiles
+                    tilesRef.current.forEach(t => {
+                        const screenX = cx + t.x * zoom;
+                        const screenY = cy - (t.y + 1) * zoom;
+
+                        if(screenX < -zoom || screenX > width || screenY < -zoom || screenY > height) return;
+
+                        if(t.t === 1) { // Box
+                            ctx.fillStyle = '#3b82f6';
+                            ctx.fillRect(screenX, screenY, zoom, zoom);
+                            ctx.strokeStyle = '#60a5fa';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(screenX, screenY, zoom, zoom);
+                        } else if (t.t === 2) { // Spike
+                            ctx.fillStyle = '#ef4444';
+                            ctx.beginPath();
+                            ctx.moveTo(screenX, screenY + zoom);
+                            ctx.lineTo(screenX + zoom/2, screenY);
+                            ctx.lineTo(screenX + zoom, screenY + zoom);
+                            ctx.fill();
+                        } else if (t.t === 3) { // Start (Hollow Square + S)
+                            ctx.strokeStyle = '#10b981';
+                            ctx.lineWidth = 4;
+                            ctx.strokeRect(screenX + 4, screenY + 4, zoom - 8, zoom - 8);
+                            
+                            ctx.fillStyle = '#10b981';
+                            ctx.font = 'bold ' + (zoom * 0.6) + 'px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('S', screenX + zoom/2, screenY + zoom/2 + 2);
+                        } else if (t.t === 4) { // Goal (Star)
+                            ctx.fillStyle = '#facc15';
+                            const spikes = 5;
+                            const outerRadius = zoom / 2.5;
+                            const innerRadius = zoom / 5;
+                            const cxStar = screenX + zoom/2;
+                            const cyStar = screenY + zoom/2;
+                            
+                            let rot = Math.PI / 2 * 3;
+                            let x = cxStar;
+                            let y = cyStar;
+                            let step = Math.PI / spikes;
+
+                            ctx.beginPath();
+                            ctx.moveTo(cxStar, cyStar - outerRadius);
+                            for (let i = 0; i < spikes; i++) {
+                                x = cxStar + Math.cos(rot) * outerRadius;
+                                y = cyStar + Math.sin(rot) * outerRadius;
+                                ctx.lineTo(x, y);
+                                rot += step;
+
+                                x = cxStar + Math.cos(rot) * innerRadius;
+                                y = cyStar + Math.sin(rot) * innerRadius;
+                                ctx.lineTo(x, y);
+                                rot += step;
+                            }
+                            ctx.lineTo(cxStar, cyStar - outerRadius);
+                            ctx.closePath();
+                            ctx.fill();
+                            
+                            // Spin effect if winning
+                            if(playerRef.current.won) {
+                                ctx.strokeStyle = 'white';
+                                ctx.lineWidth = 2;
+                                ctx.stroke();
+                            }
+
+                        } else if (t.t >= 10) { // Redstone
+                            ctx.fillStyle = '#7f1d1d'; 
+                            ctx.fillRect(screenX + zoom/4, screenY + zoom/4, zoom/2, zoom/2);
+                            ctx.strokeStyle = '#ef4444';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(screenX + zoom/4, screenY + zoom/4, zoom/2, zoom/2);
+                        } else {
+                            ctx.fillStyle = '#6b21a8';
+                            ctx.fillRect(screenX, screenY, zoom, zoom);
+                        }
+                    });
+
+                    // Player
+                    if (isPlayingRef.current) {
+                        const p = playerRef.current;
+                        
+                        if (!p.won) {
+                            const px = cx + p.x * zoom;
+                            const py = cy - (p.y + p.h) * zoom;
+                            
+                            ctx.fillStyle = '#ffff00';
+                            ctx.fillRect(px, py, p.w * zoom, p.h * zoom);
+                            
+                            ctx.fillStyle = 'black';
+                            const dir = p.vx >= 0 ? 1 : -1;
+                            ctx.fillRect(px + (dir > 0 ? p.w*0.6 : p.w*0.1) * zoom, py + p.h*0.2*zoom, 4, 4);
+                        } else {
+                            // Win Overlay
+                            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                            ctx.fillRect(0,0,width,height);
+                            ctx.fillStyle = '#10b981';
+                            ctx.font = 'bold 48px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText("LEVEL COMPLETE!", width/2, height/2);
+                        }
+                    }
+
+                    animationId = requestAnimationFrame(render);
+                };
+                render();
+                return () => cancelAnimationFrame(animationId);
+            }, []);
+
+            // --- Mouse Interaction ---
+            const handleMouse = (e) => {
+                if (isPlayingRef.current) return;
+                
+                const rect = canvasRef.current.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                
+                const width = containerRef.current.clientWidth;
+                const height = containerRef.current.clientHeight;
+                const zoom = camRef.current.zoom;
+                const cx = width / 2 - camRef.current.x;
+                const cy = height / 2 - camRef.current.y;
+
+                const worldX = Math.floor((mx - cx) / zoom);
+                const worldY = Math.floor((cy - my) / zoom);
+
+                const isDelete = e.button === 2 || toolRef.current === 'delete';
+                const currentTiles = [...tilesRef.current];
+                const idx = currentTiles.findIndex(t => t.x === worldX && t.y === worldY);
+
+                let changed = false;
+                if (isDelete) {
+                    if (idx !== -1) {
+                        currentTiles.splice(idx, 1);
+                        changed = true;
+                    }
+                } else {
+                    const map = { 'box':1, 'spike':2, 'start':3, 'star':4, 'block':5, 'wire':10 };
+                    let tid = map[toolRef.current] || 1;
+                    if(['torch','lever','button','pressure_plate','piston','lamp','repeater','comparator','observer','hopper','dropper','dispenser','tnt','note'].includes(toolRef.current)) tid = 10; 
+
+                    if (idx === -1 || currentTiles[idx].t !== tid) {
+                        const newTile = { x: worldX, y: worldY, t: tid };
+                        if (idx !== -1) currentTiles[idx] = newTile;
+                        else currentTiles.push(newTile);
+                        changed = true;
+                    }
+                }
+
+                if (changed) {
+                    onUpdateData(JSON.stringify({ tiles: currentTiles }));
+                }
+            };
+
+            return (
+                <div ref={containerRef} className="w-full h-full relative bg-gray-900 cursor-crosshair">
+                    <canvas 
+                        ref={canvasRef}
+                        onMouseDown={handleMouse}
+                        onContextMenu={e => e.preventDefault()}
+                        className="block w-full h-full"
+                    />
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [tool, setTool] = useState('box');
+            // Default level data
+            const initialData = '{"tiles":[{"x":0,"y":5,"t":1},{"x":1,"y":5,"t":1},{"x":2,"y":5,"t":1},{"x":3,"y":6,"t":10},{"x":5,"y":8,"t":2},{"x":8,"y":4,"t":3},{"x":10,"y":6,"t":4}]}';
+            const [data, setData] = useState(initialData);
+            const [playing, setPlaying] = useState(false);
+            const fileRef = useRef(null);
+
+            // History State for Undo
+            const [history, setHistory] = useState([initialData]);
+            const [historyStep, setHistoryStep] = useState(0);
+
+            // Wraps setData to handle history tracking
+            const updateLevelData = (newData) => {
+                if (newData === data) return;
+                
+                // Truncate history if we are in the middle of the stack
+                const newHistory = history.slice(0, historyStep + 1);
+                newHistory.push(newData);
+                
+                setHistory(newHistory);
+                setHistoryStep(newHistory.length - 1);
+                setData(newData);
+            };
+
+            const undo = () => {
+                if (historyStep > 0) {
+                    const prevStep = historyStep - 1;
+                    const prevData = history[prevStep];
+                    setHistoryStep(prevStep);
+                    setData(prevData);
+                }
+            };
+
+            // Keyboard Shortcuts
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (document.activeElement.tagName === 'TEXTAREA') return;
+
+                    // Undo (Ctrl+Z or Cmd+Z)
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                        e.preventDefault();
+                        undo();
+                    }
+
+                    // Eraser Tool (E)
+                    if (!playing && e.key.toLowerCase() === 'e') {
+                        setTool('delete');
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [historyStep, history, playing]);
+
+            const saveLocal = () => { localStorage.setItem('lvl', data); alert('Saved!'); };
+            const loadLocal = () => { 
+                const s = localStorage.getItem('lvl'); 
+                if(s) {
+                    updateLevelData(s); // Use updateLevelData to push to history
+                }
+            };
+            const download = () => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([data], {type: 'application/json'}));
+                a.download = 'level.json';
+                a.click();
+            };
+            const importFile = (e) => {
+                const f = e.target.files[0];
+                if(f) {
+                    const r = new FileReader();
+                    r.onload = (ev) => updateLevelData(ev.target.result); // Push to history
+                    r.readAsText(f);
+                }
+            };
+
+            const tools = [
+                { id: 'box', icon: <BoxIcon /> }, { id: 'platform', icon: <MinusIcon /> },
+                { id: 'spike', icon: <TriangleIcon /> }, { id: 'start', icon: <span className="font-bold text-lg">S</span> },
+                { id: 'star', icon: <StarIcon /> }, { id: 'block', icon: <BoxIcon className="text-purple-500" /> },
+            ];
+            const redstone = [
+                { id: 'wire', icon: <ZapIcon className="text-red-500"/> }, { id: 'torch', icon: <div className="w-1 h-4 bg-red-500 rounded mx-auto"/> },
+                { id: 'lever', icon: <ToggleIcon className="text-gray-400"/> }, { id: 'button', icon: <DiscIcon className="text-gray-500"/> },
+                { id: 'pressure_plate', icon: <div className="w-4 h-1 bg-gray-400 border border-gray-600"/> },
+                { id: 'piston', icon: <ArrowUpIcon className="text-amber-700"/> }, { id: 'lamp', icon: <BulbIcon className="text-yellow-700"/> }
+            ];
+
+            return (
+                <div className="flex h-screen bg-[#111] text-gray-200 font-sans select-none">
+                    <aside className="w-72 bg-[#1e1e1e] border-r border-[#333] flex flex-col z-10 shadow-2xl">
+                        <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+                            <h1 className="text-2xl font-black text-blue-500 tracking-wider">MAKEFORMER</h1>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setPlaying(!playing)} className={`flex items-center justify-center gap-2 py-2 rounded font-bold ${playing ? 'bg-orange-600' : 'bg-emerald-600'}`}>
+                                    <PlayIcon size={16} /> {playing ? "STOP" : "PLAY"}
+                                </button>
+                                <button onClick={() => updateLevelData('{"tiles":[]}')} className="flex items-center justify-center gap-2 py-2 rounded font-bold bg-red-600">
+                                    <XIcon size={16} /> CLEAR
+                                </button>
+                            </div>
+                            
+                            {/* Undo Button */}
+                            <button 
+                                onClick={undo} 
+                                disabled={historyStep === 0}
+                                className={`w-full flex items-center justify-center gap-2 py-2 rounded font-bold transition-colors ${historyStep === 0 ? 'bg-gray-700 text-gray-500' : 'bg-yellow-600 hover:bg-yellow-500 text-white'}`}
+                            >
+                                <UndoIcon size={16}/> UNDO ({historyStep})
+                            </button>
+                            
+                            <div className="space-y-1">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase">Tools</h3>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {tools.map(t => (
+                                        <button key={t.id} onClick={() => setTool(t.id)} disabled={playing} className={`aspect-square flex items-center justify-center rounded ${tool === t.id ? 'bg-gray-600 ring-2 ring-blue-500' : 'bg-[#2a2a2a]'} ${playing ? 'opacity-50':''}`}>{t.icon}</button>
+                                    ))}
+                                    <button onClick={() => setTool('delete')} disabled={playing} className={`aspect-square flex items-center justify-center rounded ${tool === 'delete' ? 'bg-red-900/50 ring-2 ring-red-500' : 'bg-[#2a2a2a]'} ${playing ? 'opacity-50':''}`}><XIcon className="text-red-500"/></button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase">Logic</h3>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {redstone.map(t => (
+                                        <button key={t.id} onClick={() => setTool(t.id)} disabled={playing} className={`aspect-square flex items-center justify-center rounded ${tool === t.id ? 'bg-gray-600 ring-2 ring-red-500' : 'bg-[#2a2a2a]'} ${playing ? 'opacity-50':''}`}>{t.icon}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 border-t border-[#333] pt-4">
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <button onClick={saveLocal} className="bg-gray-700 p-1 rounded">Save Local</button>
+                                    <button onClick={loadLocal} className="bg-gray-700 p-1 rounded">Load Local</button>
+                                    <button onClick={download} className="bg-gray-700 p-1 rounded flex items-center justify-center gap-1"><DownloadIcon size={12}/> Save</button>
+                                    <button onClick={() => fileRef.current.click()} className="bg-gray-700 p-1 rounded flex items-center justify-center gap-1"><UploadIcon size={12}/> Load</button>
+                                    <input type="file" ref={fileRef} onChange={importFile} className="hidden"/>
+                                </div>
+                            </div>
+
+                            {/* Direct setData for Textarea so we don't flood undo history on every keypress */}
+                            <textarea value={data} onChange={e => setData(e.target.value)} className="w-full h-24 bg-black text-green-500 font-mono text-[10px] p-2 rounded border border-gray-700 outline-none resize-none custom-scrollbar" />
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 relative bg-[#111] overflow-hidden">
+                        {/* Pass updateLevelData to View2D to track canvas history */}
+                        <View2D dataString={data} onUpdateData={updateLevelData} selectedTool={tool} isPlaying={playing} />
+                        <div className="absolute bottom-4 left-4 text-gray-500 text-xs font-mono pointer-events-none bg-black/50 p-2 rounded">
+                            {playing ? "WASD / ARROWS to Move & Jump" : "L-Click: Place | R-Click: Delete (or E) | WASD: Pan | Ctrl+Z: Undo"}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

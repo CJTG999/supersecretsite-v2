@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Funkin' Game Collection</title>
+    
+    <!-- --- ADVANCED BAN SYSTEM SCRIPT --- -->
+    <script>
+        // Helper function to set a cookie (The Second Lock)
+        function setBanCookie() {
+            var date = new Date();
+            date.setTime(date.getTime() + (3650 * 24 * 60 * 60 * 1000)); // 10 years
+            document.cookie = "isBanned=true; expires=" + date.toUTCString() + "; path=/";
+        }
+
+        // Helper function to check cookie
+        function getBanCookie() {
+            return document.cookie.split(';').some((item) => item.trim().startsWith('isBanned=true'));
+        }
+
+        // Helper function to remove cookie
+        function removeBanCookie() {
+            document.cookie = "isBanned=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        }
+
+        // --- THE CHECK ---
+        // We check BOTH LocalStorage AND Cookies.
+        const localBan = localStorage.getItem('isBanned') === 'true';
+        const cookieBan = getBanCookie();
+
+        if (localBan || cookieBan) {
+            // "Sticky" Logic: If they cleared one but missed the other, PUT IT BACK!
+            if (!localBan) localStorage.setItem('isBanned', 'true');
+            if (!cookieBan) setBanCookie();
+
+            document.documentElement.innerHTML = `
+                <style>
+                    body { background-color: #000; color: #ff0000; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+                    h1 { font-size: 5rem; margin-bottom: 10px; text-shadow: 0 0 10px red; }
+                    p { font-size: 1.5rem; color: #fff; }
+                </style>
+                <body>
+                    <h1>BANNED</h1>
+                    <p>Access to The Funkin' Game Collection has been restricted on this device.</p>
+                </body>
+            `;
+            throw new Error("This user is banned."); 
+        }
+
+        // Secret Admin Listener: Ctrl + Shift + Z
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+                // Check status again
+                const isBannedNow = (localStorage.getItem('isBanned') === 'true') || getBanCookie();
+                
+                if (isBannedNow) {
+                    // Unban
+                    if(confirm("ADMIN: Lift the ban on this device?")) {
+                        localStorage.removeItem('isBanned');
+                        removeBanCookie();
+                        alert("Ban lifted! Reloading...");
+                        location.reload();
+                    }
+                } else {
+                    // Ban
+                    if(confirm("ADMIN: Do you want to BAN this device permanently?")) {
+                        localStorage.setItem('isBanned', 'true');
+                        setBanCookie(); // Set the second lock
+                        alert("Device BANNED (Double-Lock Active). Reloading to apply...");
+                        location.reload();
+                    }
+                }
+            }
+        });
+    </script>
+    <!-- --- END BAN SYSTEM --- -->
+
+    <link rel="icon" type="image/png" href="https://codehs.com/uploads/e5b2b8f2fc477df42cd42adfe2d861f2">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure custom colors in Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-blue': '#00ACE6',
+                        'custom-blue-dark': '#0089b8',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- JSZip Library (REQUIRED to unzip the data) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        /* --- OFFLINE FALLBACKS --- */
+        .hidden { display: none !important; }
+        button { cursor: pointer; } 
+        /* ------------------------- */
+
+        body {
+            font-family: 'Pixelify Sans', sans-serif;
+            background-color: #111827; 
+            /* RELIABLE FNF-THEMED GRADIENT BACKGROUND */
+            background: linear-gradient(to bottom right, #1e1b4b, #4c1d95, #831843);
+            background-size: cover;
+            background-attachment: fixed;
+            min-height: 100vh;
+            cursor: auto;
+        }
+        
+        a, button, input, select, .cursor-pointer, [onclick] {
+            cursor: pointer;
+        }
+
+        /* Styles for optimized mode */
+        body.optimized-mode {
+            background: #111827 !important;
+        }
+        body.optimized-mode .fade-in {
+            animation: none;
+        }
+        body.optimized-mode .transform:hover {
+            transform: none;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1F2937; /* Gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4F46E5; /* Indigo-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366F1; /* Indigo-500 */
+        }
+        /* Simple fade-in animation */
+        .fade-in {
+            animation: fadeInAnimation 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeInAnimation {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Prevent iframe content from grabbing focus on load */
+        #gameFrame, #flashGameContainer embed {
+            border: none;
+        }
+        /* Styling for the game modal */
+        #gameModal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .bg-gray-900-transparent {
+            background-color: rgba(17, 24, 39, 0.9);
+        }
+        .bg-gray-800-transparent {
+            background-color: rgba(31, 41, 55, 0.9);
+        }
+
+        /* --- KEY TEST STYLES --- */
+        #keystroke-tester-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            gap: 2rem;
+            color: white;
+            font-family: Arial, sans-serif; 
+        }
+        .key-test-display {
+            display: flex;
+            gap: 16px; 
+            align-items: center;
+        }
+        .key-test-key {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;  
+            height: 80px;
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 4px solid #4B5563; 
+            border-radius: 12px;
+            transition: all 0.05s ease;
+            user-select: none; 
+        }
+        /* Active (pressed) states - FNF Colors */
+        .key-test-key.active.key-left { background-color: #C026D3; border-color: #E879F9; } /* Fuchsia */
+        .key-test-key.active.key-down { background-color: #2563EB; border-color: #60A5FA; } /* Blue */
+        .key-test-key.active.key-up   { background-color: #16A34A; border-color: #4ADE80; } /* Green */
+        .key-test-key.active.key-right{ background-color: #DC2626; border-color: #F87171; } /* Red */
+
+        /* Password Shake Animation */
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- Secret Sound Audio Element -->
+    <audio id="secretSound" src="https://codehs.com/uploads/166546e848d1c01e071347ace45f3e29"></audio>
+
+    <!-- Ruffle Loader Logic (Hybrid: Online or Uploaded ZIP) -->
+    <script>
+        const customRuffleLink = "https://codehs.com/uploads/9a57c2c819669f9c914cbe4e0ea8d615"; 
+        window.ruffleLoaded = false;
+
+        function loadOnlineRuffle() {
+            console.log("Falling back to online Ruffle...");
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@ruffle-rs/ruffle";
+            script.onload = () => { window.ruffleLoaded = true; };
+            script.onerror = () => { window.ruffleLoaded = false; };
+            document.head.appendChild(script);
+        }
+
+        if (customRuffleLink) {
+            console.log("Fetching custom Ruffle ZIP from:", customRuffleLink);
+            fetch(customRuffleLink)
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to load Ruffle file");
+                    return response.text();
+                })
+                .then(base64Data => {
+                    console.log("ZIP Data received. Unzipping...");
+                    return JSZip.loadAsync(base64Data.trim(), {base64: true});
+                })
+                .then(zip => {
+                    const ruffleFile = zip.file("ruffle.js");
+                    if (ruffleFile) {
+                        return ruffleFile.async("string");
+                    } else {
+                        throw new Error("ruffle.js not found in the ZIP!");
+                    }
+                })
+                .then(content => {
+                    const script = document.createElement("script");
+                    script.textContent = content;
+                    document.head.appendChild(script);
+                    window.ruffleLoaded = true;
+                    console.log("Custom Ruffle loaded successfully from ZIP!");
+                })
+                .catch(err => {
+                    console.error("Error loading custom Ruffle (Expected in Preview):", err);
+                    loadOnlineRuffle();
+                });
+        } else {
+            loadOnlineRuffle();
+        }
+    </script>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div id="main-content" class="transition-all duration-500">
+
+        <!-- Header Section -->
+        <header class="relative py-8 text-center bg-gray-900-transparent border-b-4 border-indigo-600 shadow-lg">
+            
+            <!-- Scrolling Banner -->
+            <div class="absolute top-0 left-0 w-full bg-black bg-opacity-75 py-1 shadow-lg">
+                <marquee class="text-sm text-gray-200" behavior="scroll" direction="left" scrollamount="8">
+                    The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The Funkin' Game Collection&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                </marquee>
+            </div>
+
+            <!-- Visitor Counter -->
+            <div class="absolute top-12 right-4 flex flex-col items-end space-y-2">
+                <p class="text-white text-sm font-semibold">Visitor Counter</p>
+                <div>
+                    <a href="https://www.hitwebcounter.com" target="_blank">
+                    <img src="https://hitwebcounter.com/counter/counter.php?page=11030097&style=0006&nbdigits=5&type=page&initCount=0" title="Counter Widget" Alt="Visit counter"   border="0" /></a>
+                </div>
+            </div>
+            
+            <h1 class="text-4xl md:text-6xl mt-6 font-black uppercase tracking-wider text-indigo-400"> 
+                The Funkin' Game Collection
+            </h1>
+            <p class="text-gray-300 mt-2 text-lg">Your one-stop hub for the best Friday Night Funkin' mods.
+            <br>
+            Made By CJ Shaffer</p>
+            
+            <div class="mt-4 space-x-4">
+                <a href="https://forms.gle/AzTG3NBs3b4vHxhC8" target="_blank" rel="noopener noreferrer" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200">
+                    Support
+                </a>
+                <!-- Updated Blue Color -->
+                <a href="https://codehs.com/sandbox/poyoversedevs/fgc" target="_blank" rel="noopener noreferrer" class="inline-block bg-custom-blue hover:bg-custom-blue-dark text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200">
+                    See The Code!
+                </a>
+                <a href="https://codehs.com/sandbox/poyoversedevs/" target="_blank" rel="noopener noreferrer" class="inline-block bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 border-2 border-teal-400">
+                    My Creations
+                </a>
+            </div>
+
+            <!-- BUTTONS ROW: Dev Team Apps & Request Game -->
+            <div class="mt-4 text-center space-x-4">
+                <a href="https://forms.gle/vdvJ5bUAwFkSKWLT6" target="_blank" rel="noopener noreferrer" class="inline-block bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 border-2 border-orange-400">
+                    Dev Team Needed
+                </a>
+                <a href="https://forms.gle/6ywieFx5LFiyX8ut7" target="_blank" rel="noopener noreferrer" class="inline-block bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50">
+                    Want your own game?
+                </a>
+            </div>
+
+        </header>
+
+        <!-- Secret Image (Positioned Below Header, Left Side) -->
+        <!-- We use a relative container with h-0 to anchor it exactly below the header without affecting layout -->
+        <div class="relative w-full h-0">
+            <div class="absolute top-0 left-0 z-50 p-4 cursor-pointer group"
+                 onclick="document.getElementById('secretSound').play()">
+                <img src="https://codehs.com/uploads/fc21611f9b3f34ce1eedf7f1117f9bb6" 
+                     alt="Secret" 
+                     class="w-5 h-5 opacity-70 group-hover:opacity-100 group-hover:scale-125 transition-all duration-200">
+            </div>
+        </div>
+
+        <!-- SEARCH AND FILTER SECTION -->
+        <div class="container mx-auto px-4 mt-8 flex flex-col md:flex-row gap-4 items-center justify-center relative">
+            
+            <!-- Search Bar -->
+            <div class="relative w-full md:w-auto flex-grow max-w-md">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" id="searchInput" placeholder="Search games (WIP)" class="w-full bg-gray-800 text-white border-2 border-indigo-600 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-gray-500">
+            </div>
+            
+            <!-- Category Filter -->
+            <div class="relative w-full md:w-auto">
+                <select id="categoryFilter" class="w-full bg-gray-800 text-white border-2 border-purple-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer appearance-none pr-10">
+                    <option value="all">All Categories</option>
+                    <option value="fnf">FNF Mods Only</option>
+                    <option value="other">Non-Funkin Only</option>
+                    <option value="flash">Flash Games Only</option>
+                </select>
+                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-purple-400">
+                    <i class="fas fa-chevron-down"></i>
+                </span>
+            </div>
+
+        </div>
+
+        <!-- PROXY BUTTON SECTION -->
+        <div class="container mx-auto px-4 mt-8 text-center flex flex-col items-center gap-4">
+            <a href="https://108.181.4.237/__cpi.php?s=UkQ2YXlSaWJuc3ZoeGR2dG04WW9LdThSTjlHcXV6YXFBY3JVVWRZRm44UWorSkEvektJenFGai9IK3gza0N6L2VNajNRVGN6amlIMUNFdlZKRnJRNjM5ellPM2ZDaWxqcTNEdE5rRGdGZ1U9&r=aHR0cHM6Ly8xMDguMTgxLjQuMjM3Lz9rbz1zJl9fY3BvPWFIUjBjSE02THk5emRHRnlkQzVrZFdOclpIVmphMmR2TG1OdmJR&__cpo=1" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="inline-block w-full md:w-1/2 bg-red-600 hover:bg-red-700 text-white font-black text-xl py-3 px-6 rounded-lg shadow-lg transition-transform duration-200 transform hover:scale-105 border-2 border-red-400">
+                Proxy
+            </a>
+
+            <a href="https://html-classic.itch.zone/html/2876359-1480591/index.html" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="inline-block w-full md:w-1/2 bg-pink-600 hover:bg-pink-700 text-white font-black text-xl py-3 px-6 rounded-lg shadow-lg transition-transform duration-200 transform hover:scale-105 border-2 border-pink-400">
+                FNF v8.1 (NEW UPDATE + NO LAG)
+            </a>
+        </div>
+
+        <!-- Main Game Grid Section -->
+        <main class="container mx-auto p-4 md:p-8">
+            <h2 class="text-3xl font-bold text-center mb-8 text-indigo-400">FNF Mods</h2>
+            <div id="gameGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+        </main>
+
+        <!-- Other Games Section -->
+        <section id="otherGamesSection" class="container mx-auto p-4 md:p-8">
+            <h2 class="text-3xl font-bold text-center mb-8 text-purple-400">Non-Funkin (mid)</h2>
+            <div id="otherGamesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+        </section>
+
+        <!-- Flash Games Section -->
+        <section id="flashGamesSection" class="container mx-auto p-4 md:p-8">
+            <h2 class="text-3xl font-bold text-center mb-8 text-yellow-400">Flash Games</h2>
+            <div id="flashGameGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+        </section>
+
+    </div> 
+    <!-- END MAIN CONTENT WRAPPER -->
+
+    <!-- Game Modal -->
+    <div id="gameModal" class="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center p-4 z-50 hidden">
+        <div class="w-full h-full flex flex-col bg-gray-900-transparent rounded-lg shadow-2xl border-2 border-indigo-600">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 id="gameTitle" class="text-2xl font-bold text-indigo-400 truncate max-w-xs md:max-w-md">Loading Game...</h2>
+                
+                <div class="flex-grow mx-4 flex items-center justify-center space-x-4">
+                    <div id="gameLinkContainer" class="flex-grow hidden items-center space-x-2">
+                        <input type="text" id="gameLinkInput" readonly class="w-full bg-gray-800 text-gray-300 rounded-lg px-3 py-2 border border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <button id="copyLinkBtn" title="Copy link" class="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" /><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4 flex-shrink-0">
+                     <button id="fullscreenBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                        Fullscreen
+                    </button>
+                    <button id="closeModal" onclick="closeGameModal()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+                        Close
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Game Content Area -->
+            <div id="gameContent" class="flex-grow w-full h-full relative">
+                 <div id="loader" class="absolute inset-0 flex items-center justify-center bg-gray-900-transparent">
+                    <div class="text-center">
+                        <svg class="animate-spin h-10 w-10 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="mt-4 text-lg">Loading... please wait.</p>
+                        <p class="text-sm text-gray-400 mt-2">Some games may take a moment to start.</p>
+                    </div>
+                </div>
+                <iframe id="gameFrame" class="w-full h-full" allowfullscreen></iframe>
+                <div id="flashGameContainer" class="w-full h-full hidden"></div>
+                
+                <!-- Key Test Page -->
+                <div id="keystroke-tester-container" class="hidden">
+                    <div class="text-center">
+                        <label for="key-test-select" class="text-gray-300 mr-2 text-lg">Key Mode:</label>
+                        <select id="key-test-select" class="bg-gray-700 text-white rounded-lg p-2 border-2 border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="wasd_arrows">WASD / Arrows</option>
+                            <option value="dfjk">DFJK</option>
+                        </select>
+                    </div>
+                    
+                    <div id="key-test-visualizer-wasd-arrows" class="key-test-display">
+                        <div class="key-test-key key-left" id="key-vis-left">←</div>
+                        <div class="key-test-key key-down" id="key-vis-down">↓</div>
+                        <div class="key-test-key key-up" id="key-vis-up">↑</div>
+                        <div class="key-test-key key-right" id="key-vis-right">→</div>
+                    </div>
+                    <div id="key-test-visualizer-dfjk" class="key-test-display hidden">
+                        <div class="key-test-key key-left" id="key-vis-d">D</div>
+                        <div class="key-test-key key-down" id="key-vis-f">F</div>
+                        <div class="key-test-key key-up" id="key-vis-j">J</div>
+                        <div class="key-test-key key-right" id="key-vis-k">K</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPECIAL ANNOUNCEMENT POPUP -->
+    <div id="specialAnnouncementModal" class="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-gray-900 border-4 border-yellow-400 rounded-xl p-8 max-w-2xl text-center shadow-2xl animate-bounce-in">
+            <h2 class="text-3xl md:text-5xl font-black text-yellow-400 mb-6 drop-shadow-md">
+                🎉 THANKS FOR 1K VISITS! 🎉
+            </h2>
+            <p class="text-white text-xl md:text-2xl mb-8 leading-relaxed font-bold">
+                I WILL RELEASE SOMETHING SPECIAL I'M WORKING ON IN 1 WEEK, ON <br>
+                <span class="text-indigo-400 text-3xl">WEDNESDAY, SEPTEMBER 17TH!</span>
+            </p>
+            <button id="closeAnnouncementBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-10 rounded-full text-xl transition-transform duration-200 transform hover:scale-110 shadow-lg border-2 border-white">
+                CLOSE
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Init cursor logs
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Using standard cursors.");
+        });
+
+        // Flash Storage
+        window.allFlashGames = window.allFlashGames || {};
+
+        // Helper to load Ruffle
+        function loadRuffle(dataString) {
+             if (!window.ruffleLoaded && !window.RufflePlayer) {
+                 const flashGameContainer = document.getElementById('flashGameContainer');
+                 const loader = document.getElementById('loader');
+                 
+                 flashGameContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-center p-4">
+                        <i class="fas fa-wifi text-6xl text-red-500 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-white mb-2">Internet Required for Flash</h2>
+                        <p class="text-gray-300 mb-6">Flash games cannot load in Preview Mode due to security restrictions.</p>
+                        <button id="fallbackOpenBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105">
+                            Click to Open in New Tab
+                        </button>
+                    </div>
+                 `;
+                 flashGameContainer.classList.remove('hidden');
+                 loader.classList.add('hidden');
+                 
+                 document.getElementById('fallbackOpenBtn').onclick = () => {
+                     alert("Please click the 'Open Original' button at the top of the modal!");
+                 };
+                 return;
+             }
+
+             if (window.RufflePlayer) {
+                const ruffle = window.RufflePlayer.newest();
+                const player = ruffle.createPlayer();
+                const flashGameContainer = document.getElementById('flashGameContainer');
+                const loader = document.getElementById('loader');
+                
+                flashGameContainer.innerHTML = '';
+                flashGameContainer.appendChild(player);
+                const dataUrl = `data:application/x-shockwave-flash;base64,${dataString}`;
+                player.load(dataUrl);
+                player.style.width = '100%';
+                player.style.height = '100%';
+                flashGameContainer.classList.remove('hidden');
+                loader.classList.add('hidden');
+            } else {
+                const loader = document.getElementById('loader');
+                loader.innerHTML = `<p class="text-red-400 text-lg p-4">Error: <strong>Ruffle Player not found.</strong></p>`;
+            }
+        }
+
+        /* --- GAME DATA --- */
+        const games = [
+            { name: 'BPM (Turn-Based)', url: 'https://mod.fnfhub.net/games/23155/' },
+            { name: 'Mid Fight Masses', url: 'https://mod.fnfhub.net/games/6816/' },
+            { name: 'Marios Madness v2', url: 'https://mod.fnfhub.net/games/27062/' },
+            { name: 'Indie Cross', url: 'https://mod.fnfhub.net/games/24879/' },
+            { name: 'VS. Scratch', url: 'https://forkphorus.github.io/#624447617' },
+            { name: 'Tutorial Pico Mix', url: 'https://forkphorus.github.io/embed.html?id=1166895564&auto-start=true&light-content=false' },
+            { name: 'Worlds Smallest Violin', url: 'https://mod.fnfhub.net/games/24837/' },
+            { name: 'Weeks 1-7 (Psych)', url: 'https://html-classic.itch.zone/html/5700716/index.html' },
+            { name: 'Nonsense', url: 'https://mod.fnfhub.net/games/24792/' },
+            { name: 'Untitled Goose Mod', url: 'https://mod.fnfhub.net/games/24858/' },
+            { name: 'Shaggy', url: 'https://mod.fnfhub.net/games/24963/' },
+            { name: 'Whitty (Psych Engine)', url: 'https://mod.fnfhub.net/games/24905/' },
+            { name: 'FNAF 1', url: 'https://mod.fnfhub.net/games/24891/' },
+            { name: 'FNAF 2', url: 'https://mod.fnfhub.net/games/24845/' },
+            { name: 'Hazy River', url: 'https://mod.fnfhub.net/games/24883/' },
+            { name: '8-BitRyan', url: 'https://game.fnfhub.net/6481/' },
+            { name: 'Bob and Bosip', url: 'https://mod.fnfhub.net/games/24941/' },
+            { name: 'FNF But Bad', url: 'https://mod.fnfhub.net/games/24396/' },
+            { name: 'Bluey And Friends', url: 'https://mod.fnfhub.net/games/24808/' },
+            { name: 'FNS (vs. Mickey) v2.5', url: 'https://mod.fnfhub.net/games/24932/' },
+            { name: "Baldi's Basics in Funkin'", url: 'https://mod.fnfhub.net/games/24873/' },
+            { name: 'Kapi v2', url: 'https://mod.fnfhub.net/games/24899/' },
+            { name: 'Indie Cross B-Sides', url: 'https://fnfmods.io/fnf-b-sides-indie-cross-mod.embed' },
+            { name: 'B-Sides', url: 'https://fnfmods.io/fnf-b-side-mod.embed' },
+            { name: 'D-Sides', url: 'https://fnfmods.io/friday-night-funkin-d-sides.embed' },
+        ];
+
+        const otherGames = [
+            { name: 'Grow A Garden', url: 'https://growden.io' },
+            { name: 'SAB', url: 'https://st.8games.net/9/8g/igra-ukradi-brejnrot-original-3d/' },
+            { name: 'Melon Playground', url: 'https://melon-playground.io/melon-playground-unblocked' },
+            { name: 'Capybara Clicker', url: 'https://rollerballer.com/capybara-clicker' },
+            { name: 'Overtide IO', url: 'https://overtide.io' },
+            { name: 'Dogeminer 2: Back to the Moon', url: 'https://dogeminer2.com/' },
+            { name: 'Stimulation Clicker', url: 'https://www.rocketgames.io/embed/stimulation-clicker' },
+            { name: 'The Evil Leafy Maze BFDI', url: 'https://bfdi.tv/maze/' },
+            { name: 'GPOP', url: 'https://gpop.io/user/?u=CJTG999' },
+            { name: 'Bored?', url: 'https://clicktheredbutton.com/?site=1995' },
+            { name: 'ClassiCube', url: 'https://www.classicube.net/server/play' },
+            { name: 'Slope', url: 'https://slopeio.org/'},
+            { name: 'Spacebar Clicker', url: 'https://www.rocketgames.io/embed/spacebar-clicker' },
+            { name: 'SinglePlayer AgarIO', url: 'https://www.polkadotgame.com/' },
+            { name: 'THISISSAND', url: 'https://thisissand.com/' },
+            { name: 'Chess', url: 'https://fritz.chessbase.com' },
+            { name: 'osu!mania remake', url: 'https://forkphorus.github.io/embed.html?id=220672247&auto-start=false&light-content=false' },
+            { name: 'osu! remake', url: 'https://forkphorus.github.io/embed.html?id=613688710&auto-start=false&light-content=false' },
+            { name: 'Chess Hax', url: 'ChessHax.html', isFile: true },
+            { name: 'Wacky Flip', url: 'https://wacky-flip.com/wacky-flip.embed' },
+            { name: 'Celeste (PICO-8)', url: 'https://www.lexaloffle.com/bbs/?pid=15133' },
+            { name: 'Low Knight (PICO-8)', url: 'https://www.lexaloffle.com/bbs/?pid=73854' },
+            { name: 'SUPERHOT Prototype', url: 'https://www.yurk.com/games/superhotprototype/' },
+            { name: 'SFR:T (Lag Warning; Play on Scratch)', url: 'https://scratch.mit.edu/projects/184411641/embed/' },
+            { name: "Baldi's Basics TUD", url: 'https://html-classic.itch.zone/html/14108991/index.html' },
+            { name: 'There Is No Game', url: 'https://games.construct.net/174/latest' },
+            { name: 'Just One Boss', url: 'https://www.lexaloffle.com/bbs/?pid=49232' },
+            { name: 'Makeformer', url: 'Makeformer.html', isFile: true },
+            { name: 'FNAF Web Remake', url: 'FNAF Web Remake.html', isFile: true }
+        ];
+
+        const flashGames = [
+            { name: 'Riddle School', txtUrl: 'https://codehs.com/uploads/aad660578764acc4db64c5da01bd44ef', isSwf: true },
+            { name: 'Riddle School 2', txtUrl: 'https://codehs.com/uploads/3083ca1dbb92043c664ac26f424db3cc', isSwf: true },
+            { name: 'Riddle School 3', txtUrl: 'https://codehs.com/uploads/ef57a4be9a37c3458f0e25ca5d514338', isSwf: true },
+            { name: 'Riddle School 4', txtUrl: 'https://codehs.com/uploads/946def0ed7a0d4def79a019c7404b92e', isSwf: true },
+            { name: 'Riddle School 5', txtUrl: 'https://codehs.com/uploads/ed2598804d5de229fea922336925017f', isSwf: true },
+            { name: 'Riddle Transfer', txtUrl: 'https://codehs.com/uploads/db132872e133e0e58efe056e4e6eb43a', isSwf: true },
+            { name: 'Riddle Transfer 2', txtUrl: 'https://codehs.com/uploads/d9cd347bfea5afe69ff4caa24c9b006b', isSwf: true },
+            { name: 'The Impossible Quiz', txtUrl: 'https://codehs.com/uploads/b4ffd2298df31db0cb7845656c92121d', isSwf: true },
+            { name: 'Portal Flash', txtUrl: 'https://codehs.com/uploads/56634eb5afa9f36588689fe8f8c0b5af', isSwf: true },
+            { name: 'The Worlds Hardest Game', txtUrl: 'https://codehs.com/uploads/102b802854a4fff17e9743326a577867', isSwf: true },
+            { name: 'Bloxorz', txtUrl: 'https://codehs.com/uploads/6809822ab21bc491ee047e94bb6de0ea', isSwf: true },
+            { name: 'Breaking the Bank', txtUrl: 'https://codehs.com/uploads/58767ddb6dfd3a17b882cf42f67aac78', isSwf: true },
+            { name: 'Escaping the Prison', txtUrl: 'https://codehs.com/uploads/e2f9d00e7f97c0750e9e198cb26c9450', isSwf: true },
+            { name: 'Fleeing the Complex', txtUrl: 'https://codehs.com/uploads/3d62c78652d0c9c8d6f17ac40887cf6b', isSwf: true },
+            { name: 'Infiltrating the Airship', txtUrl: 'https://codehs.com/uploads/c6bcdf80346fdd4d7c268e0543921945', isSwf: true },
+            { name: 'Stealing the Diamond', txtUrl: 'https://codehs.com/uploads/c9ae225ff131499389199906c37838fc', isSwf: true },
+            { name: 'Super Smash Flash', txtUrl: 'https://codehs.com/uploads/c28415c92dc2216db83a1e68311f9cf2', isSwf: true },
+            { name: 'Pico School (dont play boss in class)', txtUrl: 'https://codehs.com/uploads/293930ce5e99ff9f7ea07ce3e35f2a28', isSwf: true },
+            { name: 'Tetris', txtUrl: 'https://codehs.com/uploads/ca1c4be5bcd98b5c8cbf1182d3b44225', isSwf: true },
+            { name: 'Bloons TD (og)', txtUrl: 'https://codehs.com/uploads/928133b336520a47a8cd73c362a8255a', isSwf: true },
+            { name: 'Bloons TD 2', txtUrl: 'https://codehs.com/uploads/db13ab984a5e84be5cdd568a4fa32651', isSwf: true },
+            { name: 'Minesweeper', txtUrl: 'https://codehs.com/uploads/386871b4414bb3cf7e08b67eb8152f1d', isSwf: true },
+            { name: 'Swords and Souls', txtUrl: 'https://codehs.com/uploads/7c662bb792837fa31ae43e42117f797d', isSwf: true }
+        ];
+
+        // --- Elements ---
+        const gameGrid = document.getElementById('gameGrid');
+        const otherGamesGrid = document.getElementById('otherGamesGrid');
+        const flashGameGrid = document.getElementById('flashGameGrid');
+        const gameModal = document.getElementById('gameModal');
+        const gameFrame = document.getElementById('gameFrame');
+        const flashGameContainer = document.getElementById('flashGameContainer');
+        const gameTitle = document.getElementById('gameTitle');
+        const closeModalBtn = document.getElementById('closeModal');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const loader = document.getElementById('loader');
+        const gameLinkContainer = document.getElementById('gameLinkContainer');
+        const gameLinkInput = document.getElementById('gameLinkInput');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+
+        // Key Test Elements
+        const openKeyTestBtn = document.getElementById('openKeyTestBtn');
+        const keystrokeTesterContainer = document.getElementById('keystroke-tester-container');
+        const keyTestSelect = document.getElementById('key-test-select');
+        const keyTestVisWasd = document.getElementById('key-test-visualizer-wasd-arrows');
+        const keyTestVisDfjk = document.getElementById('key-test-visualizer-dfjk');
+        const keyVisLeft = document.getElementById('key-vis-left');
+        const keyVisDown = document.getElementById('key-vis-down');
+        const keyVisUp = document.getElementById('key-vis-up');
+        const keyVisRight = document.getElementById('key-vis-right');
+        const keyVisD = document.getElementById('key-vis-d');
+        const keyVisF = document.getElementById('key-vis-f');
+        const keyVisJ = document.getElementById('key-vis-j');
+        const keyVisK = document.getElementById('key-vis-k');
+        
+        // Search & Filter
+        const searchInput = document.getElementById('searchInput');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const fnfSection = document.querySelector('main');
+        const otherSection = document.getElementById('otherGamesSection');
+        const flashSection = document.getElementById('flashGamesSection');
+
+        // --- Create Game Card ---
+        function createGameCard(game, gameType = 'fnf') {
+            const card = document.createElement('div');
+            card.className = 'bg-gray-800-transparent rounded-lg shadow-lg p-5 flex flex-col justify-between items-center text-center transform hover:scale-105 transition-transform duration-300 cursor-pointer fade-in';
+            
+            card.addEventListener('click', () => {
+                if (game.newTab) {
+                    window.open(game.url, '_blank');
+                } else {
+                    openGame(game);
+                }
+            });
+
+            const title = document.createElement('h3');
+            title.className = 'text-lg font-semibold text-white mb-4';
+            title.textContent = game.name;
+            
+            const playButton = document.createElement('button');
+            
+            // Logic for button colors based on gameType
+            let buttonColor = 'bg-indigo-600 hover:bg-indigo-700'; // Default FNF
+            if (gameType === 'other') {
+                buttonColor = 'bg-custom-blue hover:bg-custom-blue-dark'; // Updated Blue
+            } else if (gameType === 'flash') {
+                buttonColor = 'bg-yellow-600 hover:bg-yellow-700'; // Flash games
+            }
+            
+            playButton.className = `w-full mt-auto ${buttonColor} text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200`;
+            playButton.textContent = 'Play Now';
+
+            card.appendChild(title);
+            card.appendChild(playButton);
+
+            return card;
+        }
+
+        // --- Populate Grids ---
+        games.forEach(game => gameGrid.appendChild(createGameCard(game, 'fnf')));
+        otherGames.forEach(game => otherGamesGrid.appendChild(createGameCard(game, 'other')));
+        flashGames.forEach(game => flashGameGrid.appendChild(createGameCard(game, 'flash'))); 
+
+        // --- Search Logic ---
+        function filterGames() {
+            const query = searchInput.value.toLowerCase();
+            const category = categoryFilter.value;
+
+            fnfSection.classList.add('hidden');
+            otherSection.classList.add('hidden');
+            flashSection.classList.add('hidden');
+
+            if (category === 'all') {
+                fnfSection.classList.remove('hidden');
+                otherSection.classList.remove('hidden');
+                flashSection.classList.remove('hidden');
+            } else if (category === 'fnf') {
+                fnfSection.classList.remove('hidden');
+            } else if (category === 'other') {
+                otherSection.classList.remove('hidden');
+            } else if (category === 'flash') {
+                flashSection.classList.remove('hidden');
+            }
+
+            const allCards = document.querySelectorAll('#gameGrid > div, #otherGamesGrid > div, #flashGameGrid > div');
+            
+            allCards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const matchesSearch = title.includes(query);
+                
+                if (matchesSearch) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', filterGames);
+        }
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', filterGames);
+        }
+
+        // --- Key Test Logic ---
+        function openKeyTest() {
+            gameModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            gameTitle.textContent = 'Key Test';
+
+            loader.classList.add('hidden');
+            gameFrame.classList.add('hidden');
+            flashGameContainer.classList.add('hidden');
+            gameLinkContainer.classList.add('hidden');
+            fullscreenBtn.classList.add('hidden');
+
+            keystrokeTesterContainer.classList.remove('hidden');
+        }
+        
+        if (openKeyTestBtn) {
+            openKeyTestBtn.addEventListener('click', openKeyTest);
+        }
+
+        if (keyTestSelect) {
+            keyTestSelect.addEventListener('change', () => {
+                if (keyTestSelect.value === 'wasd_arrows') {
+                    if(keyTestVisWasd) keyTestVisWasd.classList.remove('hidden');
+                    if(keyTestVisDfjk) keyTestVisDfjk.classList.add('hidden');
+                } else {
+                    if(keyTestVisWasd) keyTestVisWasd.classList.add('hidden');
+                    if(keyTestVisDfjk) keyTestVisDfjk.classList.remove('hidden');
+                }
+            });
+        }
+
+        // --- Open Game Logic ---
+        function openGame(game) { 
+            gameTitle.textContent = game.name;
+            gameModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            loader.classList.remove('hidden');
+            keystrokeTesterContainer.classList.add('hidden');
+            
+            /* SWF/RUFFLE LOGIC */
+            if (game.isSwf) {
+                gameFrame.classList.add('hidden'); 
+                gameLinkContainer.classList.add('hidden');
+                fullscreenBtn.classList.add('hidden');
+
+                if (game.txtUrl) {
+                     fetch(game.txtUrl)
+                        .then(response => {
+                            if (!response.ok) throw new Error('Network response was not ok');
+                            return response.text();
+                        })
+                        .then(base64Data => {
+                            const cleanData = base64Data.trim();
+                            loadRuffle(cleanData);
+                        })
+                        .catch(err => {
+                            const loader = document.getElementById('loader');
+                            loader.innerHTML = `<p class="text-red-400 text-lg p-4">Error loading game file: ${err.message}<br><br>Make sure the <strong>txtUrl</strong> link is correct.</p>`;
+                        });
+                } else {
+                    const loader = document.getElementById('loader');
+                    loader.innerHTML = `<p class="text-red-400 text-lg p-4">Error: No <strong>txtUrl</strong> provided for this game.</p>`;
+                }
+            }
+            else if (game.isFlashGame) {
+                flashGameContainer.innerHTML = ''; 
+                if (flashGameData && flashGameData.startsWith('data:')) {
+                    const embed = document.createElement('embed');
+                    embed.src = flashGameData;
+                    embed.style.width = "100%";
+                    embed.style.height = "100%";
+                    flashGameContainer.appendChild(embed);
+                    
+                    flashGameContainer.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                } else {
+                    loader.innerHTML = "<p class='text-red-400'>Error: Flash game data is missing or invalid.</p>";
+                }
+                fullscreenBtn.classList.add('hidden');
+            } 
+            else if (game.isHtmlData) {
+                gameLinkInput.value = game.url;
+                gameLinkContainer.classList.remove('hidden');
+                fullscreenBtn.classList.remove('hidden');
+                
+                gameFrame.src = 'about:blank'; 
+                
+                fetch(game.url)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.text();
+                    })
+                    .then(htmlCode => {
+                        gameFrame.srcdoc = htmlCode;
+                        loader.classList.add('hidden');
+                        gameFrame.classList.remove('hidden');
+                    })
+                    .catch(err => {
+                        const loader = document.getElementById('loader');
+                        loader.innerHTML = `<p class="text-red-400 text-lg p-4">Error fetching HTML data: ${err.message}</p>`;
+                    });
+            }
+            else {
+                // Standard Link
+                gameLinkInput.value = game.url;
+                gameLinkContainer.classList.remove('hidden');
+                fullscreenBtn.classList.remove('hidden');
+                
+                gameFrame.src = 'about:blank';
+                setTimeout(() => { gameFrame.src = game.url; }, 100);
+
+                gameFrame.onload = () => {
+                    loader.classList.add('hidden');
+                    gameFrame.classList.remove('hidden');
+                };
+            }
+        }
+
+        // --- Close Modal ---
+        function closeGameModal() {
+            gameModal.classList.add('hidden');
+            gameFrame.src = 'about:blank';
+            flashGameContainer.innerHTML = '';
+            document.body.style.overflow = 'auto';
+            keystrokeTesterContainer.classList.add('hidden'); 
+            loader.innerHTML = `<div class="text-center">
+                            <svg class="animate-spin h-10 w-10 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="mt-4 text-lg">Loading... please wait.</p>
+                            <p class="text-sm text-gray-400 mt-2">Some games may take a moment to start.</p>
+                        </div>`;
+        }
+        
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+                if (gameFrame.requestFullscreen) {
+                    gameFrame.requestFullscreen();
+                } else if (gameFrame.webkitRequestFullscreen) { 
+                    gameFrame.webkitRequestFullscreen();
+                }
+            });
+        }
+
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', closeGameModal);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !gameModal.classList.contains('hidden')) {
+                closeGameModal();
+            }
+        });
+        
+        // --- 1K Popup ---
+        const announcementModal = document.getElementById('specialAnnouncementModal');
+        const closeAnnouncementBtn = document.getElementById('closeAnnouncementBtn');
+        const btn1k = document.getElementById('btn-1k');
+
+        if (announcementModal && closeAnnouncementBtn) {
+            closeAnnouncementBtn.addEventListener('click', () => {
+                announcementModal.classList.add('hidden');
+            });
+        }
+        
+        if (btn1k && announcementModal) {
+            btn1k.addEventListener('click', () => {
+                announcementModal.classList.remove('hidden');
+            });
+        }
+        
+        // --- Key Test Events ---
+        const keyMap = {
+            'ArrowLeft': keyVisLeft, 'KeyA': keyVisLeft,
+            'ArrowDown': keyVisDown, 'KeyS': keyVisDown,
+            'ArrowUp': keyVisUp,     'KeyW': keyVisUp,
+            'ArrowRight': keyVisRight, 'KeyD': keyVisRight,
+            'KeyF': keyVisF, 'KeyJ': keyVisJ, 'KeyK': keyVisK,
+            'KeyD': [keyVisRight, keyVisD] 
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (gameModal.classList.contains('hidden')) return;
+            const keys = keyMap[e.code];
+            if (!keys) return;
+            if (Array.isArray(keys)) {
+                keys.forEach(key => key.classList.add('active'));
+            } else {
+                keys.classList.add('active');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (gameModal.classList.contains('hidden')) return;
+            const keys = keyMap[e.code];
+            if (!keys) return;
+            if (Array.isArray(keys)) {
+                keys.forEach(key => key.classList.remove('active'));
+            } else {
+                keys.classList.remove('active');
+            }
+        });
+
+    </script>
+</body>
+</html>

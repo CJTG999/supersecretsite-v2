@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FNAF: Web Remaster</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            background-color: #111;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Layer */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+        }
+        
+        .ui-active {
+            display: block;
+        }
+
+        /* HUD */
+        #hud-top-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 10;
+        }
+
+        #hud-bottom-left {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 20px;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 10;
+        }
+
+        .usage-bar {
+            display: inline-block;
+            width: 20px;
+            height: 10px;
+            background-color: rgba(68, 68, 68, 0.2); /* Much dimmer/transparent when inactive */
+            border: 1px solid #222;
+            margin-right: 2px;
+        }
+        .usage-active {
+            background-color: #4f4;
+            border-color: #fff;
+        }
+        .usage-high {
+            background-color: #f44;
+        }
+
+        /* Controls */
+        .control-panel {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            left: 0; 
+            transition: opacity 0.2s;
+        }
+        
+        .controls-hidden {
+            display: none !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .game-btn {
+            width: 70px;
+            height: 70px;
+            background: #333;
+            border: 4px solid #555;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px #000;
+            transition: transform 0.1s, box-shadow 0.1s;
+            font-size: 14px;
+            text-align: center;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .game-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #111;
+        }
+        .btn-active {
+            background: #4a4;
+            border-color: #6f6;
+            box-shadow: 0 0 15px #4f4;
+        }
+        .light-active {
+            background: #dd4;
+            border-color: #ff6;
+            color: #000;
+            box-shadow: 0 0 15px #ff6;
+        }
+
+        /* Camera Toggle */
+        #camera-toggle {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #fff;
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: background 0.2s;
+            z-index: 20;
+        }
+        #camera-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Camera Map */
+        #camera-map {
+            position: absolute;
+            bottom: 80px;
+            right: 40px;
+            width: 300px;
+            height: 250px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #555;
+            pointer-events: auto;
+            display: none;
+            z-index: 30;
+        }
+
+        .map-btn {
+            position: absolute;
+            background: #222;
+            border: 1px solid #666;
+            color: #fff;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: background 0.1s;
+        }
+        .map-btn:hover { background: #444; }
+        .map-btn.active-cam { background: #4f4; color: #000; border-color: #fff; box-shadow: 0 0 5px #4f4; }
+
+        /* Map Toggle */
+        #map-mode-btn {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            width: 80px;
+            height: 20px;
+            background: #444;
+            border: 1px solid #fff;
+            font-size: 10px;
+            cursor: pointer;
+            color: #fff;
+        }
+
+        /* Seal Button */
+        #seal-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #333;
+            border: 2px solid #f00;
+            color: #f00;
+            font-size: 24px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            cursor: pointer;
+            display: none; /* Only show in vents */
+            pointer-events: auto;
+            z-index: 40;
+        }
+        #seal-btn:hover { background: #500; color: #fff; }
+        #seal-btn.sealed-active { background: #0a0; border-color: #0f0; color: #fff; }
+
+        /* Map Positions */
+        #cam-1a { top: 30px; left: 110px; width: 60px; height: 35px; }
+        #cam-1b { top: 75px; left: 100px; width: 80px; height: 45px; }
+        #cam-5  { top: 40px; left: 40px; width: 50px; height: 30px; }
+        #cam-1c { top: 90px; left: 30px; width: 40px; height: 50px; }
+        #cam-2a { top: 160px; left: 100px; width: 30px; height: 50px; }
+        #cam-2b { top: 220px; left: 100px; width: 30px; height: 30px; }
+        #cam-7  { top: 40px; right: 40px; width: 50px; height: 30px; }
+        #cam-6  { top: 80px; right: 30px; width: 50px; height: 50px; }
+        #cam-4a { top: 160px; right: 100px; width: 30px; height: 50px; }
+        #cam-4b { top: 220px; right: 100px; width: 30px; height: 30px; }
+
+        .vent-btn { display: none; background: #223; border-color: #66f; }
+        #cam-11 { top: 40px; left: 80px; width: 40px; height: 30px; }
+        #cam-12 { top: 40px; right: 80px; width: 40px; height: 30px; }
+        #cam-13 { top: 100px; left: 80px; width: 40px; height: 40px; }
+        #cam-14 { top: 100px; right: 80px; width: 40px; height: 40px; }
+        #cam-15 { top: 180px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; }
+
+        /* Screens */
+        #title-screen, #game-over-screen, #win-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+        }
+        
+        h1 { font-size: 48px; margin-bottom: 10px; color: #a00; line-height: 1.2; }
+        .menu-text { color: #888; font-size: 18px; animation: blinker 1.5s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        .menu-btn {
+            margin-top: 15px;
+            padding: 10px 25px;
+            font-size: 20px;
+            background: #222;
+            color: #fff;
+            border: 2px solid #fff;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            transition: all 0.2s;
+        }
+        .menu-btn:hover { background: #fff; color: #000; }
+        .hard-mode { border-color: #f00; color: #f88; }
+        .hard-mode:hover { background: #f00; color: #000; }
+
+        #jumpscare-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .static-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzj//v37zwjjgzhhYWGMIAgAzzYKwz7hFhQAAAAASUVORK5CYII=');
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Options */
+        .option-row {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            color: #ccc;
+        }
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #a00;
+            cursor: pointer;
+        }
+
+        /* Cheat Console */
+        #cheat-overlay {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 10px;
+            display: none;
+        }
+        #cheat-input {
+            background: #000;
+            border: none;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            text-transform: uppercase;
+            outline: none;
+            width: 200px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Cheat Console -->
+    <div id="cheat-overlay">
+        <input type="text" id="cheat-input" placeholder="ENTER CODE">
+    </div>
+
+    <!-- Title Screen -->
+    <div id="title-screen">
+        <div id="star-container" style="display:flex; gap:15px; margin-bottom:20px;">
+            <div id="star-1" style="font-size:40px; color:gold; display:none; text-shadow:0 0 10px #ff0;">★</div>
+            <div id="star-2" style="font-size:40px; color:gold; display:none; text-shadow:0 0 10px #ff0;">★</div>
+        </div>
+
+        <h1>Five Nights At Freddy's<br>Web Remake</h1>
+        
+        <div style="font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.5;">
+            CONTROLS:<br>
+            [MOUSE] Look Left/Right<br>
+            [Q] Left Door | [E] Right Door<br>
+            [A] Left Light | [D] Right Light<br>
+            [SPACE] Monitor<br>
+            [CLICK HOLD] Wind Music Box (Prize Corner)<br>
+            [VENTS] Use Cam Map to Toggle Vents
+        </div>
+
+        <!-- Menu Controls -->
+        <div id="menu-controls" style="display: flex; flex-direction: column; align-items: center;">
+            <button id="btn-continue" class="menu-btn hidden" onclick="startGame('continue')">CONTINUE</button>
+            <button class="menu-btn" onclick="startGame('new')">NEW GAME</button>
+            <button class="menu-btn hard-mode" onclick="startGame('420')">NIGHTMARE (4/20)</button>
+            
+            <div class="option-row">
+                <input type="checkbox" id="fast-nights-check">
+                <label for="fast-nights-check">FAST NIGHTS</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden">
+        <h1 id="death-msg">GAME OVER</h1>
+        <button class="menu-btn" onclick="location.reload()">TRY AGAIN</button>
+    </div>
+
+    <!-- Win Screen -->
+    <div id="win-screen" class="hidden">
+        <h1 style="color: #4f4">6:00 AM</h1>
+        <p>You survived the night.</p>
+        <div id="win-controls"></div>
+    </div>
+
+    <!-- In-Game UI -->
+    <div id="game-ui" class="ui-layer">
+        
+        <div id="hud-top-right">
+            <div id="clock-display">12 AM</div>
+            <div id="night-display" style="font-size: 14px; color: #888;">Night 1</div>
+        </div>
+
+        <div id="hud-bottom-left">
+            <div>Power left: <span id="power-display">100%</span></div>
+            <div>Usage: 
+                <span id="usage-bars">
+                    <div class="usage-bar"></div>
+                    <div class="usage-bar"></div>
+                    <div class="usage-bar"></div>
+                    <div class="usage-bar"></div>
+                </span>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div id="panel-left" class="control-panel">
+            <div id="btn-door-left" class="game-btn">DOOR<br>(Q)</div>
+            <div id="btn-light-left" class="game-btn">LIGHT<br>(A)</div>
+        </div>
+
+        <div id="panel-right" class="control-panel">
+            <div id="btn-door-right" class="game-btn">DOOR<br>(E)</div>
+            <div id="btn-light-right" class="game-btn">LIGHT<br>(D)</div>
+        </div>
+
+        <div id="camera-toggle">
+            MONITOR (SPACE)
+        </div>
+
+        <button id="seal-btn" onclick="toggleVentSeal()">SEAL VENT</button>
+
+        <!-- Visual Map -->
+        <div id="camera-map">
+            <button id="map-mode-btn" onclick="toggleMapMode()">TO VENTS</button>
+            
+            <!-- Room Buttons -->
+            <div id="cam-1a" class="map-btn room-btn" data-cam="0">CAM 1A<br>Stage</div>
+            <div id="cam-1b" class="map-btn room-btn" data-cam="1">CAM 1B<br>Dining</div>
+            <div id="cam-5" class="map-btn room-btn" data-cam="2">CAM 5</div>
+            <div id="cam-1c" class="map-btn room-btn" data-cam="3">CAM 1C</div>
+            <div id="cam-2a" class="map-btn room-btn" data-cam="4">CAM 2A</div>
+            <div id="cam-2b" class="map-btn room-btn" data-cam="5">CAM 2B</div>
+            <div id="cam-4a" class="map-btn room-btn" data-cam="6">CAM 4A</div>
+            <div id="cam-4b" class="map-btn room-btn" data-cam="7">CAM 4B</div>
+            <div id="cam-6" class="map-btn room-btn" data-cam="8">CAM 6<br>Prize</div>
+            <div id="cam-7" class="map-btn room-btn" data-cam="9">CAM 7</div>
+
+            <!-- Vent Buttons -->
+            <div id="cam-11" class="map-btn vent-btn" data-cam="10">CAM 11</div>
+            <div id="cam-12" class="map-btn vent-btn" data-cam="11">CAM 12</div>
+            <div id="cam-13" class="map-btn vent-btn" data-cam="12">CAM 13</div>
+            <div id="cam-14" class="map-btn vent-btn" data-cam="13">CAM 14</div>
+            <div id="cam-15" class="map-btn vent-btn" data-cam="14">CAM 15</div>
+
+            <div style="position:absolute; bottom:5px; left:10px; font-size:10px; color:#666;">MAP LAYOUT</div>
+        </div>
+
+        <div class="static-overlay"></div>
+    </div>
+    
+    <div id="jumpscare-overlay"></div>
+</div>
+
+<script>
+const CONFIG = {
+    totalHours: 6,
+    realSecondsPerHour: 60, 
+    powerDrainBase: 0.01, 
+    powerDrainPenalty: 0.075, 
+    musicBoxDrainBase: 3.0, 
+    musicBoxRecharge: 25.0
+};
+
+const STATE = { TITLE: 0, PLAYING: 1, JUMPSCARE: 2, GAMEOVER: 3, WIN: 4 };
+
+// Game State
+let gameState = STATE.TITLE;
+let lastTime = 0;
+let gameTime = 0;
+let power = 100;
+let currentHour = 12;
+let currentNight = 1;
+let currentMode = 'normal';
+let infinitePower = false; 
+
+// Music Box
+let musicBoxLevel = 100;
+let isWinding = false;
+let puppetAttacking = false;
+let musicBoxAudioTimer = 0;
+
+// Vent
+let mapMode = 'rooms'; 
+let sealedVent = -1; 
+
+// Scrolling
+let officeWidth = 1600; 
+let scrollX = 0;
+let mouseX = 0;
+
+// Systems
+let cameraActive = false;
+let currentCamera = 0;
+let leftDoorClosed = false;
+let rightDoorClosed = false;
+let leftLightOn = false;
+let rightLightOn = false;
+let killerAnimatronic = null; 
+
+const CAM_NAMES = [
+    "Stage", "Dining Area", "Backstage", "Pirate Cove",
+    "West Hall", "W. Hall Corner", "East Hall", "E. Hall Corner",
+    "Prize Corner (Music Box)", "Restrooms",
+    "Vent 11", "Vent 12", "Vent 13", "Vent 14", "Vent 15"
+];
+
+// Sprites
+const freddySprite = new Image(); freddySprite.src = 'https://codehs.com/uploads/fdd76a34affaf7a87d4a09aa02d1d36d'; 
+const bonnieSprite = new Image(); bonnieSprite.src = 'https://codehs.com/uploads/7994a6fa9bb077573aaf9738088f0168';
+const chicaSprite = new Image(); chicaSprite.src = 'https://codehs.com/uploads/baba9956ef990746b097d45d4c3ef8e5';
+const puppetSprite = new Image(); puppetSprite.src = 'https://codehs.com/uploads/a2722560ee3b52b41aeca82dbd34a5c5';
+const springtrapSprite = new Image(); springtrapSprite.src = 'https://codehs.com/uploads/421c5d97baa5a361aa4822f5ac0f59b7';
+const prizeBg = new Image(); prizeBg.src = 'https://codehs.com/uploads/c056fee6f0fbc9a0b8082e784d43d18c';
+const stageBg = new Image(); stageBg.src = 'https://codehs.com/uploads/1fd0b99154288d774dae0999b32b1846';
+const partsBg = new Image(); partsBg.src = 'https://codehs.com/uploads/a55cb2149e7b802b59de9c90bb93a23a';
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = new AudioContext();
+
+function playTone(freq, type, duration, vol=0.1) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+function playStaticNoise(duration) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const bufferSize = audioCtx.sampleRate * duration;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.05;
+    noise.connect(gain);
+    gain.connect(audioCtx.destination);
+    noise.start();
+}
+
+function playMusicBoxTune() {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    if(now > musicBoxAudioTimer) {
+        const urgency = Math.max(0, 1 - (musicBoxLevel / 100));
+        const noteDuration = 0.5 - (urgency * 0.35);
+        const notes = [392, 523, 659, 698, 784, 659, 523, 587];
+        const note = notes[Math.floor(Math.random() * notes.length)];
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(note, now);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + noteDuration);
+        osc.start(now);
+        osc.stop(now + noteDuration);
+        musicBoxAudioTimer = now + noteDuration;
+    }
+}
+
+class Animatronic {
+    constructor(name, startCam, path, attackSide, color, type='normal') {
+        this.name = name;
+        this.location = startCam; 
+        this.startCam = startCam;
+        this.path = path; 
+        this.attackSide = attackSide; 
+        this.color = color;
+        this.type = type;
+        this.moveTimer = 0;
+        this.moveInterval = 5000 + Math.random() * 2000;
+        this.aggression = 0;
+        this.atDoor = false; 
+    }
+
+    update(dt, hour) {
+        this.moveTimer += dt;
+        let currentAggression = this.aggression + (hour > 12 ? hour - 12 : 0);
+        if(currentAggression > 20) currentAggression = 20;
+
+        let interval = this.moveInterval;
+        if(this.aggression >= 20) interval = 3000; 
+
+        if (this.moveTimer > interval) {
+            this.moveTimer = 0;
+            if (Math.random() * 20 < currentAggression) {
+                this.move();
+            }
+        }
+    }
+
+    move() {
+        if (this.atDoor) {
+            if (this.type === 'normal') {
+                if (this.attackSide === 'left' && leftDoorClosed) this.retreat();
+                else if (this.attackSide === 'right' && rightDoorClosed) this.retreat();
+                else triggerJumpscare(this);
+            } else if (this.type === 'vent') {
+                triggerJumpscare(this);
+            }
+            return;
+        }
+
+        const currentIndex = this.path.indexOf(this.location);
+        if (this.type === 'vent' && currentIndex === this.path.length - 1) {
+            if (this.location === sealedVent) {
+                playTone(100, 'square', 0.5); // Bonk
+                this.retreat();
+                return;
+            }
+        }
+
+        if (currentIndex < this.path.length - 1) {
+            this.location = this.path[currentIndex + 1];
+            playStaticNoise(0.5);
+        } else {
+            this.atDoor = true;
+            this.location = -1; 
+        }
+    }
+
+    retreat() {
+        this.atDoor = false;
+        this.location = this.path[Math.max(0, this.path.length - 3)]; 
+        playTone(100, 'sawtooth', 0.5); 
+    }
+}
+
+const animatronics = [
+    new Animatronic("Bonnie", 0, [0, 1, 2, 4, 5], 'left', '#99f'),
+    new Animatronic("Chica", 0, [0, 1, 9, 8, 6, 7], 'right', '#ff9'),
+    new Animatronic("Freddy", 0, [0, 1, 9, 8, 6, 7], 'right', '#852'),
+    new Animatronic("Springtrap", 9, [9, 10, 11, 12, 13, 14], 'vent', '#4f4', 'vent')
+];
+animatronics[2].moveInterval = 8000;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const uiLayer = document.getElementById('game-ui');
+const mapBtns = document.querySelectorAll('.map-btn');
+const panelLeft = document.getElementById('panel-left');
+const panelRight = document.getElementById('panel-right');
+const sealBtn = document.getElementById('seal-btn');
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    officeWidth = Math.max(window.innerWidth * 1.2, 1600);
+}
+window.addEventListener('resize', resize);
+resize();
+mouseX = window.innerWidth / 2;
+
+document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+});
+
+function toggleCamera() {
+    if(gameState !== STATE.PLAYING || power <= 0) return;
+    cameraActive = !cameraActive;
+    document.getElementById('camera-map').style.display = cameraActive ? 'block' : 'none';
+    
+    if(cameraActive) {
+        panelLeft.classList.add('controls-hidden');
+        panelRight.classList.add('controls-hidden');
+    } else {
+        panelLeft.classList.remove('controls-hidden');
+        panelRight.classList.remove('controls-hidden');
+        sealBtn.style.display = 'none';
+    }
+    playTone(800, 'square', 0.1);
+}
+
+function toggleMapMode() {
+    mapMode = mapMode === 'rooms' ? 'vents' : 'rooms';
+    document.getElementById('map-mode-btn').innerText = mapMode === 'rooms' ? 'TO VENTS' : 'TO ROOMS';
+    document.querySelectorAll('.room-btn').forEach(b => b.style.display = mapMode === 'rooms' ? 'flex' : 'none');
+    document.querySelectorAll('.vent-btn').forEach(b => b.style.display = mapMode === 'vents' ? 'flex' : 'none');
+    playTone(600, 'square', 0.05);
+}
+
+function toggleVentSeal() {
+    if (!cameraActive) return;
+    if (currentCamera >= 10 && currentCamera <= 14) {
+        if (sealedVent === currentCamera) sealedVent = -1;
+        else sealedVent = currentCamera;
+        playTone(150, 'sawtooth', 0.3);
+        updateSealButton();
+    }
+}
+
+function updateSealButton() {
+    const isVent = currentCamera >= 10 && currentCamera <= 14;
+    if(cameraActive && isVent) {
+        sealBtn.style.display = 'block';
+        if(currentCamera === sealedVent) {
+            sealBtn.innerText = "VENT SEALED";
+            sealBtn.classList.add('sealed-active');
+        } else {
+            sealBtn.innerText = "SEAL VENT";
+            sealBtn.classList.remove('sealed-active');
+        }
+    } else {
+        sealBtn.style.display = 'none';
+    }
+}
+
+function toggleDoor(side) {
+    if(gameState !== STATE.PLAYING || power <= 0) return;
+    playTone(150, 'sawtooth', 0.2);
+    if (side === 'left') {
+        leftDoorClosed = !leftDoorClosed;
+        document.getElementById('btn-door-left').classList.toggle('btn-active', leftDoorClosed);
+    } else {
+        rightDoorClosed = !rightDoorClosed;
+        document.getElementById('btn-door-right').classList.toggle('btn-active', rightDoorClosed);
+    }
+}
+
+function toggleLight(side) {
+    if(gameState !== STATE.PLAYING || power <= 0) return;
+    if (side === 'left') {
+        leftLightOn = !leftLightOn;
+        if(leftLightOn) rightLightOn = false;
+        document.getElementById('btn-light-left').classList.toggle('light-active', leftLightOn);
+        document.getElementById('btn-light-right').classList.remove('light-active');
+    } else {
+        rightLightOn = !rightLightOn;
+        if(rightLightOn) leftLightOn = false;
+        document.getElementById('btn-light-right').classList.toggle('light-active', rightLightOn);
+        document.getElementById('btn-light-left').classList.remove('light-active');
+    }
+    if(leftLightOn || rightLightOn) playTone(1200, 'sine', 0.05);
+}
+
+document.getElementById('btn-door-left').onclick = () => toggleDoor('left');
+document.getElementById('btn-door-right').onclick = () => toggleDoor('right');
+document.getElementById('btn-light-left').onclick = () => toggleLight('left');
+document.getElementById('btn-light-right').onclick = () => toggleLight('right');
+document.getElementById('camera-toggle').onclick = toggleCamera;
+
+canvas.addEventListener('mousedown', (e) => {
+    if(cameraActive && currentCamera === 8) {
+        // Check if clicking wind button region
+        const cx = canvas.width / 2;
+        const cy = canvas.height * 0.8;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
+        if (Math.sqrt(dx*dx + dy*dy) < 60) isWinding = true;
+    }
+});
+canvas.addEventListener('mouseup', () => isWinding = false);
+canvas.addEventListener('mouseleave', () => isWinding = false);
+
+mapBtns.forEach(btn => {
+    btn.onclick = (e) => {
+        if(!cameraActive) return;
+        currentCamera = parseInt(e.target.dataset.cam);
+        mapBtns.forEach(b => b.classList.remove('active-cam'));
+        e.target.classList.add('active-cam');
+        playTone(600, 'sine', 0.05);
+        isWinding = false;
+        updateSealButton();
+    };
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.target.id === 'cheat-input') {
+        if(e.code === 'Escape') {
+            document.getElementById('cheat-overlay').style.display = 'none';
+            canvas.focus();
+        }
+        return; 
+    }
+    if (gameState !== STATE.PLAYING) return;
+    if (e.code === 'KeyC') {
+        const overlay = document.getElementById('cheat-overlay');
+        overlay.style.display = overlay.style.display === 'block' ? 'none' : 'block';
+        if(overlay.style.display === 'block') document.getElementById('cheat-input').focus();
+        return;
+    }
+    if(e.code === 'Space') toggleCamera();
+    if(e.code === 'KeyQ') toggleDoor('left');
+    if(e.code === 'KeyE') toggleDoor('right');
+    if(e.code === 'KeyA') toggleLight('left');
+    if(e.code === 'KeyD') toggleLight('right');
+});
+
+document.getElementById('cheat-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        if (this.value.trim().toLowerCase() === 'rocky') {
+            infinitePower = true;
+            playTone(1000, 'sine', 0.2); 
+        }
+        document.getElementById('cheat-overlay').style.display = 'none';
+        this.value = '';
+    }
+});
+
+function checkSave() {
+    const saved = localStorage.getItem('fnaf_night');
+    if(saved && parseInt(saved) > 1) {
+        document.getElementById('btn-continue').classList.remove('hidden');
+    }
+    if(localStorage.getItem('fnaf_star1')) document.getElementById('star-1').style.display = 'block';
+    if(localStorage.getItem('fnaf_star2')) document.getElementById('star-2').style.display = 'block';
+}
+checkSave();
+
+function startGame(mode) {
+    gameTime = 0; power = 100; currentHour = 12;
+    cameraActive = false;
+    leftDoorClosed = false; rightDoorClosed = false;
+    leftLightOn = false; rightLightOn = false;
+    infinitePower = false; musicBoxLevel = 100;
+    puppetAttacking = false; isWinding = false;
+    sealedVent = -1; mapMode = 'rooms'; currentCamera = 0;
+    killerAnimatronic = null;
+    
+    const fastNights = document.getElementById('fast-nights-check').checked;
+    CONFIG.realSecondsPerHour = fastNights ? 30 : 60;
+    
+    document.getElementById('camera-map').style.display = 'none';
+    document.getElementById('title-screen').classList.add('hidden');
+    document.getElementById('win-screen').classList.add('hidden'); 
+    document.getElementById('cheat-overlay').style.display = 'none';
+    
+    panelLeft.classList.remove('controls-hidden');
+    panelRight.classList.remove('controls-hidden');
+    sealBtn.style.display = 'none';
+    
+    document.getElementById('map-mode-btn').innerText = 'TO VENTS';
+    document.querySelectorAll('.room-btn').forEach(b => b.style.display = 'flex');
+    document.querySelectorAll('.vent-btn').forEach(b => b.style.display = 'none');
+    document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('active-cam'));
+    document.getElementById('cam-1a').classList.add('active-cam');
+
+    document.querySelectorAll('.game-btn').forEach(b => b.classList.remove('btn-active', 'light-active'));
+
+    animatronics.forEach(a => { a.location = a.startCam; a.atDoor = false; });
+
+    currentMode = mode;
+    if (mode === '420') {
+        document.getElementById('night-display').innerText = "NIGHTMARE";
+        animatronics.forEach(a => { a.aggression = 20; a.moveInterval = 3000; });
+    } else {
+        if (mode === 'new') { currentNight = 1; localStorage.setItem('fnaf_night', 1); } 
+        else if (mode === 'continue') { currentNight = parseInt(localStorage.getItem('fnaf_night')) || 1; }
+        
+        document.getElementById('night-display').innerText = "Night " + currentNight;
+        let b = 0, c = 0, f = 0, s = 0;
+        if(currentNight === 2) { b=3; c=1; s=2; }
+        else if(currentNight === 3) { b=0; c=5; f=1; s=5; }
+        else if(currentNight === 4) { b=2; c=4; f=2; s=10; }
+        else if(currentNight >= 5) { b=5; c=7; f=5; s=15; }
+
+        animatronics[0].aggression = b;
+        animatronics[1].aggression = c;
+        animatronics[2].aggression = f;
+        animatronics[3].aggression = s;
+    }
+
+    gameState = STATE.PLAYING;
+    uiLayer.classList.add('ui-active');
+    requestAnimationFrame(loop);
+}
+
+function continueGame() {
+    currentNight++;
+    localStorage.setItem('fnaf_night', currentNight);
+    startGame('current');
+}
+
+function loop(timestamp) {
+    if (gameState !== STATE.PLAYING && gameState !== STATE.JUMPSCARE) return;
+    if (!lastTime) lastTime = timestamp;
+    const dt = timestamp - lastTime;
+    lastTime = timestamp;
+
+    update(dt);
+    draw();
+
+    if (gameState === STATE.PLAYING || gameState === STATE.JUMPSCARE) {
+        requestAnimationFrame(loop);
+    }
+}
+
+function update(dt) {
+    if (gameState !== STATE.PLAYING) return;
+
+    if (musicBoxLevel > 0) {
+        playMusicBoxTune(); 
+        musicBoxLevel -= CONFIG.musicBoxDrainBase * (dt / 1000);
+    } else if (!puppetAttacking) {
+        puppetAttacking = true;
+        setTimeout(() => triggerJumpscare({name: "The Puppet", color: "#000"}), Math.random() * 5000 + 1000);
+    }
+
+    if (isWinding && musicBoxLevel < 100) {
+        musicBoxLevel += CONFIG.musicBoxRecharge * (dt / 1000);
+        if(musicBoxLevel > 100) musicBoxLevel = 100;
+        playTone(200, 'triangle', 0.1, 0.05); 
+    }
+
+    if (!cameraActive) {
+        const maxScroll = officeWidth - window.innerWidth;
+        const scrollRatio = mouseX / window.innerWidth;
+        const targetScroll = scrollRatio * maxScroll;
+        scrollX += (targetScroll - scrollX) * 0.1;
+    }
+    
+    panelLeft.style.left = (20 - scrollX) + 'px';
+    panelRight.style.left = (officeWidth - 100 - scrollX) + 'px';
+
+    gameTime += dt / 1000;
+    let newHour = 12 + Math.floor(gameTime / CONFIG.realSecondsPerHour);
+    if(newHour > 12) newHour = newHour - 12;
+    if(newHour !== currentHour) {
+        currentHour = newHour;
+        document.getElementById('clock-display').innerText = (currentHour === 0 ? 12 : currentHour) + ' AM';
+        if(animatronics[0].aggression < 20) animatronics.forEach(a => a.aggression++);
+    }
+
+    if (gameTime >= CONFIG.totalHours * CONFIG.realSecondsPerHour) {
+        winGame();
+        return;
+    }
+
+    let usage = 1;
+    if(leftDoorClosed) usage++; if(rightDoorClosed) usage++;
+    if(leftLightOn) usage++; if(rightLightOn) usage++;
+    if(cameraActive) usage++;
+    if(sealedVent !== -1) usage++; 
+    
+    const usageBars = document.querySelectorAll('.usage-bar');
+    usageBars.forEach((bar, idx) => {
+        bar.classList.toggle('usage-active', idx < usage);
+        bar.style.backgroundColor = usage >= 4 ? '#f44' : '#4f4';
+    });
+
+    if (!infinitePower) {
+        let drain = (CONFIG.powerDrainBase + (usage * CONFIG.powerDrainPenalty)) * (dt / 1000);
+        power -= drain;
+        if(power <= 0) { power = 0; triggerPowerOutage(); }
+        document.getElementById('power-display').innerText = Math.floor(power) + '%';
+    } else {
+        document.getElementById('power-display').innerText = 'INF';
+    }
+
+    animatronics.forEach(a => a.update(dt, currentHour));
+}
+
+function triggerPowerOutage() {
+    leftDoorClosed = false; rightDoorClosed = false;
+    leftLightOn = false; rightLightOn = false;
+    cameraActive = false;
+    document.getElementById('camera-map').style.display = 'none';
+    panelLeft.classList.remove('controls-hidden'); 
+    panelRight.classList.remove('controls-hidden');
+    playTone(100, 'sawtooth', 1.0);
+    gameState = STATE.JUMPSCARE;
+    setTimeout(() => { triggerJumpscare({name: "Freddy", color: "#852"}); }, 3000);
+}
+
+function triggerJumpscare(killer) {
+    if(gameState !== STATE.PLAYING && gameState !== STATE.JUMPSCARE) return;
+    killerAnimatronic = killer; 
+    gameState = STATE.JUMPSCARE;
+    uiLayer.classList.remove('ui-active');
+    playTone(600, 'sawtooth', 0.1);
+    playStaticNoise(1.5);
+    setTimeout(() => {
+        gameState = STATE.GAMEOVER;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        document.getElementById('death-msg').innerText = "CAUGHT BY " + killer.name.toUpperCase();
+    }, 1500);
+}
+
+function winGame() {
+    gameState = STATE.WIN;
+    uiLayer.classList.remove('ui-active');
+    const winControls = document.getElementById('win-controls');
+    
+    if (currentNight === 5 && currentMode !== '420') {
+        localStorage.setItem('fnaf_star1', 'true');
+        document.getElementById('star-1').style.display = 'block';
+    }
+    if (currentMode === '420') {
+        localStorage.setItem('fnaf_star2', 'true');
+        document.getElementById('star-2').style.display = 'block';
+    }
+
+    if (currentNight < 5) {
+        winControls.innerHTML = `<button class="menu-btn" onclick="continueGame()">START NIGHT ${currentNight + 1}</button>`;
+        localStorage.setItem('fnaf_night', currentNight + 1);
+    } else {
+        winControls.innerHTML = `
+            <p style="color:#4f4; font-size: 20px;">YOU COMPLETED 5 NIGHTS!</p>
+            <button class="menu-btn" onclick="location.reload()">MAIN MENU</button>
+        `;
+    }
+    document.getElementById('win-screen').classList.remove('hidden');
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if(gameState === STATE.JUMPSCARE) {
+        drawJumpscare();
+        return;
+    }
+
+    if(gameState !== STATE.PLAYING) return;
+
+    if (cameraActive) {
+        drawCameraView();
+    } else {
+        ctx.save();
+        ctx.translate(-scrollX, 0);
+        drawOfficeView();
+        ctx.restore();
+    }
+    
+    const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.width/3, canvas.width/2, canvas.height/2, canvas.width);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+}
+
+function drawOfficeView() {
+    const w = officeWidth; 
+    const h = canvas.height;
+
+    // Walls
+    ctx.fillStyle = '#222'; ctx.fillRect(0, 0, w, h);
+    
+    // Perspective
+    ctx.fillStyle = '#1a1a1a'; 
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w,0); ctx.lineTo(w*0.8, h*0.25); ctx.lineTo(w*0.2, h*0.25); ctx.fill(); 
+    ctx.fillStyle = '#111'; 
+    ctx.beginPath(); ctx.moveTo(0,h); ctx.lineTo(w,h); ctx.lineTo(w*0.8, h*0.75); ctx.lineTo(w*0.2, h*0.75); ctx.fill(); 
+
+    // Posters
+    ctx.fillStyle = '#151515';
+    ctx.fillRect(w * 0.35, h * 0.3, 80, 100);
+    ctx.fillRect(w * 0.6, h * 0.3, 80, 100);
+
+    // Desk
+    ctx.fillStyle = '#333'; ctx.fillRect(w*0.25, h*0.6, w*0.5, h*0.4); 
+
+    // Fan
+    const fanX = w * 0.5;
+    const fanY = h * 0.58;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(fanX - 5, fanY, 10, 30);
+    ctx.beginPath(); ctx.arc(fanX, fanY + 30, 15, 0, Math.PI*2); ctx.fill();
+
+    ctx.save();
+    ctx.translate(fanX, fanY);
+    ctx.rotate(Date.now() / 100); 
+    ctx.fillStyle = '#555';
+    for(let i=0; i<3; i++) {
+        ctx.rotate((Math.PI*2)/3);
+        ctx.fillRect(-5, -30, 10, 30);
+    }
+    ctx.restore();
+
+    // Doors/Windows
+    drawDoorway(0, 0, 150, h, leftDoorClosed);
+    drawWindow(160, h * 0.25, 140, 140, leftLightOn, 'left');
+
+    drawWindow(w - 300, h * 0.25, 140, 140, rightLightOn, 'right');
+    drawDoorway(w - 150, 0, 150, h, rightDoorClosed);
+}
+
+function drawDoorway(x, y, width, height, isClosed) {
+    ctx.fillStyle = '#111'; ctx.fillRect(x, y, width, height); 
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 5; ctx.strokeRect(x,y,width,height);
+    ctx.fillStyle = '#000'; ctx.fillRect(x + 10, y + 10, width - 20, height - 10); 
+
+    if(isClosed) {
+        ctx.fillStyle = '#556'; ctx.fillRect(x, y, width, height); 
+        ctx.fillStyle = '#333'; 
+        ctx.fillRect(x+10, y+height*0.1, width-20, 10); 
+        ctx.fillRect(x+10, y+height*0.9, width-20, 10);
+        ctx.fillStyle = '#444';
+        for(let i=0; i<width; i+=20) ctx.fillRect(x+i, y+height*0.85, 10, 20);
+    }
+}
+
+function drawWindow(x, y, width, height, isLightOn, side) {
+    ctx.fillStyle = '#222'; ctx.fillRect(x-5, y-5, width+10, height+10);
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 4; ctx.strokeRect(x, y, width, height);
+
+    if(isLightOn) {
+        ctx.fillStyle = '#555'; ctx.fillRect(x, y, width, height); 
+        animatronics.forEach(anim => {
+            if(anim.atDoor && anim.attackSide === side) {
+                let sprite = null;
+                if(anim.name === 'Freddy') sprite = freddySprite;
+                else if(anim.name === 'Bonnie') sprite = bonnieSprite;
+                else if(anim.name === 'Chica') sprite = chicaSprite;
+                
+                if (sprite && sprite.complete) {
+                    ctx.drawImage(sprite, x + 10, y + 10, width - 20, height - 20);
+                } else {
+                    drawAnimatronicFace(x + width/2, y + height/2, width*0.8, anim.color);
+                }
+            }
+        });
+    } else {
+        ctx.fillStyle = '#000'; ctx.fillRect(x, y, width, height); 
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.beginPath();
+        ctx.moveTo(x + width, y);
+        ctx.lineTo(x, y + height);
+        ctx.lineTo(x + width * 0.6, y + height);
+        ctx.fill();
+    }
+}
+
+function drawCameraView() {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    drawRoomBackground(currentCamera, w, h);
+    
+    // Static
+    for(let i=0; i<800; i++) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.2})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+    }
+    
+    if (Date.now() % 1000 < 500) {
+        ctx.fillStyle = 'red';
+        ctx.beginPath(); ctx.arc(30, 30, 10, 0, Math.PI*2); ctx.fill();
+    }
+    
+    ctx.font = 'bold 30px Courier New';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(CAM_NAMES[currentCamera], 50, 50);
+    
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.strokeRect(10, 10, w-20, h-20);
+}
+
+function drawRoomBackground(camId, w, h) {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, w, h);
+
+    if (camId >= 10 && camId <= 14) {
+        drawVentSystem(camId, w, h);
+        return;
+    }
+
+    if(camId === 0) { // Stage
+        if (stageBg.complete && stageBg.naturalWidth > 0) {
+            ctx.drawImage(stageBg, 0, 0, w, h);
+            // Darken & Shadows (Increased Darkness)
+            const grd = ctx.createRadialGradient(w/2, h/2, h*0.2, w/2, h/2, h);
+            grd.addColorStop(0, 'rgba(0,0,0,0.5)'); // Darker center
+            grd.addColorStop(1, 'rgba(0,0,0,0.95)'); // Almost black edges
+            ctx.fillStyle = grd;
+            ctx.fillRect(0,0,w,h);
+        } else {
+            ctx.fillStyle = '#321'; ctx.fillRect(0, h * 0.6, w, h * 0.4);
+            ctx.fillStyle = '#411'; ctx.fillRect(0, 0, w * 0.15, h); ctx.fillRect(w * 0.85, 0, w * 0.15, h);
+        }
+    }
+    else if(camId === 1) { // Dining
+        ctx.fillStyle = '#222'; ctx.fillRect(0, h*0.5, w, h*0.5);
+        ctx.fillStyle = '#444'; 
+        for(let i=0; i<w; i+=40) ctx.fillRect(i, h*0.5, 20, 20);
+    }
+    else if(camId === 2) { // Parts & Services (Cam 5)
+        if (partsBg.complete && partsBg.naturalWidth > 0) {
+            ctx.drawImage(partsBg, 0, 0, w, h);
+            // Darken & Shadows
+            const grd = ctx.createRadialGradient(w/2, h/2, h*0.2, w/2, h/2, h);
+            grd.addColorStop(0, 'rgba(0,0,0,0.6)');
+            grd.addColorStop(1, 'rgba(0,0,0,0.95)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0,0,w,h);
+        } else {
+            ctx.fillStyle = '#222'; ctx.fillRect(0,0,w,h);
+            ctx.fillStyle = '#444'; ctx.fillRect(w*0.1, h*0.3, w*0.3, 10);
+        }
+    }
+    else if(camId === 3) { // Pirate Cove
+        ctx.fillStyle = '#416';
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w*0.4, 0); ctx.lineTo(w*0.4, h*0.8); ctx.lineTo(0, h); ctx.fill();
+    }
+    else if(camId === 8) { // Prize Corner
+        if (prizeBg.complete && prizeBg.naturalWidth > 0) {
+            ctx.drawImage(prizeBg, 0, 0, w, h);
+            // Darken & Shadows
+            const grd = ctx.createRadialGradient(w/2, h/2, h*0.2, w/2, h/2, h);
+            grd.addColorStop(0, 'rgba(0,0,0,0.5)'); 
+            grd.addColorStop(1, 'rgba(0,0,0,0.95)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0,0,w,h);
+        } else {
+            ctx.fillStyle = '#444';
+            ctx.fillRect(w*0.1, h*0.3, w*0.8, 10);
+        }
+        
+        // Music Box UI
+        const cx = w / 2;
+        const cy = h * 0.8;
+        ctx.fillStyle = '#333';
+        ctx.beginPath(); ctx.arc(cx, cy, 60, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = musicBoxLevel > 20 ? '#4f4' : '#f44';
+        ctx.beginPath(); ctx.moveTo(cx, cy); 
+        ctx.arc(cx, cy, 55, -Math.PI/2, -Math.PI/2 + (Math.PI*2 * (musicBoxLevel/100))); 
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText(isWinding ? "WINDING..." : "WIND UP", cx, cy + 5);
+        ctx.textAlign = 'left'; 
+    }
+
+    // Animatronics in Cam (Fixed Overlapping)
+    const presentAnimatronics = animatronics.filter(a => a.location === currentCamera);
+    const count = presentAnimatronics.length;
+    
+    if (count > 0) {
+        // Calculate offsets to center the group
+        const spacing = 300; // Distance between sprites
+        const totalWidth = (count - 1) * spacing;
+        const startX = (w / 2) - (totalWidth / 2);
+
+        presentAnimatronics.forEach((anim, index) => {
+            const centerX = startX + (index * spacing);
+            
+            let sprite = null;
+            if(anim.name === 'Freddy') sprite = freddySprite;
+            else if(anim.name === 'Bonnie') sprite = bonnieSprite;
+            else if(anim.name === 'Chica') sprite = chicaSprite;
+            else if(anim.name === 'Springtrap') sprite = springtrapSprite;
+            
+            if(sprite && sprite.complete) {
+                const sH = h * 0.35; // Reduced from 0.45
+                const ratio = sprite.naturalWidth / sprite.naturalHeight;
+                const sW = sH * ratio;
+                // Draw centered at calculated X
+                ctx.drawImage(sprite, centerX - (sW / 2), (h - sH)/2 + 50, sW, sH);
+            } else {
+                drawAnimatronicFace(centerX, h/2, 100, anim.color);
+            }
+        });
+    }
+}
+
+function drawVentSystem(camId, w, h) {
+    const grd = ctx.createLinearGradient(0, 0, w, h);
+    grd.addColorStop(0, "#222"); grd.addColorStop(1, "#111");
+    ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
+    
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 10;
+    for(let i=0; i<h; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(w,i); ctx.stroke(); }
+    
+    ctx.fillStyle = '#000'; ctx.fillRect(w*0.3, h*0.3, w*0.4, h*0.4);
+    
+    if (camId === sealedVent) {
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        ctx.fillRect(0,0,w,h);
+        ctx.strokeStyle = '#500'; ctx.lineWidth = 20;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w,h); ctx.moveTo(w,0); ctx.lineTo(0,h); ctx.stroke();
+        ctx.font = 'bold 50px Courier New'; ctx.fillStyle = '#f00'; ctx.textAlign = 'center';
+        ctx.fillText("VENT SEALED", w/2, h/2);
+        ctx.textAlign = 'left';
+    }
+}
+
+function drawAnimatronicFace(x, y, size, color) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+}
+
+function drawJumpscare() {
+    const w = canvas.width; const h = canvas.height;
+    
+    const shakeX = (Math.random() - 0.5) * 50; 
+    const shakeY = (Math.random() - 0.5) * 50;
+
+    ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000'; 
+    ctx.fillRect(0,0,w,h);
+
+    if (killerAnimatronic) {
+        let sprite = null;
+        if(killerAnimatronic.name === 'Freddy') sprite = freddySprite;
+        else if(killerAnimatronic.name === 'Bonnie') sprite = bonnieSprite;
+        else if(killerAnimatronic.name === 'Chica') sprite = chicaSprite;
+        else if(killerAnimatronic.name === 'The Puppet') sprite = puppetSprite;
+        else if(killerAnimatronic.name === 'Springtrap') sprite = springtrapSprite;
+
+        if (sprite && sprite.complete) {
+            const aspect = sprite.naturalWidth / sprite.naturalHeight;
+            let drawH = h * 0.9;
+            let drawW = drawH * aspect;
+            if (drawW > w) { drawW = w * 0.9; drawH = drawW / aspect; }
+            ctx.drawImage(sprite, (w/2 - drawW/2) + shakeX, (h/2 - drawH/2) + shakeY, drawW, drawH);
+        } else {
+            drawAnimatronicFace(w/2 + shakeX, h/2 + shakeY, Math.min(w,h) * 0.9, killerAnimatronic.color);
+        }
+    }
+}
+</script>
+</body>
+</html>
