@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <title>Baldi's Basics Auto-Loader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #status { text-align: center; }
+        canvas { width: 960px; height: 600px; background: #231f20; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="status">
+        <h2>Baldi's Basics Classic</h2>
+        <p id="message">Initializing extraction...</p>
+    </div>
+
+    <canvas id="unity-canvas"></canvas>
+
+    <script>
+        const ZIP_FILE_NAME = "baldi-s-basics-webgl-main.zip"; // Make sure your zip is named this!
+        const statusMsg = document.getElementById("message");
+        const canvas = document.getElementById("unity-canvas");
+
+        async function loadGame() {
+            try {
+                statusMsg.innerText = "Downloading/Loading ZIP...";
+                const response = await fetch(ZIP_FILE_NAME);
+                const blob = await response.blob();
+                
+                statusMsg.innerText = "Extracting files in memory...";
+                const zip = await JSZip.loadAsync(blob);
+                
+                // 1. Find the Unity Loader script (usually ends in .loader.js)
+                const loaderFile = Object.keys(zip.files).find(f => f.endsWith(".loader.js"));
+                const loaderContent = await zip.file(loaderFile).async("string");
+
+                // 2. Create a Blob URL for the loader so the browser can execute it
+                const loaderBlob = new Blob([loaderContent], { type: 'application/javascript' });
+                const loaderUrl = URL.createObjectURL(loaderBlob);
+
+                // 3. Inject the loader script into the page
+                const script = document.createElement("script");
+                script.src = loaderUrl;
+                script.onload = () => {
+                    statusMsg.innerText = "Starting Baldi...";
+                    // You would call createUnityInstance() here. 
+                    // Note: Unity builds vary; you'll need the 'config' object from your index.html
+                    console.log("Loader ready. Game logic would start here.");
+                };
+                document.body.appendChild(script);
+
+            } catch (err) {
+                statusMsg.innerText = "Error: " + err.message;
+                console.error(err);
+            }
+        }
+
+        loadGame();
+    </script>
+</body>
+</html>
