@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eaglercraft Launcher</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vt323&display=swap');
+
+        body {
+            background-color: #1a1a1a;
+            /* Background Image */
+            background-image: url('https://codehs.com/uploads/5e4854ae0dd21cf1f1a98e60ff9a62a6');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Vt323', monospace;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* Dark overlay for readability */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            text-shadow: 4px 4px 0px #000;
+            letter-spacing: 2px;
+            color: #ffffff;
+            z-index: 1;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 400px;
+            z-index: 1;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border: 2px solid #555;
+        }
+
+        .version-label {
+            font-size: 1.5rem;
+            color: #ffffa0;
+            text-shadow: 2px 2px #000;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            text-align: center;
+            border-bottom: 1px solid #777;
+            padding-bottom: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mc-button {
+            background-color: #7d7d7d;
+            border: 2px solid #000;
+            border-top: 2px solid #a8a8a8;
+            border-left: 2px solid #a8a8a8;
+            border-bottom: 2px solid #555;
+            border-right: 2px solid #555;
+            color: #ffffff;
+            padding: 10px 0;
+            text-align: center;
+            text-decoration: none;
+            font-size: 1.5rem;
+            text-shadow: 2px 2px #000;
+            cursor: pointer;
+            transition: background-color 0.1s;
+            display: block;
+            flex: 1; /* Make buttons split width evenly */
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        .mc-button:hover {
+            background-color: #8c8c8c;
+            border-color: #a0a0a0;
+            color: #ffffa0;
+        }
+
+        .mc-button:active {
+            background-color: #595959;
+            border-top: 2px solid #444;
+            border-left: 2px solid #444;
+            border-bottom: 2px solid #888;
+            border-right: 2px solid #888;
+        }
+
+        #loader {
+            display: none;
+            margin-top: 20px;
+            font-size: 1.5rem;
+            color: #ffffa0;
+            text-shadow: 2px 2px 0 #000;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border: 1px solid #fff;
+        }
+
+        .footer {
+            margin-top: 30px;
+            color: #ccc;
+            font-size: 1.2rem;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MINECRAFT</h1>
+
+    <div class="container">
+        
+        <div class="version-label">Version 1.8.8</div>
+        <div class="button-group">
+            <div onclick="playOnline('https://codehs.com/uploads/0f21dc9744cff9950283383840affb0a')" class="mc-button">
+                Play
+            </div>
+            <div onclick="downloadGame('1.8.8', 'https://codehs.com/uploads/0f21dc9744cff9950283383840affb0a')" class="mc-button">
+                Download
+            </div>
+        </div>
+
+        <div class="version-label">Version 1.12.2</div>
+        <div class="button-group">
+            <div onclick="playOnline('https://codehs.com/uploads/75a64562f6335c7913f053d8c3f5508d')" class="mc-button">
+                Play
+            </div>
+            <div onclick="downloadGame('1.12.2', 'https://codehs.com/uploads/75a64562f6335c7913f053d8c3f5508d')" class="mc-button">
+                Download
+            </div>
+        </div>
+
+    </div>
+
+    <div id="loader">Processing... Please wait.</div>
+
+    <div class="footer">
+        Select a version to begin
+    </div>
+
+    <script>
+        // Universal fetch function to avoid duplicate code
+        async function fetchZip(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            return await response.blob();
+        }
+
+        async function playOnline(zipUrl) {
+            const loader = document.getElementById('loader');
+            loader.innerHTML = "Downloading & Extracting... Please wait.";
+            loader.style.display = "block";
+
+            try {
+                // 1. Fetch the ZIP
+                const blob = await fetchZip(zipUrl);
+
+                // 2. Unzip
+                const zip = await JSZip.loadAsync(blob);
+
+                // 3. Find the HTML file
+                let htmlFile = null;
+                zip.forEach((relativePath, file) => {
+                    if (relativePath.endsWith('.html')) {
+                        htmlFile = file;
+                    }
+                });
+
+                if (htmlFile) {
+                    // 4. Extract as ArrayBuffer
+                    const buffer = await htmlFile.async('arraybuffer');
+                    
+                    // 5. Create Blob explicitly as HTML
+                    const htmlBlob = new Blob([buffer], { type: 'text/html' });
+                    
+                    const fileUrl = URL.createObjectURL(htmlBlob);
+                    window.location.href = fileUrl;
+                } else {
+                    alert("Error: No HTML file found inside the ZIP!");
+                    loader.style.display = "none";
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("Could not load automatically (CORS error or file issue).");
+                loader.style.display = "none";
+            }
+        }
+
+        async function downloadGame(version, zipUrl) {
+            const loader = document.getElementById('loader');
+            loader.innerHTML = "Fetching ZIP for Download...";
+            loader.style.display = "block";
+
+            try {
+                // Fetch the blob so we can rename it
+                const blob = await fetchZip(zipUrl);
+                
+                // Create an invisible link to trigger download with custom name
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.download = `Eaglercraft ${version}.zip`;
+                
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+                loader.style.display = "none";
+            } catch (error) {
+                console.error(error);
+                alert("Download failed. The file might be blocked or unavailable.");
+                loader.style.display = "none";
+            }
+        }
+    </script>
+
+</body>
+</html>
