@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-in-One Zip Proxy</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f0f2f5; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+        #status { margin-top: 1rem; color: #666; font-size: 0.9rem; }
+        .btn { display: inline-block; margin-top: 1.5rem; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 6px; display: none; }
+        input[type="file"] { margin-top: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Zip Proxy Loader</h2>
+    <p>Upload a zip file to mount it at <code>/proxy.zip/</code></p>
+    <input type="file" id="zipInput" accept=".zip">
+    <div id="status">Initializing Service Worker...</div>
+    <a id="launchBtn" class="btn" href="proxy.zip/index.html" target="_blank">Open index.html</a>
+</div>
+
+<script id="worker-script" type="application/javascript">
+    importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+
+    let zip = null;
+
+    self.addEventListener('install', () => self.skipWaiting());
+    self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+    self.addEventListener('message', async (event) => {
+        if (event.data.type === 'SET_ZIP') {
+            zip = await JSZip.loadAsync(event.data.blob);
+            console.log("Zip loaded in worker context.");
+        }
+    });
+
+    self.addEventListener('fetch', (event) => {
+        const url = new URL(event.request.url);
+        
+        // Intercept requests directed to the virtual proxy.zip directory
+        if (url.pathname.includes('/proxy.zip/')) {
+            const parts = url.pathname.split('/proxy.zip/');
+            const filename = parts[1] || 'index.html';
+
+            event.respondWith((async () => {
+                if (!zip) return new Response("No zip loaded", { status: 404 });
+                
+                const file = zip.file(filename);
+                if (!file) return new Response("File not found in zip", { status: 404 });
+
+                const blob = await file.async('blob');
+                const mimeType = getMimeType(filename);
+                
+                return new Response(blob, {
+                    headers: { 'Content-Type': mimeType }
+                });
+            })());
+        }
+    });
+
+    function getMimeType(path) {
+        if (path.endsWith('.html')) return 'text/html';
+        if (path.endsWith('.css')) return 'text/css';
+        if (path.endsWith('.js')) return 'application/javascript';
+        if (path.endsWith('.png')) return 'image/png';
+        if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+        return 'application/octet-stream';
+    }
+</script>
+
+<script>
+    const statusDiv = document.getElementById('status');
+    const launchBtn = document.getElementById('launchBtn');
+    const workerBlob = new Blob(
+        [document.getElementById('worker-script').textContent], 
+        { type: 'application/javascript' }
+    );
+    const workerUrl = URL.createObjectURL(workerBlob);
+
+    // 1. Register the Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register(workerUrl, { scope: './' }).then(reg => {
+            statusDiv.innerText = "Ready for file upload.";
+        }).catch(err => {
+            statusDiv.innerText = "Worker failed: " + err.message;
+        });
+    }
+
+    // 2. Handle File Upload
+    document.getElementById('zipInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        statusDiv.innerText = "Extracting zip into memory...";
+        
+        // Ensure the worker is active before sending the zip
+        const registration = await navigator.serviceWorker.ready;
+        registration.active.postMessage({
+            type: 'SET_ZIP',
+            blob: file
+        });
+
+        statusDiv.innerText = "Zip mounted successfully!";
+        launchBtn.style.display = 'inline-block';
+    });
+</script>
+
+</body>
+</html>
