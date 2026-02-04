@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebOS - Phase 6</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <style>
+        /* --- THEME & VARIABLES --- */
+        :root {
+            --glass-bg: rgba(20, 20, 30, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            --text-color: #f0f0f0;
+            --accent: #7c4dff;
+            --taskbar-height: 48px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif;
+            background: url('https://codehs.com/uploads/588a4d5744d4f141abda26250abf99c9') no-repeat center center fixed;
+            background-size: cover; color: var(--text-color); user-select: none;
+            
+            /* --- CUSTOM CURSOR: NORMAL --- */
+            cursor: url('https://codehs.com/uploads/477f01f03903f497c6a9418f9966aa42'), auto;
+        }
+
+        /* --- CUSTOM CURSOR: LINK SELECT (INTERACTIVE ELEMENTS) --- */
+        button, 
+        .pinned-app, 
+        .app-icon, 
+        .window-header, 
+        .ide-option, 
+        .block-btn, 
+        .ctx-item, 
+        .script-block, 
+        .resizer,
+        .resizer:hover,
+        input[type="checkbox"], 
+        input[type="radio"],
+        .minimize, .maximize, .close,
+        .file-entry {
+            cursor: url('https://codehs.com/uploads/866a1484030b538d31a05819b481f5ec'), pointer !important;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .glass-panel {
+            background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 8px;
+        }
+
+        button { font-family: inherit; transition: 0.2s; border:none; border-radius: 4px; }
+        button:active { transform: scale(0.96); }
+
+        /* --- DESKTOP --- */
+        #desktop { height: calc(100vh - var(--taskbar-height)); width: 100vw; position: relative; }
+        
+        /* --- TASKBAR --- */
+        #taskbar {
+            height: var(--taskbar-height); width: 100%; position: fixed; bottom: 0; display: flex;
+            align-items: center; justify-content: space-between; padding: 0 10px; z-index: 9000;
+            background: rgba(10, 10, 15, 0.9); border-top: 1px solid #333;
+        }
+        
+        #start-area { display: flex; align-items: center; gap: 10px; height: 100%; }
+
+        #start-btn { 
+            background: transparent; padding: 6px 10px; color: var(--accent); 
+            display: flex; align-items: center; justify-content: center;
+        }
+        #start-btn:hover { background: rgba(255,255,255,0.1); }
+        #start-btn .material-icons { font-size: 28px; }
+
+        .pinned-app {
+            width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+            border-radius: 4px; transition: 0.2s;
+        }
+        .pinned-app:hover { background: rgba(255,255,255,0.15); }
+        .pinned-app span { font-size: 24px; }
+
+        /* --- START MENU --- */
+        #start-menu {
+            position: fixed; bottom: 55px; left: 10px; width: 320px; height: 450px; z-index: 9001;
+            padding: 15px; display: flex; flex-direction: column; gap: 10px;
+            transition: 0.15s cubic-bezier(0, 0, 0.2, 1);
+        }
+        .hidden { opacity: 0; pointer-events: none; transform: translateY(10px) scale(0.98); display: none !important; }
+
+        .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 0; }
+        .app-icon {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 10px; border-radius: 6px; transition: background 0.2s;
+            text-align: center; height: 80px;
+        }
+        .app-icon:hover { background: rgba(255,255,255,0.1); }
+        .app-icon span.material-icons { font-size: 30px; margin-bottom: 8px; }
+        .app-icon span:last-child { font-size: 11px; }
+
+        /* --- CONTEXT MENU --- */
+        #context-menu {
+            position: absolute; min-width: 180px; z-index: 99999; padding: 5px;
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .ctx-item {
+            padding: 8px 12px; font-size: 13px; border-radius: 4px; display: flex; align-items: center; gap: 8px;
+        }
+        .ctx-item:hover { background: var(--accent); color: white; }
+        .ctx-sep { height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+
+        /* --- WINDOWS --- */
+        .window {
+            position: absolute; display: flex; flex-direction: column;
+            overflow: hidden; animation: openWindow 0.2s; min-width: 300px; min-height: 200px;
+        }
+        @keyframes openWindow { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .window.active { border: 1px solid var(--accent); box-shadow: 0 0 40px rgba(0,0,0,0.8); z-index: 1000 !important;}
+        
+        .window-header {
+            height: 32px; background: rgba(30,30,30,0.9); display: flex; align-items: center;
+            justify-content: space-between; padding: 0 10px; user-select: none;
+        }
+        .window-controls button { width: 12px; height: 12px; border-radius: 50%; margin-left: 6px; }
+        .close { background: #ff5555; } .minimize { background: #f1fa8c; } .maximize { background: #50fa7b; }
+        .window-body { flex: 1; position: relative; overflow: hidden; background: #1e1e1e; display: flex; flex-direction: column; }
+
+        /* --- IDE STYLES --- */
+        .ide-landing { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 20px; }
+        .ide-option { 
+            width: 200px; padding: 20px; background: #333; border-radius: 8px; text-align: center;
+            border: 1px solid transparent; transition: 0.2s;
+        }
+        .ide-option:hover { border-color: var(--accent); background: #444; transform: translateY(-2px); }
+
+        /* Scratch Block UI */
+        .scratch-container { display: flex; height: 100%; }
+        .scratch-palette { width: 140px; background: #222; padding: 10px; border-right: 1px solid #333; overflow-y: auto; }
+        .scratch-script { flex: 1; background: #111; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+        .scratch-stage { width: 300px; background: #000; position: relative; border-left: 1px solid #333; }
+        
+        .block-btn { 
+            display: block; width: 100%; padding: 8px; margin-bottom: 5px; border-radius: 4px; 
+            color: white; font-size: 11px; text-align: left; border: 1px solid rgba(0,0,0,0.2);
+        }
+        .b-motion { background: #4c97ff; } .b-looks { background: #9966ff; } .b-control { background: #ffab19; }
+
+        .script-block { padding: 10px; border-radius: 4px; color: white; font-size: 12px; position: relative; }
+        .script-block:hover { filter: brightness(1.1); }
+        .script-block .remove { position: absolute; right: 5px; top: 5px; font-size: 10px; opacity: 0.5; }
+
+        /* Python/HTML UI */
+        .code-split { display: flex; height: 100%; }
+        .code-area { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #333; }
+        .preview-area { flex: 1; background: white; position: relative; }
+        .console-area { height: 150px; background: #000; color: #0f0; font-family: monospace; padding: 10px; overflow-y: auto; border-top: 1px solid #333; }
+        textarea.code-editor { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 15px; font-family: 'Consolas', monospace; resize: none; outline: none; }
+
+        /* --- BSOD --- */
+        #bsod { position: fixed; inset: 0; background: #0078d7; color: white; z-index: 999999; padding: 10%; display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- BSOD -->
+    <div id="bsod">
+        <h1>:(</h1>
+        <h2>System Failure</h2>
+        <p>Code: <span id="bsod-code">KERNEL_PANIC</span></p>
+        <button onclick="location.reload()" style="background:white; color:#0078d7; padding:10px 20px; margin-top:20px;">RESTART</button>
+    </div>
+
+    <!-- Hidden Inputs -->
+    <!-- For importing single files from hard drive -->
+    <input type="file" id="upload-input" style="display: none;" onchange="FileSystem.handleUpload(this)">
+    <!-- For importing System JSON backup -->
+    <input type="file" id="import-system-input" style="display: none;" accept=".json" onchange="FileSystem.importSystem(this)">
+
+    <!-- DESKTOP -->
+    <div id="desktop"></div>
+
+    <!-- START MENU -->
+    <div id="start-menu" class="glass-panel hidden">
+        <div style="padding: 0 0 10px 5px; font-weight: bold; color: var(--accent);">WebOS</div>
+        <input type="text" placeholder="Search..." style="width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius: 4px; outline:none; margin-bottom: 5px;">
+        
+        <div class="app-grid">
+            <div class="app-icon" data-app="explorer" onclick="Kernel.appManager.launch('explorer')" oncontextmenu="Kernel.ui.showCtx(event, 'app', 'explorer')">
+                <span class="material-icons" style="color:#f1fa8c;">folder</span><span>Files</span>
+            </div>
+            <div class="app-icon" data-app="ide" onclick="Kernel.appManager.launch('ide')" oncontextmenu="Kernel.ui.showCtx(event, 'app', 'ide')">
+                <span class="material-icons" style="color:#bd93f9;">code</span><span>IDE</span>
+            </div>
+            <div class="app-icon" data-app="notepad" onclick="Kernel.appManager.launch('notepad')" oncontextmenu="Kernel.ui.showCtx(event, 'app', 'notepad')">
+                <span class="material-icons" style="color:#8be9fd;">description</span><span>Notepad</span>
+            </div>
+            <div class="app-icon" data-app="browser" onclick="Kernel.appManager.launch('browser')" oncontextmenu="Kernel.ui.showCtx(event, 'app', 'browser')">
+                <span class="material-icons" style="color:#ff79c6;">public</span><span>Browser</span>
+            </div>
+            <div class="app-icon" data-app="settings" onclick="Kernel.appManager.launch('settings')" oncontextmenu="Kernel.ui.showCtx(event, 'app', 'settings')">
+                <span class="material-icons" style="color:#6272a4;">settings</span><span>Settings</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTEXT MENU -->
+    <div id="context-menu" class="glass-panel hidden"></div>
+
+    <!-- TASKBAR -->
+    <div id="taskbar">
+        <div id="start-area">
+            <button id="start-btn" onclick="Kernel.ui.toggleStart()">
+                <span class="material-icons">grid_view</span>
+            </button>
+            <div id="pinned-apps" style="display: flex; gap: 5px; padding-left: 10px; border-left: 1px solid #333;">
+                <!-- Pinned apps injected here -->
+            </div>
+        </div>
+        <div id="clock" style="font-size: 12px; font-weight: 600;">12:00</div>
+    </div>
+
+    <!-- WINDOW TEMPLATE -->
+    <template id="window-template">
+        <div class="window glass-panel" style="width: 600px; height: 400px; top: 50px; left: 50px;">
+            <div class="window-header">
+                <div style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600;">
+                    <span class="material-icons icon-spot" style="font-size:14px; opacity:0.7;">apps</span>
+                    <span class="title-text">Application</span>
+                </div>
+                <div class="window-controls">
+                    <button class="minimize"></button><button class="maximize"></button><button class="close"></button>
+                </div>
+            </div>
+            <div class="window-body"></div>
+            <div class="resizer" style="width:15px; height:15px; position:absolute; right:0; bottom:0; z-index:10;"></div>
+        </div>
+    </template>
+
+    <script>
+        // --- FILE SYSTEM ---
+        const FileSystem = {
+            key: 'webos_v6_disk',
+            files: {},
+            pinned: [],
+
+            init() {
+                const stored = localStorage.getItem(this.key);
+                if(stored) {
+                    try {
+                        const data = JSON.parse(stored);
+                        this.files = data.files || {};
+                        this.pinned = data.pinned || [];
+                    } catch(e) { console.error("FS Init Error", e); }
+                } else {
+                    this.files = { 
+                        'readme.txt': {type:'text', content:'Welcome to WebOS Phase 6!\n\nNew Features:\n- Import/Export System JSON\n- Media Player (Audio/Video)\n- HTML App Runner\n- Add Files from URL'} 
+                    };
+                    this.pinned = ['explorer', 'ide'];
+                    this.save();
+                }
+                Kernel.ui.renderPins();
+            },
+
+            save() { 
+                try {
+                    localStorage.setItem(this.key, JSON.stringify({files: this.files, pinned: this.pinned})); 
+                } catch(e) {
+                    alert("Storage Limit Reached! Could not save locally. Try removing large files.");
+                }
+            },
+
+            // File Ops
+            write(name, content, type='text') { this.files[name] = {type, content}; this.save(); },
+            read(name) { return this.files[name]; },
+            
+            delete(name) { 
+                delete this.files[name]; 
+                // Unpin if deleted
+                if(this.pinned.includes(name)) {
+                    this.pinned = this.pinned.filter(p => p !== name);
+                }
+                this.save(); 
+                Kernel.ui.renderPins();
+            },
+
+            // Pin Ops
+            isPinned(appId) { return this.pinned.includes(appId); },
+            togglePin(appId) {
+                if(this.pinned.includes(appId)) this.pinned = this.pinned.filter(p => p !== appId);
+                else this.pinned.push(appId);
+                this.save();
+                Kernel.ui.renderPins();
+            },
+
+            // --- NEW: Export System ---
+            exportSystem() {
+                const data = JSON.stringify({files: this.files, pinned: this.pinned}, null, 2);
+                const blob = new Blob([data], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "webos_backup.json";
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            // --- NEW: Import System ---
+            importSystem(input) {
+                const file = input.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if(data.files) {
+                            this.files = data.files;
+                            this.pinned = data.pinned || [];
+                            this.save();
+                            Kernel.appManager.refreshExplorer();
+                            Kernel.ui.renderPins();
+                            alert("System loaded successfully!");
+                        } else {
+                            alert("Invalid Backup File");
+                        }
+                    } catch(err) { alert("Error parsing JSON"); }
+                };
+                reader.readAsText(file);
+                input.value = ''; // Reset
+            },
+
+            // --- NEW: Upload from Hard Drive (Advanced) ---
+            handleUpload(input) {
+                const file = input.files[0];
+                if(!file) return;
+                
+                let type = 'text';
+                const mime = file.type;
+                if(mime.startsWith('image/')) type = 'image';
+                else if(mime.startsWith('audio/')) type = 'audio';
+                else if(mime.startsWith('video/')) type = 'video';
+                else if(mime.includes('html')) type = 'html';
+                else if(mime.includes('javascript') || mime.includes('json') || mime.includes('css')) type = 'code';
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.write(file.name, e.target.result, type);
+                    Kernel.appManager.refreshExplorer();
+                    alert(`Uploaded: ${file.name}`);
+                };
+
+                if(type === 'text' || type === 'code' || type === 'html') {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsDataURL(file); // Images/Audio/Video as base64
+                }
+                input.value = '';
+            },
+
+            // --- NEW: Add File from URL ---
+            addFromURL() {
+                const url = prompt("Enter URL of file (Image, Video, Audio, or Text):");
+                if(!url) return;
+                const name = prompt("Enter a filename (e.g., video.mp4):", "new_file");
+                if(!name) return;
+
+                // Simple auto-detect based on extension
+                let type = 'text';
+                if(name.match(/\.(png|jpg|jpeg|gif|webp)$/i)) type = 'image';
+                else if(name.match(/\.(mp3|wav|ogg)$/i)) type = 'audio';
+                else if(name.match(/\.(mp4|webm|ogg)$/i)) type = 'video';
+                else if(name.match(/\.(html|htm)$/i)) type = 'html';
+
+                this.write(name, url, type); // Save URL as content
+                Kernel.appManager.refreshExplorer();
+            }
+        };
+
+        // --- KERNEL ---
+        const Kernel = {
+            init() {
+                FileSystem.init();
+                setInterval(() => {
+                    document.getElementById('clock').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                }, 1000);
+
+                const desk = document.getElementById('desktop');
+                window.addEventListener('mousedown', (e) => {
+                    if(!e.target.closest('#context-menu')) document.getElementById('context-menu').classList.add('hidden');
+                    if(!e.target.closest('#start-menu') && !e.target.closest('#start-btn')) document.getElementById('start-menu').classList.add('hidden');
+                });
+                desk.addEventListener('contextmenu', (e) => {
+                    if(e.target === desk) this.ui.showCtx(e, 'desktop');
+                });
+            },
+
+            ui: {
+                toggleStart() { document.getElementById('start-menu').classList.toggle('hidden'); },
+
+                renderPins() {
+                    const container = document.getElementById('pinned-apps');
+                    container.innerHTML = '';
+                    FileSystem.pinned.forEach(id => {
+                        const el = document.createElement('div');
+                        el.className = 'pinned-app';
+                        
+                        let icon = 'extension'; // default fall back
+                        let action = () => alert('Unknown Item');
+
+                        // 1. Check if it's a known System App
+                        if(['explorer','ide','notepad','browser','settings'].includes(id)) {
+                             action = () => Kernel.appManager.launch(id);
+                             if(id === 'explorer') icon = 'folder';
+                             else if(id === 'ide') icon = 'code';
+                             else if(id === 'notepad') icon = 'description';
+                             else if(id === 'browser') icon = 'public';
+                             else if(id === 'settings') icon = 'settings';
+                        } 
+                        // 2. Check if it's a File
+                        else if(FileSystem.files[id]) {
+                            const f = FileSystem.read(id);
+                            action = () => Kernel.appManager.openFile(id);
+                            // Use file specific icons
+                            if(f.type === 'image') icon = 'image';
+                            else if(f.type === 'video') icon = 'movie';
+                            else if(f.type === 'audio') icon = 'music_note';
+                            else if(f.type === 'html') icon = 'html';
+                            else if(f.type === 'code') icon = 'code';
+                            else icon = 'description'; 
+                        }
+                        else {
+                             // Item might have been deleted but still pinned, skip rendering
+                             return; 
+                        }
+
+                        el.onclick = action;
+                        el.innerHTML = `<span class="material-icons" style="color:#ddd">${icon}</span>`;
+                        container.appendChild(el);
+                    });
+                },
+
+                showCtx(e, type, payload) {
+                    e.preventDefault();
+                    const menu = document.getElementById('context-menu');
+                    menu.style.left = e.clientX + 'px';
+                    menu.style.top = e.clientY + 'px';
+                    menu.classList.remove('hidden');
+
+                    let html = '';
+                    if(type === 'desktop') {
+                        html = `
+                            <div class="ctx-item" onclick="Kernel.appManager.launch('notepad')"><span class="material-icons">note_add</span> New Text File</div>
+                            <div class="ctx-sep"></div>
+                            <div class="ctx-item" onclick="Kernel.appManager.launch('settings')"><span class="material-icons">settings</span> Settings</div>
+                        `;
+                    } else if(type === 'app') {
+                        const isPinned = FileSystem.isPinned(payload);
+                        html = `
+                            <div class="ctx-item" onclick="Kernel.appManager.launch('${payload}')">Open</div>
+                            <div class="ctx-item" onclick="FileSystem.togglePin('${payload}')">
+                                <span class="material-icons">${isPinned ? 'push_pin' : 'push_pin'}</span> ${isPinned ? 'Unpin' : 'Pin to Taskbar'}
+                            </div>
+                        `;
+                    } else if(type === 'file') {
+                        // File Context Menu with Pin Option
+                         const isPinned = FileSystem.isPinned(payload);
+                         html = `
+                            <div class="ctx-item" onclick="Kernel.appManager.openFile('${payload}')">Open</div>
+                            <div class="ctx-item" onclick="FileSystem.togglePin('${payload}')">
+                                <span class="material-icons">${isPinned ? 'push_pin' : 'push_pin'}</span> ${isPinned ? 'Unpin' : 'Pin to Taskbar'}
+                            </div>
+                            <div class="ctx-item" style="color:#ff5555" onclick="FileSystem.delete('${payload}'); Kernel.appManager.refreshExplorer()">Delete</div>
+                        `;
+                    }
+                    menu.innerHTML = html;
+                },
+
+                openWindow(title, content, icon, w=700, h=500) {
+                    const tpl = document.getElementById('window-template');
+                    const clone = tpl.content.cloneNode(true);
+                    const win = clone.querySelector('.window');
+                    const id = 'win-'+Date.now();
+                    win.id = id;
+                    win.style.width = w + 'px';
+                    win.style.height = h + 'px';
+                    
+                    win.querySelector('.title-text').innerText = title;
+                    win.querySelector('.icon-spot').innerText = icon;
+                    win.querySelector('.window-body').innerHTML = content;
+
+                    win.querySelector('.close').onclick = () => win.remove();
+                    win.querySelector('.maximize').onclick = () => {
+                        win.style.top = '0'; win.style.left = '0'; win.style.width = '100vw'; win.style.height = 'calc(100vh - 48px)';
+                    };
+
+                    document.getElementById('desktop').appendChild(win);
+                    this.makeDraggable(win);
+                    this.focus(win);
+                    win.addEventListener('mousedown', () => this.focus(win));
+                    return win; // Return element
+                },
+
+                focus(win) {
+                    document.querySelectorAll('.window').forEach(w => {
+                        w.style.zIndex = 100;
+                        w.classList.remove('active');
+                    });
+                    win.style.zIndex = 200;
+                    win.classList.add('active');
+                },
+
+                makeDraggable(el) {
+                    const head = el.querySelector('.window-header');
+                    let isDown = false, offX, offY;
+                    head.addEventListener('mousedown', e => {
+                        if(e.target.tagName !== 'BUTTON') {
+                            isDown = true;
+                            offX = e.clientX - el.offsetLeft;
+                            offY = e.clientY - el.offsetTop;
+                            const iframe = el.querySelector('iframe');
+                            if(iframe) iframe.style.pointerEvents = 'none';
+                        }
+                    });
+                    window.addEventListener('mouseup', () => {
+                        isDown = false;
+                        const iframe = el.querySelector('iframe');
+                        if(iframe) iframe.style.pointerEvents = 'auto';
+                    });
+                    window.addEventListener('mousemove', e => {
+                        if(isDown) {
+                            el.style.left = (e.clientX - offX) + 'px';
+                            el.style.top = (e.clientY - offY) + 'px';
+                        }
+                    });
+                }
+            },
+
+            appManager: {
+                launch(app, payload=null) {
+                    document.getElementById('start-menu').classList.add('hidden');
+                    
+                    // --- IDE ---
+                    if(app === 'ide') {
+                        const content = `
+                            <div class="ide-landing" id="ide-landing">
+                                <h2>Choose Environment</h2>
+                                <div style="display:flex; gap:20px;">
+                                    <div class="ide-option" onclick="Kernel.ide.start('scratch', this)">
+                                        <span class="material-icons" style="font-size:40px; color:#ffab19;">extension</span>
+                                        <h3>Scratch Blocks</h3>
+                                    </div>
+                                    <div class="ide-option" onclick="Kernel.ide.start('html', this)">
+                                        <span class="material-icons" style="font-size:40px; color:#e44d26;">html</span>
+                                        <h3>HTML5</h3>
+                                    </div>
+                                    <div class="ide-option" onclick="Kernel.ide.start('python', this)">
+                                        <span class="material-icons" style="font-size:40px; color:#3776ab;">terminal</span>
+                                        <h3>Python 3</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="ide-workspace" style="height:100%; display:none;"></div>
+                        `;
+                        Kernel.ui.openWindow('IDE', content, 'code', 900, 600);
+                    }
+
+                    // --- BROWSER ---
+                    else if(app === 'browser') {
+                        const content = `
+                            <div style="display:flex; flex-direction:column; height:100%;">
+                                <div style="display:flex; padding:5px; background:#333;">
+                                    <input id="url-bar" value="https://www.wikipedia.org" style="flex:1; border:none; padding:5px; border-radius:3px;">
+                                    <button onclick="document.getElementById('web-frame').src = document.getElementById('url-bar').value" style="margin-left:5px;">Go</button>
+                                </div>
+                                <iframe id="web-frame" src="https://www.wikipedia.org" style="flex:1; border:none; background:white;"></iframe>
+                            </div>
+                        `;
+                        Kernel.ui.openWindow('Web Browser', content, 'public');
+                    }
+
+                    // --- SETTINGS ---
+                    else if(app === 'settings') {
+                        const content = `
+                            <div style="padding:20px; color:white;">
+                                <h3>Settings</h3>
+                                <div style="margin-bottom:15px;">
+                                    <label>Wallpaper URL</label>
+                                    <input id="wp-url" placeholder="https://..." style="width:100%; padding:5px; margin-top:5px;">
+                                    <button onclick="document.body.style.backgroundImage = 'url(' + document.getElementById('wp-url').value + ')'" style="margin-top:5px; padding:5px;">Apply</button>
+                                </div>
+                                <button onclick="localStorage.clear(); location.reload();" style="background:#ff5555; color:white; padding:10px;">Factory Reset OS</button>
+                            </div>
+                        `;
+                        Kernel.ui.openWindow('Settings', content, 'settings', 400, 300);
+                    }
+
+                    // --- EXPLORER ---
+                    else if(app === 'explorer') {
+                        this.refreshExplorer();
+                    }
+
+                    // --- NOTEPAD ---
+                    else if(app === 'notepad') {
+                        const content = `
+                            <textarea style="width:100%; height:100%; background:#222; color:#fff; border:none; resize:none; outline:none; padding:10px;">${payload ? payload.content : ''}</textarea>
+                        `;
+                        Kernel.ui.openWindow('Notepad', content, 'description');
+                    }
+
+                    // --- NEW: MEDIA PLAYER ---
+                    else if(app === 'media_player') {
+                        let mediaHtml = '';
+                        if(payload.type === 'image') {
+                            mediaHtml = `<img src="${payload.content}" style="max-width:100%; max-height:100%; margin:auto; display:block;">`;
+                        } else if(payload.type === 'video') {
+                            mediaHtml = `<video controls src="${payload.content}" style="width:100%; height:100%; background:black;"></video>`;
+                        } else if(payload.type === 'audio') {
+                            mediaHtml = `<div style="display:flex; justify-content:center; align-items:center; height:100%; background:#222;"><audio controls src="${payload.content}"></audio></div>`;
+                        }
+                        Kernel.ui.openWindow('Media Player', mediaHtml, 'play_circle', 600, 400);
+                    }
+
+                    // --- NEW: HTML RUNNER ---
+                    else if(app === 'html_runner') {
+                        const content = `<iframe style="width:100%; height:100%; border:none; background:white;" srcdoc="${payload.content.replace(/"/g, '&quot;')}"></iframe>`;
+                        Kernel.ui.openWindow('HTML App', content, 'web', 500, 500);
+                    }
+                },
+
+                refreshExplorer() {
+                    const existing = document.getElementById('win-explorer');
+                    if(existing) existing.remove();
+                    
+                    let html = `
+                        <div style="display:flex; flex-direction:column; height:100%;">
+                            <div style="padding:8px; background:rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; gap:8px;">
+                                <button onclick="document.getElementById('upload-input').click()" style="padding:6px 12px; background:#444; color:white; display:flex; align-items:center; gap:6px;">
+                                    <span class="material-icons" style="font-size:16px;">upload_file</span> Upload
+                                </button>
+                                <button onclick="FileSystem.addFromURL()" style="padding:6px 12px; background:#444; color:white; display:flex; align-items:center; gap:6px;">
+                                    <span class="material-icons" style="font-size:16px;">link</span> URL
+                                </button>
+                                <div style="width:1px; background:rgba(255,255,255,0.2); margin:0 4px;"></div>
+                                <button onclick="FileSystem.exportSystem()" style="padding:6px 12px; background:#444; color:white; display:flex; align-items:center; gap:6px;">
+                                    <span class="material-icons" style="font-size:16px;">save</span> Backup
+                                </button>
+                                <button onclick="document.getElementById('import-system-input').click()" style="padding:6px 12px; background:#444; color:white; display:flex; align-items:center; gap:6px;">
+                                    <span class="material-icons" style="font-size:16px;">restore</span> Restore
+                                </button>
+                            </div>
+                            <div style="flex:1; padding:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:10px; overflow-y:auto; align-content:start;">
+                    `;
+                    
+                    Object.keys(FileSystem.files).forEach(name => {
+                        const file = FileSystem.read(name);
+                        let icon = 'description';
+                        let color = '#ccc';
+                        
+                        // Icon mapping
+                        if(file.type === 'image') { icon = 'image'; color = '#ff79c6'; }
+                        else if(file.type === 'video') { icon = 'movie'; color = '#bd93f9'; }
+                        else if(file.type === 'audio') { icon = 'music_note'; color = '#8be9fd'; }
+                        else if(file.type === 'html') { icon = 'html'; color = '#e44d26'; }
+                        else if(file.type === 'code') { icon = 'code'; color = '#50fa7b'; }
+
+                        html += `
+                            <div class="file-entry" style="text-align:center;" 
+                                onclick="Kernel.appManager.openFile('${name}')"
+                                oncontextmenu="Kernel.ui.showCtx(event, 'file', '${name}')">
+                                <span class="material-icons" style="font-size:40px; color:${color};">${icon}</span>
+                                <div style="font-size:12px; margin-top:5px; word-break:break-word;">${name}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `   </div>
+                             </div>`;
+                             
+                    const win = Kernel.ui.openWindow('File Explorer', html, 'folder', 600, 400);
+                    win.id = 'win-explorer';
+                },
+
+                openFile(name) {
+                    const f = FileSystem.read(name);
+                    
+                    if(f.type === 'text' || f.type === 'code') {
+                        this.launch('notepad', f);
+                    } else if (f.type === 'image' || f.type === 'video' || f.type === 'audio') {
+                        this.launch('media_player', f);
+                    } else if (f.type === 'html') {
+                        this.launch('html_runner', f);
+                    } else {
+                        alert("Unknown file type: " + f.type);
+                    }
+                }
+            },
+
+            // --- IDE LOGIC ---
+            ide: {
+                start(mode, btn) {
+                    const win = btn.closest('.window');
+                    const landing = win.querySelector('#ide-landing');
+                    const workspace = win.querySelector('#ide-workspace');
+                    
+                    landing.style.display = 'none';
+                    workspace.style.display = 'block';
+
+                    if(mode === 'scratch') this.renderScratch(workspace);
+                    if(mode === 'html') this.renderHtml(workspace);
+                    if(mode === 'python') this.renderPython(workspace);
+                },
+
+                renderScratch(container) {
+                    container.innerHTML = `
+                        <div class="scratch-container">
+                            <div class="scratch-palette">
+                                <button class="block-btn b-motion" onclick="Kernel.ide.addBlock(this, 'move 10')">Move 10 Steps</button>
+                                <button class="block-btn b-motion" onclick="Kernel.ide.addBlock(this, 'turn 15')">Turn 15 Deg</button>
+                                <button class="block-btn b-looks" onclick="Kernel.ide.addBlock(this, 'say Hello')">Say Hello</button>
+                                <button class="block-btn b-looks" onclick="Kernel.ide.addBlock(this, 'size 100')">Set Size 100</button>
+                                <button class="block-btn b-control" onclick="Kernel.ide.addBlock(this, 'wait 1')">Wait 1 Sec</button>
+                                <button class="block-btn b-control" onclick="Kernel.ide.addBlock(this, 'repeat 4')">Repeat 4</button>
+                                <button style="margin-top:20px; background:#27c93f; color:black; width:100%; padding:10px;" onclick="Kernel.ide.runScratch(this)">▶ RUN</button>
+                            </div>
+                            <div class="scratch-script" id="scratch-script-area"></div>
+                            <div class="scratch-stage">
+                                <div id="sprite" style="width:30px; height:30px; background:red; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);"></div>
+                            </div>
+                        </div>
+                    `;
+                },
+
+                addBlock(btn, code) {
+                    const scriptArea = btn.closest('.scratch-container').querySelector('.scratch-script');
+                    const div = document.createElement('div');
+                    div.className = `script-block ${btn.className.replace('block-btn ','')}`;
+                    div.innerHTML = `${code} <span class="remove" onclick="this.parentElement.remove()">✕</span>`;
+                    div.dataset.code = code;
+                    scriptArea.appendChild(div);
+                },
+
+                async runScratch(btn) {
+                    const container = btn.closest('.scratch-container');
+                    const blocks = container.querySelectorAll('.script-block');
+                    const sprite = container.querySelector('#sprite');
+                    let x=0, y=0, rot=0; // State
+
+                    sprite.style.transform = 'translate(-50%, -50%)'; // Reset visual
+
+                    for(let b of blocks) {
+                        const parts = b.dataset.code.split(' ');
+                        const cmd = parts[0];
+                        const val = parseInt(parts[1]);
+
+                        if(cmd === 'move') {
+                            x += val; // Simplified logic (just moves X)
+                            sprite.style.left = `calc(50% + ${x}px)`;
+                        } else if(cmd === 'turn') {
+                            rot += val;
+                            sprite.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+                        } else if(cmd === 'wait') {
+                            await new Promise(r => setTimeout(r, val * 1000));
+                        } else if(cmd === 'say') {
+                            const d = document.createElement('div');
+                            d.innerText = parts[1];
+                            d.style.cssText = "position:absolute; top:0; background:white; color:black; padding:2px;";
+                            container.querySelector('.scratch-stage').appendChild(d);
+                            setTimeout(()=>d.remove(), 1000);
+                        }
+                        await new Promise(r => setTimeout(r, 200)); // Small delay between blocks
+                    }
+                },
+
+                renderHtml(container) {
+                    container.innerHTML = `
+                        <div class="code-split">
+                            <div class="code-area">
+                                <div style="padding:5px; background:#252526; color:#aaa; font-size:12px;">HTML Source</div>
+                                <textarea class="code-editor" onkeyup="this.closest('.code-split').querySelector('iframe').srcdoc = this.value"><h1>Hello World</h1><button>Click Me</button></textarea>
+                            </div>
+                            <div class="preview-area">
+                                <iframe style="width:100%; height:100%; border:none;"></iframe>
+                            </div>
+                        </div>
+                    `;
+                    // Trigger initial render
+                    const ta = container.querySelector('textarea');
+                    ta.onkeyup();
+                },
+
+                renderPython(container) {
+                    container.innerHTML = `
+                        <div style="display:flex; flex-direction:column; height:100%;">
+                             <textarea class="code-editor" placeholder="# Type Python code here...\nprint('Hello WebOS')\nx = 10\nif x > 5:\n  print('X is big')">print('Hello from Python')</textarea>
+                             <div class="console-area" id="py-console">>>> Ready</div>
+                             <button onclick="Kernel.ide.runPython(this)" style="background:#3776ab; color:white; padding:10px;">Run Python</button>
+                        </div>
+                    `;
+                },
+
+                runPython(btn) {
+                    const code = btn.parentElement.querySelector('textarea').value;
+                    const con = btn.parentElement.querySelector('#py-console');
+                    con.innerHTML = '';
+                    const log = (msg) => con.innerHTML += `<div>${msg}</div>`;
+                    
+                    const lines = code.split('\n');
+                    // "Toy Python" Parser
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if(line.startsWith('print')) {
+                            const match = line.match(/print\(['"](.*)['"]\)/);
+                            if(match) log(match[1]);
+                        } else if(line.startsWith('#')) {
+                            // comment
+                        } else if(line.length > 0) {
+                             // Try to eval basic math
+                             try {
+                                 // Dangerous but okay for this specific restricted sandbox toy
+                                 // We map python syntax roughly to JS
+                                 if(line.includes('=') && !line.includes('if')) {
+                                     // Variable assignment mock
+                                     log(`<span style="color:#666">Executed: ${line}</span>`);
+                                 }
+                             } catch(e) {}
+                        }
+                    });
+                    log('<span style="color:#aaa">>>> Done</span>');
+                }
+            }
+        };
+
+        window.onload = () => Kernel.init();
+        window.onerror = () => document.getElementById('bsod').style.display = 'block';
+    </script>
+</body>
+</html>
