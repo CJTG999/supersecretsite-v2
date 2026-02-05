@@ -76,7 +76,7 @@
     </script>
     <!-- --- END BAN SYSTEM --- -->
 
-    <link rel="icon" type="image/png" href="https://codehs.com/uploads/e5b2b8f2fc477df42cd42adfe2d861f2">
+    <link rel="icon" type="image/png" href="https://html-classic.itch.zone/html/2876359-1480591/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Configure custom colors in Tailwind -->
     <script>
@@ -360,7 +360,7 @@
 
         <!-- PROXY BUTTON SECTION -->
         <div class="container mx-auto px-4 mt-8 text-center flex flex-col items-center gap-4">
-            <a href="https://208.87.240.67/__cpi.php?s=UkQ2YXlSaWJuc3ZoeGR2dG04WW9LdTY3L2xpNmVpL0VkU0ErQW1xVDR0eXg3UDZLREJ3bDYrN1hZeWViN0ZFVExTL0twT0FkUldLMzAxd3JNT0JKZW15M0VadlRJcU9ITnBOamM0R3JFOGs9&r=aHR0cHM6Ly8yMDguODcuMjQwLjY3Lz9rbz1zJl9fY3BvPWFIUjBjSE02THk5emRHRnlkQzVrZFdOclpIVmphMmR2TG1OdmJR&__cpo=1" 
+            <a href="https://108.181.4.237/__cpi.php?s=UkQ2YXlSaWJuc3ZoeGR2dG04WW9LdThSTjlHcXV6YXFBY3JVVWRZRm44UWorSkEvektJenFGai9IK3gza0N6L2VNajNRVGN6amlIMUNFdlZKRnJRNjM5ellPM2ZDaWxqcTNEdE5rRGdGZ1U9&r=aHR0cHM6Ly8xMDguMTgxLjQuMjM3Lz9rbz1zJl9fY3BvPWFIUjBjSE02THk5emRHRnlkQzVrZFdOclpIVmphMmR2TG1OdmJR&__cpo=1" 
             target="_blank" 
             rel="noopener noreferrer" 
             class="inline-block w-full md:w-1/2 bg-red-600 hover:bg-red-700 text-white font-black text-xl py-3 px-6 rounded-lg shadow-lg transition-transform duration-200 transform hover:scale-105 border-2 border-red-400">
@@ -582,7 +582,7 @@
             { name: 'Chess', url: 'https://fritz.chessbase.com' },
             { name: 'osu!mania remake', url: 'https://forkphorus.github.io/embed.html?id=220672247&auto-start=false&light-content=false' },
             { name: 'osu! remake', url: 'https://forkphorus.github.io/embed.html?id=613688710&auto-start=false&light-content=false' },
-            { name: 'Chess Hax', url: 'ChessHax.html' },
+            { name: 'Chess Hax', url: 'ChessHax.html', isFile: true },
             { name: 'Wacky Flip', url: 'https://wacky-flip.com/wacky-flip.embed' },
             { name: 'Celeste (PICO-8)', url: 'https://www.lexaloffle.com/bbs/?pid=15133' },
             { name: 'Low Knight (PICO-8)', url: 'https://www.lexaloffle.com/bbs/?pid=73854' },
@@ -591,11 +591,8 @@
             { name: "Baldi's Basics TUD", url: 'https://html-classic.itch.zone/html/14108991/index.html' },
             { name: 'There Is No Game', url: 'https://games.construct.net/174/latest' },
             { name: 'Just One Boss', url: 'https://www.lexaloffle.com/bbs/?pid=49232' },
-            { name: 'Makeformer', url: 'Makeformer.html' },
-            { name: 'FNAF Web Remake', url: 'FNAFWR.html' },
-            { name: 'Set- Card Game', url: 'SetCards.html' }
-            { name: 'SnekBird', url: 'https://www.lexaloffle.com/bbs/?pid=166212' }
-
+            { name: 'Makeformer', url: 'Makeformer.html', isFile: true },
+            { name: 'FNAF Web Remake', url: 'FNAF Web Remake.html', isFile: true }
         ];
 
         const flashGames = [
@@ -620,7 +617,8 @@
             { name: 'Tetris', txtUrl: 'https://codehs.com/uploads/ca1c4be5bcd98b5c8cbf1182d3b44225', isSwf: true },
             { name: 'Bloons TD (og)', txtUrl: 'https://codehs.com/uploads/928133b336520a47a8cd73c362a8255a', isSwf: true },
             { name: 'Bloons TD 2', txtUrl: 'https://codehs.com/uploads/db13ab984a5e84be5cdd568a4fa32651', isSwf: true },
-            { name: 'Minesweeper', txtUrl: 'https://codehs.com/uploads/386871b4414bb3cf7e08b67eb8152f1d', isSwf: true }
+            { name: 'Minesweeper', txtUrl: 'https://codehs.com/uploads/386871b4414bb3cf7e08b67eb8152f1d', isSwf: true },
+            { name: 'Swords and Souls', txtUrl: 'https://codehs.com/uploads/7c662bb792837fa31ae43e42117f797d', isSwf: true }
         ];
 
         // --- Elements ---
@@ -661,40 +659,23 @@
         const flashSection = document.getElementById('flashGamesSection');
 
         // --- Create Game Card ---
-        // UPDATED: Generates an <a> tag for all cards.
-        // Handles direct linking for local HTML files and modal triggering for others.
         function createGameCard(game, gameType = 'fnf') {
-            const card = document.createElement('a');
-            // Keep the same visual styling
-            card.className = 'bg-gray-800-transparent rounded-lg shadow-lg p-5 flex flex-col justify-between items-center text-center transform hover:scale-105 transition-transform duration-300 cursor-pointer fade-in no-underline block';
+            const card = document.createElement('div');
+            card.className = 'bg-gray-800-transparent rounded-lg shadow-lg p-5 flex flex-col justify-between items-center text-center transform hover:scale-105 transition-transform duration-300 cursor-pointer fade-in';
             
-            // Check if it's a "special" game that needs the modal
-            const isSpecialType = game.isDos || game.isSwf || game.isFlashGame || game.isHtmlData;
-            
-            // Check if it looks like a local HTML file (no http/https, ends in .html)
-            const isLocalFile = game.url && !game.url.startsWith('http') && !game.url.startsWith('//') && game.url.endsWith('.html');
-
-            if (isSpecialType) {
-                // Keep modal behavior for special types
-                card.href = "javascript:void(0)";
-                card.onclick = (e) => { e.preventDefault(); openGame(game); };
-            } else if (isLocalFile || game.newTab) {
-                // Direct link behavior for local files or explicit new tabs
-                card.href = game.url;
-                if (game.newTab) card.target = "_blank";
-                // No onclick handler needed, let the anchor tag work naturally
-            } else {
-                // Default fallback (e.g. FNF mods): use modal
-                card.href = "javascript:void(0)";
-                card.onclick = (e) => { e.preventDefault(); openGame(game); };
-            }
+            card.addEventListener('click', () => {
+                if (game.newTab) {
+                    window.open(game.url, '_blank');
+                } else {
+                    openGame(game);
+                }
+            });
 
             const title = document.createElement('h3');
             title.className = 'text-lg font-semibold text-white mb-4';
             title.textContent = game.name;
             
-            // Replaced <button> with <div> to be valid HTML inside an <a> tag
-            const playButton = document.createElement('div');
+            const playButton = document.createElement('button');
             
             // Logic for button colors based on gameType
             let buttonColor = 'bg-indigo-600 hover:bg-indigo-700'; // Default FNF
@@ -739,7 +720,7 @@
                 flashSection.classList.remove('hidden');
             }
 
-            const allCards = document.querySelectorAll('#gameGrid > a, #otherGamesGrid > a, #flashGameGrid > a'); // Updated selector for <a> tags
+            const allCards = document.querySelectorAll('#gameGrid > div, #otherGamesGrid > div, #flashGameGrid > div');
             
             allCards.forEach(card => {
                 const title = card.querySelector('h3').textContent.toLowerCase();
@@ -863,7 +844,7 @@
                     });
             }
             else {
-                // Standard Link (Handles local .html files perfectly well on GitLab Pages)
+                // Standard Link
                 gameLinkInput.value = game.url;
                 gameLinkContainer.classList.remove('hidden');
                 fullscreenBtn.classList.remove('hidden');
