@@ -123,7 +123,7 @@ button {
   <div class="server">OPCord</div>
 
   <input id="usernameInput" placeholder="Username">
-  <input id="roomInput" placeholder="Room Code">
+  <input id="roomInput" placeholder="Room Code (join only)">
 
   <button id="hostBtn">Host Room</button>
   <button id="joinBtn">Join Room</button>
@@ -145,6 +145,7 @@ button {
 let pc, dc, signal;
 let username = "";
 let isHost = false;
+let roomCode = "";
 
 const messages = document.getElementById("messages");
 const chatInput = document.getElementById("chatInput");
@@ -163,12 +164,12 @@ function setStatus(text) {
   status.textContent = text;
 }
 
-function roomChannel(room) {
-  return new BroadcastChannel("opcord-" + room);
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
 async function setupConnection(room) {
-  signal = roomChannel(room);
+  signal = new BroadcastChannel("opcord-" + room);
   pc = new RTCPeerConnection();
 
   pc.onicecandidate = e => {
@@ -218,27 +219,30 @@ async function setupConnection(room) {
     signal.postMessage({ offer });
   }
 
-  setStatus("Connecting...");
+  setStatus("Connecting…");
 }
 
 document.getElementById("hostBtn").onclick = async () => {
   username = usernameInput.value.trim();
-  const room = roomInput.value.trim();
-
-  if (!username || !room) return alert("Username and room code required");
+  if (!username) return alert("Username required");
 
   isHost = true;
-  await setupConnection(room);
+  roomCode = generateRoomCode();
+  setStatus("Hosting room: " + roomCode);
+
+  await setupConnection(roomCode);
 };
 
 document.getElementById("joinBtn").onclick = async () => {
   username = usernameInput.value.trim();
-  const room = roomInput.value.trim();
+  roomCode = roomInput.value.trim();
 
-  if (!username || !room) return alert("Username and room code required");
+  if (!username || !roomCode) return alert("Username and room code required");
 
   isHost = false;
-  await setupConnection(room);
+  setStatus("Joining room: " + roomCode);
+
+  await setupConnection(roomCode);
 };
 
 chatInput.addEventListener("keydown", e => {
