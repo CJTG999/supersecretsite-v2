@@ -6,102 +6,149 @@
     <title>MasterAI Workspace</title>
     <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link id="dynamic-favicon" rel="icon" href="ggpt-removebg-preview.png">
     <style>
         :root {
-            --bg: #131314;
-            --side: #1e1f20;
+            --bg: #000000;
+            --chat-bg: #000000;
+            --user-blue: #007aff;
+            --ai-gray: #262629;
             --accent: #8ab4f8;
-            --text: #e3e3e3;
-            --border: #444746;
-            --panel-bg: #000000;
+            --text: #ffffff;
+            --border: #333333;
+            --canvas-bg: #111111;
         }
         * { box-sizing: border-box; }
         body {
             margin: 0; display: flex; height: 100vh;
-            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg); color: var(--text); overflow: hidden;
         }
 
         /* --- Layout --- */
         #chat-section {
-            flex: 1 1 0; min-width: 300px;
+            flex: 1; min-width: 350px;
             display: flex; flex-direction: column;
-            background: var(--bg); position: relative;
+            background: var(--chat-bg);
         }
 
-        /* Resizer bar */
         #resizer {
-            width: 8px; cursor: col-resize;
-            background: transparent; transition: background 0.2s;
-            z-index: 10;
+            width: 4px; cursor: col-resize;
+            background: transparent; transition: background 0.3s;
+            z-index: 100; flex-shrink: 0;
         }
-        #resizer:hover { background: var(--accent); }
+        #resizer:hover, #resizer.active { background: #444; }
 
         #canvas-section {
-            width: 0; /* Hidden by default */
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            background: var(--bg); padding: 20px;
-            border-left: 1px solid var(--border);
+            width: 0; display: none;
+            flex-direction: column; background: var(--bg);
+            padding: 20px; border-left: 1px solid var(--border);
         }
 
-        /* --- Chat UI --- */
-        header { padding: 20px; font-size: 1.5rem; font-weight: 500; color: var(--accent); }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; }
-        .msg { margin-bottom: 24px; max-width: 85%; line-height: 1.6; }
-        .user-msg { margin-left: auto; color: #fff; background: #303132; padding: 12px 18px; border-radius: 18px; }
+        /* --- iOS Chat Bubbles --- */
+        header { padding: 15px 25px; font-size: 1.2rem; font-weight: 600; text-align: center; border-bottom: 1px solid var(--border); }
         
-        .input-container {
-            padding: 20px; max-width: 800px; margin: 0 auto; width: 100%;
+        #messages { 
+            flex: 1; overflow-y: auto; 
+            padding: 20px; display: flex; flex-direction: column; 
+            gap: 4px; /* Tight iOS spacing */
         }
-        .input-box {
-            background: #1e1f20; border-radius: 28px; padding: 10px 20px;
-            border: 1px solid var(--border); display: flex; align-items: center;
+
+        .msg {
+            max-width: 75%;
+            padding: 8px 16px;
+            font-size: 16px;
+            line-height: 1.4;
+            position: relative;
+            width: fit-content;
+            word-wrap: break-word;
+        }
+
+        /* User Message (Right / Blue) */
+        .user-msg {
+            align-self: flex-end;
+            background: var(--user-blue);
+            color: white;
+            border-radius: 20px 20px 4px 20px;
+            margin-bottom: 8px;
+        }
+
+        /* AI Message (Left / Gray) */
+        .ai-msg {
+            align-self: flex-start;
+            background: var(--ai-gray);
+            color: white;
+            border-radius: 20px 20px 20px 4px;
+            margin-bottom: 8px;
+        }
+
+        /* Formatting inside bubbles */
+        .msg p { margin: 0; }
+        .msg code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
+
+        /* --- Input Area --- */
+        .input-wrapper { padding: 10px 20px 30px; }
+        .input-container {
+            background: #1c1c1e; border-radius: 25px; padding: 5px 12px;
+            border: 1px solid var(--border); display: flex; align-items: flex-end; gap: 8px;
         }
         textarea {
             flex: 1; background: transparent; border: none; color: white;
-            padding: 10px; outline: none; resize: none; font-size: 16px;
+            padding: 10px 5px; outline: none; resize: none; font-size: 16px;
+            max-height: 150px; font-family: inherit;
         }
+        .icon-btn {
+            background: none; border: none; cursor: pointer; padding: 6px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+        }
+        .send-btn-active {
+            background: var(--user-blue) !important;
+            border-radius: 50%;
+        }
+        svg { fill: white; width: 20px; height: 20px; }
 
         /* --- Canvas UI --- */
+        .canvas-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px;
+        }
         #canvas-content {
-            flex: 1; background: var(--panel-bg); border-radius: 16px;
-            padding: 24px; border: 1px solid var(--border);
-            font-family: 'Fira Code', monospace; overflow-y: auto;
-            white-space: pre-wrap; font-size: 14px;
+            flex: 1; background: var(--canvas-bg); border-radius: 12px;
+            padding: 20px; border: 1px solid var(--border);
+            font-family: 'SF Mono', 'Fira Code', monospace; overflow-y: auto;
+            white-space: pre-wrap; font-size: 14px; outline: none;
         }
-        .canvas-tools { display: flex; justify-content: space-between; margin-bottom: 15px; }
 
-        /* --- Buttons --- */
-        .action-btn {
-            background: transparent; border: 1px solid var(--border);
-            color: var(--accent); padding: 8px 16px; border-radius: 20px;
-            cursor: pointer; font-weight: 500;
+        .btn {
+            background: #2c2c2e; color: #007aff; border: none; padding: 6px 14px;
+            border-radius: 15px; cursor: pointer; font-size: 14px; font-weight: 500;
         }
-        .action-btn:hover { background: #3c4043; }
-        .send-btn { color: var(--accent); font-size: 24px; cursor: pointer; border:none; background:none; }
-
-        /* Utils */
         .hidden { display: none !important; }
-        .visible { display: flex !important; }
     </style>
 </head>
 <body>
 
     <div id="chat-section">
         <header>MasterAI</header>
-        <div id="messages"></div>
+        <div id="messages">
+            <div class="msg ai-msg">MasterAI is ready.</div>
+        </div>
         
-        <div class="input-container">
-            <div class="input-box">
-                <button class="action-btn" style="border:none" onclick="document.getElementById('file-in').click()">📎</button>
-                <input type="file" id="file-in" class="hidden" onchange="uploadToMaster()">
-                <textarea id="user-input" rows="1" placeholder="Type your prompt..." oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
-                <button class="send-btn" onclick="askMasterAI()">-></button>
+        <div class="input-wrapper">
+            <div class="input-container">
+                <button class="icon-btn" onclick="document.getElementById('file-in').click()">
+                    <svg viewBox="0 0 24 24" style="fill:#8e8e93"><path d="M12 5v14M5 12h14" stroke="#8e8e93" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+                <input type="file" id="file-in" class="hidden" onchange="uploadFile()">
+                
+                <textarea id="user-input" rows="1" placeholder="iMessage" oninput="autoGrow(this)"></textarea>
+                
+                <button id="send-btn" class="icon-btn send-btn-active" onclick="askMasterAI()" disabled style="opacity:0.3">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
             </div>
-            <div style="margin-top:10px; text-align:center;">
-                <button id="toggle-canvas-btn" class="action-btn hidden" onclick="toggleCanvas()">View Workspace</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <button id="view-canvas-btn" class="btn hidden" onclick="toggleCanvas()">Open Workspace</button>
             </div>
         </div>
     </div>
@@ -109,65 +156,59 @@
     <div id="resizer" class="hidden"></div>
 
     <div id="canvas-section">
-        <div class="canvas-tools">
-            <span style="font-weight:bold">Master Workspace</span>
-            <button class="action-btn" onclick="toggleCanvas()">Close</button>
+        <div class="canvas-header">
+            <span style="font-size: 13px; font-weight: 600; color: #8e8e93;">WORKSPACE</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" onclick="downloadCanvas()">Save</button>
+                <button class="btn" onclick="toggleCanvas()">Close</button>
+            </div>
         </div>
-        <div id="canvas-content" contenteditable="true">Generated content appears here...</div>
+        <div id="canvas-content" contenteditable="true"></div>
     </div>
 
 <script>
-    // 1. Ensure Puter is ready
-    window.onload = () => {
-        if (typeof puter === 'undefined') {
-            console.error("MasterAI Error: Puter.js failed to load. Check your internet connection.");
+    // Puter Readiness
+    const sendBtn = document.getElementById('send-btn');
+    const checkPuter = setInterval(() => {
+        if (typeof puter !== 'undefined') {
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = "1";
+            clearInterval(checkPuter);
         }
-    };
+    }, 500);
 
     const chatSection = document.getElementById('chat-section');
     const canvasSection = document.getElementById('canvas-section');
     const resizer = document.getElementById('resizer');
-    const canvasBtn = document.getElementById('toggle-canvas-btn');
+    const canvasBtn = document.getElementById('view-canvas-btn');
 
-    // 2. Resizing Logic
+    // Resize Logic
     let isResizing = false;
-    resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        document.body.style.cursor = 'col-resize';
-    });
-
+    resizer.addEventListener('mousedown', () => isResizing = true);
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
-        let containerWidth = document.body.offsetWidth;
         let leftWidth = e.clientX;
-        let rightWidth = containerWidth - leftWidth;
-        
-        if (leftWidth > 300 && rightWidth > 300) {
+        if (leftWidth > 300 && (window.innerWidth - leftWidth) > 300) {
             chatSection.style.flex = `0 0 ${leftWidth}px`;
-            canvasSection.style.width = `${rightWidth}px`;
-        }
-    });
-
-    document.addEventListener('mouseup', () => {
-        isResizing = false;
-        document.body.style.cursor = 'default';
-    });
-
-    // 3. Toggle Canvas
-    function toggleCanvas() {
-        if (canvasSection.classList.contains('visible')) {
-            canvasSection.classList.replace('visible', 'hidden');
-            resizer.classList.add('hidden');
-            chatSection.style.flex = "1";
-        } else {
-            canvasSection.classList.replace('hidden', 'visible');
+            canvasSection.style.display = 'flex';
             resizer.classList.remove('hidden');
-            canvasSection.style.width = "50%";
-            chatSection.style.flex = "0 0 50%";
         }
+    });
+    document.addEventListener('mouseup', () => isResizing = false);
+
+    function toggleCanvas() {
+        const isVisible = canvasSection.style.display === 'flex';
+        canvasSection.style.display = isVisible ? 'none' : 'flex';
+        resizer.classList.toggle('hidden', isVisible);
+        if (!isVisible) chatSection.style.flex = "0 0 50%";
+        else chatSection.style.flex = "1";
     }
 
-    // 4. AI Logic
+    function autoGrow(element) {
+        element.style.height = "auto";
+        element.style.height = (element.scrollHeight) + "px";
+    }
+
     async function askMasterAI() {
         const input = document.getElementById('user-input');
         const text = input.value.trim();
@@ -175,41 +216,25 @@
 
         appendMsg('user', text);
         input.value = '';
+        input.style.height = 'auto';
 
         try {
-            const prompt = `System: Rebrand yourself as MasterAI. If providing code, wrap it in [CANVAS]...[/CANVAS]. User: ${text}`;
-            
-            // Call Puter AI (ensure 'puter' exists)
-            const response = await puter.ai.chat(prompt, { model: 'gpt-4o' });
-            const aiText = response.message.content;
+            const systemPrompt = `You are MasterAI. If the user wants code, an essay, or complex data, put it inside [CANVAS]...[/CANVAS] tags.`;
+            const response = await puter.ai.chat(text, { model: 'gpt-4o', system_message: systemPrompt });
+            const aiResponse = response.message.content;
 
-            if (aiText.includes("[CANVAS]")) {
-                const parts = aiText.split("[CANVAS]");
-                const chatText = parts[0];
-                const canvasText = parts[1].split("[/CANVAS]")[0];
-
-                appendMsg('ai', chatText + "\n\n*(Artifact updated in workspace)*");
-                document.getElementById('canvas-content').innerText = canvasText.trim();
-                
-                // Show the canvas button if it was hidden
+            if (aiResponse.includes("[CANVAS]")) {
+                const parts = aiResponse.split("[CANVAS]");
+                appendMsg('ai', parts[0] + "\n\n*(Artifact in workspace)*");
+                document.getElementById('canvas-content').innerText = parts[1].split("[/CANVAS]")[0].trim();
                 canvasBtn.classList.remove('hidden');
-                // Automatically open canvas on first generation
-                if (!canvasSection.classList.contains('visible')) toggleCanvas();
+                if (canvasSection.style.display !== 'flex') toggleCanvas();
             } else {
-                appendMsg('ai', aiText);
+                appendMsg('ai', aiResponse);
             }
         } catch (err) {
-            appendMsg('ai', "MasterAI Error: " + err.message);
+            appendMsg('ai', "Error: " + err.message);
         }
-    }
-
-    async function uploadToMaster() {
-        const file = document.getElementById('file-in').files[0];
-        appendMsg('user', `Uploading ${file.name}...`);
-        try {
-            const res = await puter.fs.upload(document.getElementById('file-in').files);
-            appendMsg('ai', `I've received the file: ${res[0].name}. You can now ask me to analyze it.`);
-        } catch (e) { appendMsg('ai', "Upload failed: " + e.message); }
     }
 
     function appendMsg(role, text) {
@@ -219,6 +244,25 @@
         d.innerHTML = marked.parse(text);
         m.appendChild(d);
         m.scrollTop = m.scrollHeight;
+    }
+
+    async function uploadFile() {
+        const files = document.getElementById('file-in').files;
+        if (!files.length) return;
+        appendMsg('user', `Shared a file: ${files[0].name}`);
+        try {
+            await puter.fs.upload(files);
+            appendMsg('ai', "File uploaded to cloud. How should I process it?");
+        } catch (e) { appendMsg('ai', "Upload failed."); }
+    }
+
+    function downloadCanvas() {
+        const content = document.getElementById('canvas-content').innerText;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'masterai_file.txt';
+        a.click();
     }
 </script>
 </body>
