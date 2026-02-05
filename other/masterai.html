@@ -44,68 +44,89 @@
             padding: 20px; border-left: 1px solid var(--border);
         }
 
-        /* --- iOS Chat Bubbles --- */
-        header { padding: 15px 25px; font-size: 1.2rem; font-weight: 600; text-align: center; border-bottom: 1px solid var(--border); }
+        /* --- Header --- */
+        header { 
+            padding: 15px 25px; font-size: 1.1rem; font-weight: 600; 
+            text-align: center; border-bottom: 1px solid var(--border);
+            color: #efeff4;
+        }
         
+        /* --- iOS Chat Bubbles --- */
         #messages { 
             flex: 1; overflow-y: auto; 
             padding: 20px; display: flex; flex-direction: column; 
-            gap: 4px; /* Tight iOS spacing */
+            gap: 6px;
         }
 
         .msg {
             max-width: 75%;
-            padding: 8px 16px;
+            padding: 10px 16px;
             font-size: 16px;
             line-height: 1.4;
-            position: relative;
             width: fit-content;
             word-wrap: break-word;
         }
 
-        /* User Message (Right / Blue) */
         .user-msg {
             align-self: flex-end;
             background: var(--user-blue);
             color: white;
             border-radius: 20px 20px 4px 20px;
-            margin-bottom: 8px;
         }
 
-        /* AI Message (Left / Gray) */
         .ai-msg {
             align-self: flex-start;
             background: var(--ai-gray);
             color: white;
             border-radius: 20px 20px 20px 4px;
-            margin-bottom: 8px;
         }
-
-        /* Formatting inside bubbles */
-        .msg p { margin: 0; }
-        .msg code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
 
         /* --- Input Area --- */
-        .input-wrapper { padding: 10px 20px 30px; }
+        .input-wrapper { 
+            padding: 15px 20px 35px; 
+            display: flex; flex-direction: column; align-items: center; 
+        }
+
         .input-container {
             background: #1c1c1e; border-radius: 25px; padding: 5px 12px;
-            border: 1px solid var(--border); display: flex; align-items: flex-end; gap: 8px;
+            border: 1px solid var(--border); display: flex; align-items: flex-end; 
+            gap: 8px; width: 100%; max-width: 700px;
         }
+
         textarea {
             flex: 1; background: transparent; border: none; color: white;
             padding: 10px 5px; outline: none; resize: none; font-size: 16px;
             max-height: 150px; font-family: inherit;
         }
+
         .icon-btn {
             background: none; border: none; cursor: pointer; padding: 6px;
             display: flex; align-items: center; justify-content: center;
-            border-radius: 50%;
+            border-radius: 50%; width: 32px; height: 32px;
+            transition: 0.2s;
         }
-        .send-btn-active {
-            background: var(--user-blue) !important;
-            border-radius: 50%;
+
+        #send-btn {
+            background: #333; /* Darker when disabled */
         }
-        svg { fill: white; width: 20px; height: 20px; }
+
+        #send-btn.ready {
+            background: var(--user-blue);
+        }
+
+        svg { fill: white; width: 18px; height: 18px; }
+
+        /* --- Buttons Styling --- */
+        .center-btn-container {
+            width: 100%; display: flex; justify-content: center; margin-top: 12px;
+        }
+
+        .btn {
+            background: #2c2c2e; color: #007aff; border: none; padding: 8px 18px;
+            border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600;
+            transition: 0.2s;
+        }
+        .btn:hover { background: #3a3a3c; }
 
         /* --- Canvas UI --- */
         .canvas-header {
@@ -115,14 +136,10 @@
         #canvas-content {
             flex: 1; background: var(--canvas-bg); border-radius: 12px;
             padding: 20px; border: 1px solid var(--border);
-            font-family: 'SF Mono', 'Fira Code', monospace; overflow-y: auto;
-            white-space: pre-wrap; font-size: 14px; outline: none;
+            font-family: 'SF Mono', 'Consolas', monospace; overflow-y: auto;
+            white-space: pre-wrap; font-size: 14px; outline: none; color: #d1d1d6;
         }
 
-        .btn {
-            background: #2c2c2e; color: #007aff; border: none; padding: 6px 14px;
-            border-radius: 15px; cursor: pointer; font-size: 14px; font-weight: 500;
-        }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -131,23 +148,24 @@
     <div id="chat-section">
         <header>MasterAI</header>
         <div id="messages">
-            <div class="msg ai-msg">MasterAI is ready.</div>
+            <div class="msg ai-msg">MasterAI is ready. How can I help you today?</div>
         </div>
         
         <div class="input-wrapper">
             <div class="input-container">
                 <button class="icon-btn" onclick="document.getElementById('file-in').click()">
-                    <svg viewBox="0 0 24 24" style="fill:#8e8e93"><path d="M12 5v14M5 12h14" stroke="#8e8e93" stroke-width="2" stroke-linecap="round"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                 </button>
                 <input type="file" id="file-in" class="hidden" onchange="uploadFile()">
                 
                 <textarea id="user-input" rows="1" placeholder="iMessage" oninput="autoGrow(this)"></textarea>
                 
-                <button id="send-btn" class="icon-btn send-btn-active" onclick="askMasterAI()" disabled style="opacity:0.3">
+                <button id="send-btn" class="icon-btn" onclick="askMasterAI()">
                     <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
             </div>
-            <div style="text-align: center; margin-top: 10px;">
+            
+            <div class="center-btn-container">
                 <button id="view-canvas-btn" class="btn hidden" onclick="toggleCanvas()">Open Workspace</button>
             </div>
         </div>
@@ -157,25 +175,28 @@
 
     <div id="canvas-section">
         <div class="canvas-header">
-            <span style="font-size: 13px; font-weight: 600; color: #8e8e93;">WORKSPACE</span>
+            <span style="font-size: 12px; font-weight: 700; color: #8e8e93; letter-spacing: 0.5px;">WORKSPACE</span>
             <div style="display: flex; gap: 8px;">
                 <button class="btn" onclick="downloadCanvas()">Save</button>
-                <button class="btn" onclick="toggleCanvas()">Close</button>
+                <button class="btn" style="color: #ff3b30;" onclick="toggleCanvas()">Close</button>
             </div>
         </div>
         <div id="canvas-content" contenteditable="true"></div>
     </div>
 
 <script>
-    // Puter Readiness
     const sendBtn = document.getElementById('send-btn');
-    const checkPuter = setInterval(() => {
+    const userInput = document.getElementById('user-input');
+
+    // Enable button immediately but check Puter status
+    function checkPuterStatus() {
         if (typeof puter !== 'undefined') {
-            sendBtn.disabled = false;
-            sendBtn.style.opacity = "1";
-            clearInterval(checkPuter);
+            sendBtn.classList.add('ready');
+            return true;
         }
-    }, 500);
+        return false;
+    }
+    setInterval(checkPuterStatus, 500);
 
     const chatSection = document.getElementById('chat-section');
     const canvasSection = document.getElementById('canvas-section');
@@ -184,7 +205,7 @@
 
     // Resize Logic
     let isResizing = false;
-    resizer.addEventListener('mousedown', () => isResizing = true);
+    resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('active'); });
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
         let leftWidth = e.clientX;
@@ -194,14 +215,19 @@
             resizer.classList.remove('hidden');
         }
     });
-    document.addEventListener('mouseup', () => isResizing = false);
+    document.addEventListener('mouseup', () => { isResizing = false; resizer.classList.remove('active'); });
 
     function toggleCanvas() {
         const isVisible = canvasSection.style.display === 'flex';
-        canvasSection.style.display = isVisible ? 'none' : 'flex';
-        resizer.classList.toggle('hidden', isVisible);
-        if (!isVisible) chatSection.style.flex = "0 0 50%";
-        else chatSection.style.flex = "1";
+        if (isVisible) {
+            canvasSection.style.display = 'none';
+            resizer.classList.add('hidden');
+            chatSection.style.flex = "1";
+        } else {
+            canvasSection.style.display = 'flex';
+            resizer.classList.remove('hidden');
+            chatSection.style.flex = "0 0 50%";
+        }
     }
 
     function autoGrow(element) {
@@ -210,22 +236,26 @@
     }
 
     async function askMasterAI() {
-        const input = document.getElementById('user-input');
-        const text = input.value.trim();
+        const text = userInput.value.trim();
         if (!text) return;
+        
+        if (typeof puter === 'undefined') {
+            alert("MasterAI is still connecting to the cloud. Please try again in a moment.");
+            return;
+        }
 
         appendMsg('user', text);
-        input.value = '';
-        input.style.height = 'auto';
+        userInput.value = '';
+        userInput.style.height = 'auto';
 
         try {
-            const systemPrompt = `You are MasterAI. If the user wants code, an essay, or complex data, put it inside [CANVAS]...[/CANVAS] tags.`;
+            const systemPrompt = `You are MasterAI. Always wrap code, scripts, or long documents in [CANVAS]...[/CANVAS] tags.`;
             const response = await puter.ai.chat(text, { model: 'gpt-4o', system_message: systemPrompt });
             const aiResponse = response.message.content;
 
             if (aiResponse.includes("[CANVAS]")) {
                 const parts = aiResponse.split("[CANVAS]");
-                appendMsg('ai', parts[0] + "\n\n*(Artifact in workspace)*");
+                appendMsg('ai', parts[0] + "\n\n*(Artifact available in workspace)*");
                 document.getElementById('canvas-content').innerText = parts[1].split("[/CANVAS]")[0].trim();
                 canvasBtn.classList.remove('hidden');
                 if (canvasSection.style.display !== 'flex') toggleCanvas();
@@ -233,9 +263,17 @@
                 appendMsg('ai', aiResponse);
             }
         } catch (err) {
-            appendMsg('ai', "Error: " + err.message);
+            appendMsg('ai', "Service Error: " + err.message);
         }
     }
+
+    // Trigger send on Enter (but allow Shift+Enter for new lines)
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            askMasterAI();
+        }
+    });
 
     function appendMsg(role, text) {
         const m = document.getElementById('messages');
@@ -249,10 +287,10 @@
     async function uploadFile() {
         const files = document.getElementById('file-in').files;
         if (!files.length) return;
-        appendMsg('user', `Shared a file: ${files[0].name}`);
+        appendMsg('user', `Uploaded file: ${files[0].name}`);
         try {
             await puter.fs.upload(files);
-            appendMsg('ai', "File uploaded to cloud. How should I process it?");
+            appendMsg('ai', "File received. How should MasterAI process it?");
         } catch (e) { appendMsg('ai', "Upload failed."); }
     }
 
@@ -261,7 +299,7 @@
         const blob = new Blob([content], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'masterai_file.txt';
+        a.download = 'masterai_output.txt';
         a.click();
     }
 </script>
