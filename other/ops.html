@@ -88,7 +88,12 @@ const remote = new THREE.Mesh(
 scene.add(remote);
 
 /* ------------------ WEBRTC ------------------ */
+<script>
 let pc, channel;
+
+const signal = document.getElementById("signal");
+const hostBtn = document.getElementById("hostBtn");
+const joinBtn = document.getElementById("joinBtn");
 
 const config = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -98,8 +103,10 @@ function createPC() {
   pc = new RTCPeerConnection(config);
 
   pc.onicecandidate = e => {
-    if (e.candidate) return;
-    signal.value = JSON.stringify(pc.localDescription);
+    if (!e.candidate) {
+      signal.value = JSON.stringify(pc.localDescription, null, 2);
+      console.log("Offer/Answer ready");
+    }
   };
 
   pc.ondatachannel = e => setupChannel(e.channel);
@@ -107,12 +114,52 @@ function createPC() {
 
 function setupChannel(ch) {
   channel = ch;
+  channel.onopen = () => console.log("DataChannel open");
   channel.onmessage = e => {
     const data = JSON.parse(e.data);
     remote.position.set(data.x, data.y, data.z);
     remote.rotation.y = data.r;
   };
 }
+
+/* HOST */
+hostBtn.onclick = async () => {
+  console.log("Hosting...");
+  createPC();
+
+  channel = pc.createDataChannel("game");
+  setupChannel(channel);
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+};
+
+/* JOIN */
+joinBtn.onclick = async () => {
+  console.log("Joining...");
+  createPC();
+
+  const offer = JSON.parse(signal.value);
+  await pc.setRemoteDescription(offer);
+
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+};
+
+/* APPLY ANSWER BACK ON HOST */
+signal.addEventListener("input", async () => {
+  if (!pc || pc.remoteDescription) return;
+
+  try {
+    const answer = JSON.parse(signal.value);
+    if (answer.type === "answer") {
+      await pc.setRemoteDescription(answer);
+      console.log("Answer applied");
+    }
+  } catch {}
+});
+</script>
+
 
 /* HOST */
 hostBtn.onclick = async () => {
