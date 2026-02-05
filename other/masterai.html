@@ -2,210 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAI Workspace</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
-    <script src="https://js.puter.com/v2/"></script> 
+    <title>MasterAI - Official Setup</title>
+    <script id="puter-script" src="https://js.puter.com/v2/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        :root {
-            --bg: #000000; --user-blue: #007aff; --ai-gray: #1c1c1e;
-            --text: #ffffff; --border: #333333; --canvas-bg: #111111;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; display: flex; flex-direction: column; height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--bg); color: var(--text); overflow: hidden;
-        }
-
-        /* Top Bar & Progress */
-        #top-loader { height: 3px; width: 100%; background: #1a1a1a; position: relative; }
-        #fill { height: 100%; width: 0%; background: #007aff; transition: width 0.5s; }
-
-        #main { flex: 1; display: flex; width: 100%; overflow: hidden; }
-        #chat { flex: 1; min-width: 320px; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        
-        header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-        
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 16px; font-size: 16px; border-radius: 18px; width: fit-content; line-height: 1.4; }
-        .user-msg { align-self: flex-end; background: var(--user-blue); border-bottom-right-radius: 4px; }
-        .ai-msg { align-self: flex-start; background: var(--ai-gray); border-bottom-left-radius: 4px; }
-
-        /* Input area */
-        .footer { padding: 15px 20px 30px; display: flex; flex-direction: column; align-items: center; }
-        .input-box {
-            background: #1c1c1e; border-radius: 24px; padding: 5px 15px;
-            border: 1px solid var(--border); display: flex; align-items: flex-end; width: 100%; max-width: 600px;
-        }
-        textarea { flex: 1; background: transparent; border: none; color: white; padding: 10px 0; outline: none; resize: none; font-size: 16px; }
-        
-        .send-btn { 
-            background: #333; width: 32px; height: 32px; border-radius: 50%; border: none; 
-            margin-bottom: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-        }
-        .send-btn.active { background: var(--user-blue); }
-
-        /* Workspace */
-        #resizer { width: 6px; cursor: col-resize; background: transparent; }
-        #resizer:hover { background: #444; }
-        #canvas { width: 0; display: none; flex-direction: column; padding: 20px; background: var(--bg); }
-        #canvas-box { flex: 1; background: var(--canvas-bg); border-radius: 12px; border: 1px solid var(--border); padding: 20px; color: #ccc; font-family: monospace; overflow-y: auto; outline: none; }
-
-        .btn { background: #2c2c2e; color: #007aff; border: none; padding: 6px 14px; border-radius: 15px; cursor: pointer; font-size: 13px; font-weight: 600; }
-        .hidden { display: none; }
+        :root { --bg: #000; --text: #fff; --blue: #007aff; --card: #1c1c1e; }
+        body { margin: 0; font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+        #app { display: flex; flex-direction: column; height: 100vh; }
+        header { padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 12px; border-radius: 15px; line-height: 1.4; }
+        .user { align-self: flex-end; background: var(--blue); }
+        .ai { align-self: flex-start; background: var(--card); }
+        .footer { padding: 20px; background: #000; }
+        .input-wrap { display: flex; background: var(--card); border-radius: 25px; padding: 5px 15px; border: 1px solid #333; }
+        input { flex: 1; background: none; border: none; color: #fff; padding: 10px; outline: none; font-size: 16px; }
+        button { background: none; border: none; color: var(--blue); font-weight: 600; cursor: pointer; }
+        #status-bar { height: 3px; width: 0%; background: var(--blue); transition: 0.3s; }
     </style>
 </head>
 <body>
 
-<div id="top-loader"><div id="fill"></div></div>
-
-<div id="main">
-    <div id="chat">
-        <header>
-            <button class="btn" onclick="clearAll()">New Chat</button>
-            <span style="font-weight:600">MasterAI</span>
-            <button class="btn" id="status-btn">Connecting...</button>
-        </header>
-
-        <div id="messages"></div>
-
-        <div class="footer">
-            <div class="input-box">
-                <textarea id="prompt" rows="1" placeholder="Ask MasterAI..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-                <button id="send" class="send-btn" onclick="runAI()">
-                    <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                </button>
-            </div>
-            <div style="margin-top:10px;">
-                <button id="open-ws" class="btn hidden" onclick="toggleWS()">Open Workspace</button>
-            </div>
+<div id="status-bar"></div>
+<div id="app">
+    <header>
+        <span id="conn-text">Connecting...</span>
+        <button onclick="location.reload()">Reload</button>
+    </header>
+    <div id="chat"></div>
+    <div class="footer">
+        <div class="input-wrap">
+            <input type="text" id="prompt" placeholder="Ask MasterAI..." disabled>
+            <button id="send-btn" onclick="ask()" disabled>Send</button>
         </div>
-    </div>
-
-    <div id="resizer"></div>
-
-    <div id="canvas">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <span style="font-size:12px; color:#888;">WORKSPACE</span>
-            <button class="btn" onclick="toggleWS()">Close</button>
-        </div>
-        <div id="canvas-box" contenteditable="true"></div>
     </div>
 </div>
 
 <script>
-    const fill = document.getElementById('fill');
-    const sendBtn = document.getElementById('send');
-    const statusBtn = document.getElementById('status-btn');
-    let aiReady = false;
+    const status = document.getElementById('status-bar');
+    const connText = document.getElementById('conn-text');
+    const input = document.getElementById('prompt');
+    const sendBtn = document.getElementById('send-btn');
 
-    // --- Connection Logic ---
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += (100 - progress) * 0.1;
-        fill.style.width = progress + "%";
+    // --- Official Check for Puter Object ---
+    let checkCount = 0;
+    const checkPuter = setInterval(() => {
+        checkCount++;
+        status.style.width = (checkCount * 5) + "%";
 
         if (typeof puter !== 'undefined') {
-            clearInterval(interval);
-            fill.style.width = "100%";
-            fill.style.background = "#34c759";
-            aiReady = true;
-            statusBtn.innerText = "Online";
-            sendBtn.classList.add('active');
-            setTimeout(() => { document.getElementById('top-loader').style.display = 'none'; }, 1000);
-            load();
-        } else if (progress > 98) {
-            // If Puter fails, we don't freeze. We let the user use the UI.
-            clearInterval(interval);
-            statusBtn.innerText = "Offline Mode";
-            statusBtn.style.color = "#ff3b30";
-            sendBtn.classList.add('active'); 
-            load();
+            clearInterval(checkPuter);
+            status.style.width = "100%";
+            connText.innerText = "MasterAI Online";
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.placeholder = "Type a message...";
+        }
+
+        // If it gets stuck at 80% (approx 16 checks), try the CORS Proxy
+        if (checkCount === 16) {
+            console.log("Direct connection failed. Attempting CORS Proxy...");
+            connText.innerText = "Attempting Proxy...";
+            const proxyScript = document.createElement('script');
+            // Using a standard JS proxy to re-fetch the library
+            proxyScript.src = "https://corsproxy.io/?https://js.puter.com/v2/";
+            document.head.appendChild(proxyScript);
+        }
+        
+        if (checkCount > 50) {
+            clearInterval(checkPuter);
+            connText.innerText = "Connection Failed. Please check internet/CORS.";
         }
     }, 200);
 
-    async function runAI() {
-        const input = document.getElementById('prompt');
-        const val = input.value.trim();
-        if (!val) return;
-
-        addMsg('user', val);
-        input.value = ''; input.style.height = 'auto';
+    async function ask() {
+        const text = input.value;
+        if (!text) return;
+        
+        appendMsg('user', text);
+        input.value = '';
 
         try {
-            if (typeof puter === 'undefined') {
-                addMsg('ai', "MasterAI Cloud is currently blocked by your browser. Please check your extensions or try a different browser.");
-                return;
-            }
-
-            const response = await puter.ai.chat(val, { 
-                model: 'gpt-4o', 
-                system_message: "You are MasterAI. Wrap any code or long text in [CANVAS]...[/CANVAS] tags." 
+            // Official puter.ai.chat() usage from docs
+            const response = await puter.ai.chat(text, {
+                model: 'gpt-4o', // Default model in docs is gpt-5-nano, but gpt-4o is more stable
+                system_message: "You are MasterAI. Be helpful and concise."
             });
             
-            let content = response.message.content;
-            if (content.includes("[CANVAS]")) {
-                let parts = content.split("[CANVAS]");
-                addMsg('ai', parts[0] + "\n\n*(Created in Workspace)*");
-                document.getElementById('canvas-box').innerText = parts[1].split("[/CANVAS]")[0].trim();
-                document.getElementById('open-ws').classList.remove('hidden');
-                if (document.getElementById('canvas').style.display !== 'flex') toggleWS();
-            } else {
-                addMsg('ai', content);
-            }
-            save();
-        } catch (e) {
-            addMsg('ai', "Connection Error: " + e.message);
+            appendMsg('ai', response.message.content);
+        } catch (err) {
+            appendMsg('ai', "Error: " + err.message);
         }
     }
 
-    function addMsg(role, text) {
-        const box = document.getElementById('messages');
+    function appendMsg(role, text) {
         const div = document.createElement('div');
-        div.className = `msg ${role}-msg`;
+        div.className = `msg ${role}`;
         div.innerHTML = marked.parse(text);
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        document.getElementById('chat').appendChild(div);
+        document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
     }
-
-    function toggleWS() {
-        const c = document.getElementById('canvas');
-        const isVisible = c.style.display === 'flex';
-        c.style.display = isVisible ? 'none' : 'flex';
-        document.getElementById('chat').style.flex = isVisible ? "1" : "0 0 50%";
-    }
-
-    // Resize
-    let dragging = false;
-    document.getElementById('resizer').addEventListener('mousedown', () => dragging = true);
-    document.addEventListener('mousemove', (e) => {
-        if (dragging) document.getElementById('chat').style.flex = `0 0 ${e.clientX}px`;
-    });
-    document.addEventListener('mouseup', () => dragging = false);
-
-    // Enter to send
-    document.getElementById('prompt').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runAI(); }
-    });
-
-    // Persistence
-    function save() {
-        const data = { chat: document.getElementById('messages').innerHTML, cv: document.getElementById('canvas-box').innerText };
-        localStorage.setItem('master_v4', JSON.stringify(data));
-    }
-    function load() {
-        const saved = localStorage.getItem('master_v4');
-        if (saved) {
-            const d = JSON.parse(saved);
-            document.getElementById('messages').innerHTML = d.chat;
-            document.getElementById('canvas-box').innerText = d.cv;
-            if (d.cv) document.getElementById('open-ws').classList.remove('hidden');
-        } else {
-            addMsg('ai', "MasterAI ready. How can I assist?");
-        }
-    }
-    function clearAll() { if(confirm("Reset?")) { localStorage.removeItem('master_v4'); location.reload(); } }
 </script>
 </body>
 </html>
