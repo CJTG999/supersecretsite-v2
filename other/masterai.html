@@ -3,119 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAI | Secure Workspace</title>
+    <title>MasterAI | GitLab Edition</title>
+    <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <style>
-        :root { --bg: #000; --panel: #111; --blue: #007aff; --text: #fff; --border: #333; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #58a6ff; --text: #c9d1d9; --border: #30363d; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Layout */
-        #chat-side { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        #canvas-side { width: 0; display: none; background: #050505; padding: 20px; flex-direction: column; transition: width 0.3s; }
+        header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--panel); }
+        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
         
-        header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        
-        /* Bubbles */
-        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; line-height: 1.5; font-size: 16px; }
-        .user { align-self: flex-end; background: var(--blue); color: white; border-bottom-right-radius: 4px; }
-        .ai { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+        .msg { max-width: 85%; padding: 12px 16px; border-radius: 12px; line-height: 1.5; font-size: 15px; border: 1px solid transparent; }
+        .user { align-self: flex-end; background: rgba(88, 166, 255, 0.1); border-color: var(--accent); color: #fff; }
+        .ai { align-self: flex-start; background: var(--panel); border-color: var(--border); }
 
-        /* Input */
-        .footer { padding: 20px; background: var(--bg); border-top: 1px solid var(--border); }
-        .input-box { display: flex; background: var(--panel); border: 1px solid var(--border); border-radius: 24px; padding: 8px 16px; align-items: center; }
-        textarea { flex: 1; background: transparent; border: none; color: white; padding: 10px; outline: none; font-size: 16px; resize: none; height: 24px; }
-        button { background: none; border: none; color: var(--blue); font-weight: bold; cursor: pointer; font-size: 14px; }
-
-        /* Canvas */
-        #canvas-box { flex: 1; background: #000; border: 1px solid var(--border); border-radius: 8px; padding: 20px; font-family: monospace; white-space: pre-wrap; outline: none; overflow-y: auto; color: #adbac7; }
-        .visible { display: flex !important; width: 50% !important; }
-        .btn-small { background: #222; color: #888; border: 1px solid #333; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .footer { padding: 20px; background: var(--bg); border-top: 1px solid var(--border); display: flex; gap: 10px; }
+        input { flex: 1; background: var(--panel); border: 1px solid var(--border); color: white; padding: 12px 18px; border-radius: 25px; outline: none; }
+        button { background: var(--accent); color: #fff; border: none; padding: 10px 25px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        
+        #status { font-size: 12px; color: #8b949e; }
     </style>
 </head>
 <body>
 
-<div id="chat-side">
-    <header>
-        <span style="font-weight: bold; letter-spacing: 1px;">MASTERAI</span>
-        <button class="btn-small" onclick="clearChat()">New Chat</button>
-    </header>
+<header>
+    <div style="font-weight: bold; letter-spacing: 1px;">MASTERAI</div>
+    <div id="status">Connecting to Cloud...</div>
+</header>
 
-    <div id="messages"></div>
-
-    <div class="footer">
-        <div class="input-box">
-            <textarea id="prompt" placeholder="Ask GPT-4o..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-            <button onclick="askGPT()">SEND</button>
-        </div>
-    </div>
+<div id="chat">
+    <div class="msg ai">MasterAI initialized for GitLab. No terminal or API key required. How can I help you today?</div>
 </div>
 
-<div id="canvas-side">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <span style="font-size:12px; color:#555;">ARTIFACT WORKSPACE</span>
-        <button class="btn-small" onclick="toggleCanvas()">CLOSE</button>
-    </div>
-    <div id="canvas-box" contenteditable="true"></div>
+<div class="footer">
+    <input type="text" id="userInput" placeholder="Message MasterAI...">
+    <button onclick="askAI()">SEND</button>
 </div>
 
 <script>
-    // ==========================================
-    // PASTE YOUR OPENAI API KEY BELOW
-    // ==========================================
-    const MASTER_KEY = "sk-ijklqrst5678uvwxijklqrst5678uvwxijklqrst";
-    // ==========================================
-
-    async function askGPT() {
-        const input = document.getElementById('prompt');
+    // Puter automatically handles the "API" part for you for free
+    async function askAI() {
+        const input = document.getElementById('userInput');
         const text = input.value.trim();
         if (!text) return;
 
-        if (MASTER_KEY === "YOUR_API_KEY_HERE") {
-            addMsg('ai', "Error: You forgot to paste your API key into the code! Look for `const MASTER_KEY` in the script.");
-            return;
-        }
-
         addMsg('user', text);
         input.value = '';
-        input.style.height = '24px';
+        document.getElementById('status').innerText = "MasterAI is thinking...";
 
         try {
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${MASTER_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o",
-                    messages: [
-                        { role: "system", content: "You are MasterAI. If you generate code or long docs, wrap them in [CANVAS]...[/CANVAS] tags." },
-                        { role: "user", content: text }
-                    ]
-                })
-            });
-
-            const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-
-            let aiText = data.choices[0].message.content;
-
-            // Handle Canvas Logic
-            if (aiText.includes("[CANVAS]")) {
-                const parts = aiText.split("[CANVAS]");
-                const content = parts[1].split("[/CANVAS]")[0].trim();
-                document.getElementById('canvas-box').innerText = content;
-                addMsg('ai', parts[0] + "\n\n*(Artifact updated in workspace)*");
-                if (window.getComputedStyle(document.getElementById('canvas-side')).display === "none") {
-                    toggleCanvas();
-                }
-            } else {
-                addMsg('ai', aiText);
-            }
-            saveHistory();
+            // This calls a high-end model (like GPT-4o-mini) via Puter's free tier
+            const response = await puter.ai.chat(text);
+            
+            // Puter returns an object; we get the content string from it
+            const reply = response.message.content;
+            addMsg('ai', reply);
+            document.getElementById('status').innerText = "Online";
         } catch (e) {
-            addMsg('ai', "**Error:** " + e.message);
+            console.error(e);
+            addMsg('ai', "MasterAI Error: Could not reach the cloud. Please refresh.");
+            document.getElementById('status').innerText = "Connection Failed";
         }
     }
 
@@ -123,44 +70,16 @@
         const div = document.createElement('div');
         div.className = `msg ${role}`;
         div.innerHTML = marked.parse(text);
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-        return div;
+        document.getElementById('chat').appendChild(div);
+        document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
     }
 
-    function toggleCanvas() {
-        document.getElementById('canvas-side').classList.toggle('visible');
-    }
-
-    function clearChat() {
-        if(confirm("Clear conversation history?")) {
-            localStorage.removeItem('master_history');
-            document.getElementById('messages').innerHTML = '';
-            document.getElementById('canvas-box').innerText = '';
-        }
-    }
-
-    function saveHistory() {
-        const history = {
-            chat: document.getElementById('messages').innerHTML,
-            canvas: document.getElementById('canvas-box').innerText
-        };
-        localStorage.setItem('master_history', JSON.stringify(history));
-    }
-
-    window.onload = () => {
-        const saved = localStorage.getItem('master_history');
-        if (saved) {
-            const data = JSON.parse(saved);
-            document.getElementById('messages').innerHTML = data.chat;
-            document.getElementById('canvas-box').innerText = data.canvas;
-        } else {
-            addMsg('ai', "MasterAI Connected. System status: Optimal.");
-        }
-    };
-
-    document.getElementById('prompt').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askGPT(); }
+    // Auto-status update
+    window.onload = () => { document.getElementById('status').innerText = "Online"; };
+    
+    // Enter key support
+    document.getElementById('userInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') askAI();
     });
 </script>
 </body>
