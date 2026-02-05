@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>OPCord</title>
+
 <link id="dynamic-favicon" rel="icon" href="download-removebg-preview.png">
 
 <style>
@@ -17,8 +18,8 @@
 }
 
 * {
-  box-sizing: border-box;
-  font-family: "Segoe UI", sans-serif;
+  box-sizing:border-box;
+  font-family:"Segoe UI",sans-serif;
 }
 
 body {
@@ -30,7 +31,7 @@ body {
 }
 
 .sidebar {
-  width:240px;
+  width:260px;
   background:var(--bg-darker);
   padding:12px;
 }
@@ -42,6 +43,22 @@ body {
   border-radius:8px;
   text-align:center;
   font-weight:bold;
+  margin-bottom:12px;
+}
+
+button, input {
+  width:100%;
+  margin-top:6px;
+  padding:8px;
+  background:var(--input);
+  border:none;
+  border-radius:5px;
+  color:var(--text);
+}
+
+button {
+  cursor:pointer;
+  background:var(--accent);
 }
 
 .chat {
@@ -77,16 +94,6 @@ body {
   padding:12px;
 }
 
-input {
-  width:100%;
-  padding:10px;
-  background:var(--input);
-  border:none;
-  border-radius:5px;
-  color:var(--text);
-  outline:none;
-}
-
 .progress {
   height:4px;
   background:#111;
@@ -108,7 +115,12 @@ input {
 
 <div class="sidebar">
   <div class="server">OPCord</div>
-  <input id="room" placeholder="Room Code" />
+
+  <button id="hostBtn">Host Room</button>
+  <input id="roomInput" placeholder="Enter Room Code">
+  <button id="joinBtn">Join Room</button>
+
+  <div id="roomDisplay" style="margin-top:10px;color:var(--muted)"></div>
 </div>
 
 <div class="chat">
@@ -116,7 +128,7 @@ input {
   <div class="messages" id="messages"></div>
 
   <div class="input-area">
-    <input id="input" placeholder="Message #general" />
+    <input id="input" placeholder="Message #general">
     <div class="progress"><div class="bar" id="bar"></div></div>
   </div>
 </div>
@@ -125,10 +137,10 @@ input {
 const username = "User" + Math.floor(Math.random()*9999);
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
-const roomInput = document.getElementById("room");
 const bar = document.getElementById("bar");
+const roomDisplay = document.getElementById("roomDisplay");
 
-let pc, dc, signal;
+let pc, dc, signal, isHost=false;
 
 function log(user,text){
   const div=document.createElement("div");
@@ -138,26 +150,31 @@ function log(user,text){
   messages.scrollTop=messages.scrollHeight;
 }
 
-function setup(room){
+function createRoomCode(){
+  return Math.random().toString(36).substring(2,8).toUpperCase();
+}
+
+async function setup(room){
   signal = new BroadcastChannel("opcord-"+room);
-
   pc = new RTCPeerConnection();
-  dc = pc.createDataChannel("chat");
-
-  dc.onmessage = e => log("Peer", e.data);
 
   pc.onicecandidate = e=>{
     if(e.candidate) signal.postMessage({candidate:e.candidate});
   };
 
+  pc.ondatachannel = e=>{
+    dc = e.channel;
+    dc.onmessage = ev => log("Peer", ev.data);
+  };
+
   signal.onmessage = async e=>{
-    if(e.data.offer){
+    if(e.data.offer && !isHost){
       await pc.setRemoteDescription(e.data.offer);
       const ans = await pc.createAnswer();
       await pc.setLocalDescription(ans);
       signal.postMessage({answer:ans});
     }
-    if(e.data.answer){
+    if(e.data.answer && isHost){
       await pc.setRemoteDescription(e.data.answer);
     }
     if(e.data.candidate){
@@ -165,31 +182,45 @@ function setup(room){
     }
   };
 
-  pc.createOffer().then(o=>{
-    pc.setLocalDescription(o);
-    signal.postMessage({offer:o});
-  });
+  if(isHost){
+    dc = pc.createDataChannel("chat");
+    dc.onmessage = ev => log("Peer", ev.data);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    signal.postMessage({offer});
+  }
 }
 
-roomInput.addEventListener("change",()=>{
-  setup(roomInput.value.trim());
-});
+document.getElementById("hostBtn").onclick = async ()=>{
+  isHost=true;
+  const room=createRoomCode();
+  roomDisplay.textContent="Hosting room: "+room;
+  await setup(room);
+};
+
+document.getElementById("joinBtn").onclick = async ()=>{
+  const room=document.getElementById("roomInput").value.trim();
+  if(!room) return;
+  isHost=false;
+  roomDisplay.textContent="Joined room: "+room;
+  await setup(room);
+};
 
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter" && input.value && dc?.readyState==="open"){
     let p=0;
     bar.style.width="0%";
-    const fake = setInterval(()=>{
-      p+=20;
+    const anim=setInterval(()=>{
+      p+=25;
       bar.style.width=p+"%";
       if(p>=100){
-        clearInterval(fake);
+        clearInterval(anim);
         dc.send(input.value);
         log(username,input.value);
         input.value="";
         setTimeout(()=>bar.style.width="0%",300);
       }
-    },50);
+    },40);
   }
 });
 </script>
