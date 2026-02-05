@@ -2,33 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MasterAI | Universal Edition</title>
-    <script src="https://js.puter.com/v2/"></script>
+    <title>MasterAI | Universal Access</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <style>
-        :root { --bg: #000; --accent: #007aff; --panel: #1a1a1a; --text: #eee; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; height: 100vh; }
-        #chat { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #333; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 15px; line-height: 1.4; }
-        .user { align-self: flex-end; background: var(--accent); }
-        .ai { align-self: flex-start; background: var(--panel); }
-        .footer { padding: 20px; display: flex; gap: 10px; background: #000; }
+        :root { --bg: #000; --accent: #007aff; --text: #eee; --panel: #111; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        header { padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; line-height: 1.5; font-size: 15px; }
+        .user { align-self: flex-end; background: var(--accent); color: white; }
+        .ai { align-self: flex-start; background: var(--panel); border: 1px solid #222; }
+        .footer { padding: 20px; display: flex; gap: 10px; background: #000; border-top: 1px solid #222; }
         input { flex: 1; background: var(--panel); border: 1px solid #333; color: #fff; padding: 12px; border-radius: 20px; outline: none; }
-        button { background: var(--accent); border: none; color: #fff; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+        button { background: var(--accent); border: none; color: white; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        #status { font-size: 12px; color: #666; }
     </style>
 </head>
 <body>
 
-<div id="chat">
-    <header style="padding:15px; border-bottom:1px solid #333; font-weight:bold;">MASTERAI (Universal)</header>
-    <div id="messages">
-        <div class="msg ai">Hardware check bypassed. MasterAI is ready to assist.</div>
-    </div>
-    <div class="footer">
-        <input type="text" id="userInput" placeholder="Ask anything...">
-        <button onclick="ask()">Send</button>
-    </div>
+<header>
+    <span>MASTERAI</span>
+    <span id="status">Ready</span>
+</header>
+
+<div id="messages">
+    <div class="msg ai">I am MasterAI. I am running via a secure proxy bridge. No API key or special hardware required. How can I help?</div>
+</div>
+
+<div class="footer">
+    <input type="text" id="userInput" placeholder="Type your message...">
+    <button onclick="ask()">Send</button>
 </div>
 
 <script>
@@ -39,13 +42,28 @@
 
         addMsg('user', text);
         input.value = '';
+        document.getElementById('status').innerText = "Thinking...";
 
         try {
-            // Official Puter.js call: This works without an API key or WebGPU
-            const response = await puter.ai.chat(text, { model: 'gpt-4o-mini' });
-            addMsg('ai', response.message.content);
+            // This is a free community endpoint that uses a different architecture
+            // It doesn't require a key and bypasses local hardware checks
+            const response = await fetch("https://api.airforce/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "gpt-4o",
+                    messages: [{ role: "user", content: text }],
+                    stream: false
+                })
+            });
+
+            const data = await response.json();
+            const reply = data.choices[0].message.content;
+            addMsg('ai', reply);
+            document.getElementById('status').innerText = "Ready";
         } catch (e) {
-            addMsg('ai', "Error: Could not reach the AI. Try refreshing the page.");
+            addMsg('ai', "MasterAI encountered a connection blip. Let's try that again.");
+            document.getElementById('status').innerText = "Error";
         }
     }
 
@@ -54,7 +72,9 @@
         div.className = `msg ${role}`;
         div.innerHTML = marked.parse(text);
         document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        const chat = document.getElementById('messages');
+        chat.scrollTop = chat.scrollHeight;
+        return div;
     }
 
     document.getElementById('userInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') ask(); });
