@@ -31,7 +31,7 @@ body {
 }
 
 .sidebar {
-  width:260px;
+  width:280px;
   background:var(--bg-darker);
   padding:12px;
 }
@@ -46,7 +46,7 @@ body {
   margin-bottom:12px;
 }
 
-button, input {
+input, button {
   width:100%;
   margin-top:6px;
   padding:8px;
@@ -57,8 +57,14 @@ button, input {
 }
 
 button {
-  cursor:pointer;
   background:var(--accent);
+  cursor:pointer;
+}
+
+.status {
+  margin-top:10px;
+  font-size:12px;
+  color:var(--muted);
 }
 
 .chat {
@@ -116,11 +122,13 @@ button {
 <div class="sidebar">
   <div class="server">OPCord</div>
 
+  <input id="usernameInput" placeholder="Username">
+  <input id="roomInput" placeholder="Room Code">
+
   <button id="hostBtn">Host Room</button>
-  <input id="roomInput" placeholder="Enter Room Code">
   <button id="joinBtn">Join Room</button>
 
-  <div id="roomDisplay" style="margin-top:10px;color:var(--muted)"></div>
+  <div class="status" id="status">Not connected</div>
 </div>
 
 <div class="chat">
@@ -128,99 +136,129 @@ button {
   <div class="messages" id="messages"></div>
 
   <div class="input-area">
-    <input id="input" placeholder="Message #general">
+    <input id="chatInput" placeholder="Message #general" disabled>
     <div class="progress"><div class="bar" id="bar"></div></div>
   </div>
 </div>
 
 <script>
-const username = "User" + Math.floor(Math.random()*9999);
+let pc, dc, signal;
+let username = "";
+let isHost = false;
+
 const messages = document.getElementById("messages");
-const input = document.getElementById("input");
+const chatInput = document.getElementById("chatInput");
 const bar = document.getElementById("bar");
-const roomDisplay = document.getElementById("roomDisplay");
+const status = document.getElementById("status");
 
-let pc, dc, signal, isHost=false;
-
-function log(user,text){
-  const div=document.createElement("div");
-  div.className="message";
-  div.innerHTML=`<span class="username">${user}</span>${text}`;
+function log(user, text) {
+  const div = document.createElement("div");
+  div.className = "message";
+  div.innerHTML = `<span class="username">${user}</span>${text}`;
   messages.appendChild(div);
-  messages.scrollTop=messages.scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
 }
 
-function createRoomCode(){
-  return Math.random().toString(36).substring(2,8).toUpperCase();
+function setStatus(text) {
+  status.textContent = text;
 }
 
-async function setup(room){
-  signal = new BroadcastChannel("opcord-"+room);
+function roomChannel(room) {
+  return new BroadcastChannel("opcord-" + room);
+}
+
+async function setupConnection(room) {
+  signal = roomChannel(room);
   pc = new RTCPeerConnection();
 
-  pc.onicecandidate = e=>{
-    if(e.candidate) signal.postMessage({candidate:e.candidate});
+  pc.onicecandidate = e => {
+    if (e.candidate) signal.postMessage({ candidate: e.candidate });
   };
 
-  pc.ondatachannel = e=>{
+  pc.ondatachannel = e => {
     dc = e.channel;
-    dc.onmessage = ev => log("Peer", ev.data);
+    dc.onopen = () => {
+      chatInput.disabled = false;
+      setStatus("Connected");
+    };
+    dc.onmessage = ev => {
+      const data = JSON.parse(ev.data);
+      log(data.user, data.text);
+    };
   };
 
-  signal.onmessage = async e=>{
-    if(e.data.offer && !isHost){
+  signal.onmessage = async e => {
+    if (e.data.offer && !isHost) {
       await pc.setRemoteDescription(e.data.offer);
-      const ans = await pc.createAnswer();
-      await pc.setLocalDescription(ans);
-      signal.postMessage({answer:ans});
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      signal.postMessage({ answer });
     }
-    if(e.data.answer && isHost){
+    if (e.data.answer && isHost) {
       await pc.setRemoteDescription(e.data.answer);
     }
-    if(e.data.candidate){
+    if (e.data.candidate) {
       pc.addIceCandidate(e.data.candidate);
     }
   };
 
-  if(isHost){
+  if (isHost) {
     dc = pc.createDataChannel("chat");
-    dc.onmessage = ev => log("Peer", ev.data);
+    dc.onopen = () => {
+      chatInput.disabled = false;
+      setStatus("Connected (Host)");
+    };
+    dc.onmessage = ev => {
+      const data = JSON.parse(ev.data);
+      log(data.user, data.text);
+    };
+
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    signal.postMessage({offer});
+    signal.postMessage({ offer });
   }
+
+  setStatus("Connecting...");
 }
 
-document.getElementById("hostBtn").onclick = async ()=>{
-  isHost=true;
-  const room=createRoomCode();
-  roomDisplay.textContent="Hosting room: "+room;
-  await setup(room);
+document.getElementById("hostBtn").onclick = async () => {
+  username = usernameInput.value.trim();
+  const room = roomInput.value.trim();
+
+  if (!username || !room) return alert("Username and room code required");
+
+  isHost = true;
+  await setupConnection(room);
 };
 
-document.getElementById("joinBtn").onclick = async ()=>{
-  const room=document.getElementById("roomInput").value.trim();
-  if(!room) return;
-  isHost=false;
-  roomDisplay.textContent="Joined room: "+room;
-  await setup(room);
+document.getElementById("joinBtn").onclick = async () => {
+  username = usernameInput.value.trim();
+  const room = roomInput.value.trim();
+
+  if (!username || !room) return alert("Username and room code required");
+
+  isHost = false;
+  await setupConnection(room);
 };
 
-input.addEventListener("keydown",e=>{
-  if(e.key==="Enter" && input.value && dc?.readyState==="open"){
-    let p=0;
-    bar.style.width="0%";
-    const anim=setInterval(()=>{
-      p+=25;
-      bar.style.width=p+"%";
-      if(p>=100){
-        clearInterval(anim);
-        dc.send(input.value);
-        log(username,input.value);
-        input.value="";
-        setTimeout(()=>bar.style.width="0%",300);
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && chatInput.value && dc?.readyState === "open") {
+    let p = 0;
+    bar.style.width = "0%";
+
+    const sendAnim = setInterval(() => {
+      p += 25;
+      bar.style.width = p + "%";
+
+      if (p >= 100) {
+        clearInterval(sendAnim);
+        const msg = { user: username, text: chatInput.value };
+        dc.send(JSON.stringify(msg));
+        log(username, chatInput.value);
+        chatInput.value = "";
+        setTimeout(() => bar.style.width = "0%", 300);
       }
-    },40);
+    }, 40);
   }
 });
 </script>
