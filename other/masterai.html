@@ -3,83 +3,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAI | GitLab Edition</title>
+    <title>MasterAI | Canvas Edition</title>
     <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --accent: #58a6ff; --text: #c9d1d9; --border: #30363d; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; }
-        
-        header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--panel); }
-        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        
-        .msg { max-width: 85%; padding: 12px 16px; border-radius: 12px; line-height: 1.5; font-size: 15px; border: 1px solid transparent; }
-        .user { align-self: flex-end; background: rgba(88, 166, 255, 0.1); border-color: var(--accent); color: #fff; }
-        .ai { align-self: flex-start; background: var(--panel); border-color: var(--border); }
+        :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --accent: #58a6ff; --text: #c9d1d9; --canvas-bg: #010409; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        .footer { padding: 20px; background: var(--bg); border-top: 1px solid var(--border); display: flex; gap: 10px; }
-        input { flex: 1; background: var(--panel); border: 1px solid var(--border); color: white; padding: 12px 18px; border-radius: 25px; outline: none; }
-        button { background: var(--accent); color: #fff; border: none; padding: 10px 25px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        /* Main Layout */
+        .container { display: flex; width: 100%; height: 100%; }
         
-        #status { font-size: 12px; color: #8b949e; }
+        /* Left: Chat Side */
+        .chat-pane { width: 400px; display: flex; flex-direction: column; border-right: 1px solid var(--border); flex-shrink: 0; transition: width 0.3s; }
+        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: var(--panel); font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .chat-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+        .chat-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--panel); display: flex; gap: 10px; }
+
+        /* Right: Canvas Side */
+        .canvas-pane { flex: 1; display: flex; flex-direction: column; background: var(--canvas-bg); position: relative; }
+        .canvas-header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 14px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; }
+        .canvas-content { flex: 1; overflow: auto; padding: 0; position: relative; }
+        
+        /* Code Editor Style in Canvas */
+        #codeEditor { width: 100%; height: 100%; padding: 20px; border: none; background: transparent; color: #e6edf3; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 14px; outline: none; resize: none; display: none; }
+        #codePreview { width: 100%; height: 100%; padding: 20px; display: none; }
+        .empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #484f58; text-align: center; }
+
+        /* Messages */
+        .msg { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
+        .user { align-self: flex-end; background: #1f6feb; color: white; }
+        .ai { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
+        .ai img { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
+        
+        /* Inputs */
+        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; }
+        input:focus { border-color: var(--accent); }
+        button { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Status indicator */
+        .status-dot { height: 8px; width: 8px; background-color: #238636; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .thinking .status-dot { background-color: #e3b341; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* Code block styling in chat */
+        pre { background: #0d1117; padding: 10px; border-radius: 6px; overflow-x: auto; margin: 5px 0; border: 1px solid var(--border); }
+        code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<header>
-    <div style="font-weight: bold; letter-spacing: 1px;">MASTERAI</div>
-    <div id="status">Connecting to Cloud...</div>
-</header>
+<div class="container">
+    <div class="chat-pane">
+        <div class="chat-header">
+            <div>MasterAI <span style="font-size:11px; opacity:0.6; font-weight:normal;">GPT-5 Nano</span></div>
+            <div id="status" style="font-size: 12px; display: flex; align-items: center;"><span class="status-dot"></span>Ready</div>
+        </div>
+        <div id="chat" class="chat-body">
+            <div class="msg ai">
+                Hello! I am connected to <b>gpt-5-nano</b>.
+                <br><br>
+                • Ask me to write code to see the <b>Canvas</b>.
+                <br>
+                • Ask me to <b>"draw an image"</b>.
+                <br>
+                • Ask me to <b>"say something"</b> for audio.
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
+            <button onclick="handleRequest()" id="sendBtn">Send</button>
+        </div>
+    </div>
 
-<div id="chat">
-    <div class="msg ai">MasterAI initialized for GitLab. No terminal or API key required. How can I help you today?</div>
-</div>
-
-<div class="footer">
-    <input type="text" id="userInput" placeholder="Message MasterAI...">
-    <button onclick="askAI()">SEND</button>
+    <div class="canvas-pane">
+        <div class="canvas-header">
+            <span>CANVAS</span>
+            <button onclick="copyCanvas()" style="padding: 4px 12px; font-size: 12px;">Copy</button>
+        </div>
+        <div class="canvas-content">
+            <div class="empty-state" id="emptyState">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:10px; opacity: 0.5;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <br>Generated content will appear here
+            </div>
+            <pre id="codePreview"><code id="codeBlock" class="language-javascript"></code></pre>
+        </div>
+    </div>
 </div>
 
 <script>
-    // Puter automatically handles the "API" part for you for free
-    async function askAI() {
+    let conversationHistory = [];
+    const chatBox = document.getElementById('chat');
+    const statusDiv = document.getElementById('status');
+    const emptyState = document.getElementById('emptyState');
+    const codePreview = document.getElementById('codePreview');
+    const codeBlock = document.getElementById('codeBlock');
+
+    // 1. MAIN HANDLER
+    async function handleRequest() {
         const input = document.getElementById('userInput');
         const text = input.value.trim();
         if (!text) return;
 
+        // UI Updates
         addMsg('user', text);
         input.value = '';
-        document.getElementById('status').innerText = "MasterAI is thinking...";
-
+        setStatus(true, "Thinking...");
+        
+        // 2. DETECT INTENT (Image vs Speech vs Chat)
+        const lowerText = text.toLowerCase();
+        
         try {
-            // This calls a high-end model (like GPT-4o-mini) via Puter's free tier
-            const response = await puter.ai.chat(text);
+            // --- IMAGE GENERATION ---
+            if (lowerText.startsWith("draw") || lowerText.startsWith("generate image") || lowerText.includes("create an image")) {
+                addMsg('ai', "🎨 Generating image...");
+                const image = await puter.ai.txt2img(text);
+                
+                // Remove the "Generating..." placeholder (last child)
+                chatBox.removeChild(chatBox.lastChild);
+                
+                // Create image container
+                const div = document.createElement('div');
+                div.className = 'msg ai';
+                div.appendChild(image);
+                chatBox.appendChild(div);
+                setStatus(false, "Ready");
+            } 
             
-            // Puter returns an object; we get the content string from it
-            const reply = response.message.content;
-            addMsg('ai', reply);
-            document.getElementById('status').innerText = "Online";
+            // --- TEXT TO SPEECH ---
+            else if (lowerText.startsWith("say") || lowerText.startsWith("speak")) {
+                // Remove "say" or "speak" from the text to get the content
+                const contentToSpeak = text.replace(/^(say|speak)/i, "").trim();
+                
+                if(contentToSpeak) {
+                    const audio = await puter.ai.txt2speech(contentToSpeak);
+                    audio.play();
+                    addMsg('ai', `🔊 *Speaking:* "${contentToSpeak}"`);
+                } else {
+                    addMsg('ai', "What would you like me to say?");
+                }
+                setStatus(false, "Ready");
+            }
+
+            // --- STANDARD CHAT (GPT-5-NANO) ---
+            else {
+                conversationHistory.push({ role: 'user', content: text });
+
+                const response = await puter.ai.chat(conversationHistory, { 
+                    model: 'gpt-5-nano' 
+                });
+                
+                const reply = response.message.content;
+                conversationHistory.push(response.message);
+                
+                // Check for Code to move to Canvas
+                const codeMatch = reply.match(/```(\w+)?\n([\s\S]*?)```/);
+                
+                if (codeMatch) {
+                    // Update Canvas
+                    updateCanvas(codeMatch[2], codeMatch[1] || 'plaintext');
+                    // Show message without the code block (optional, or keep it)
+                    // For this demo, we keep the full message in chat too, but Canvas focuses on it.
+                    addMsg('ai', reply); 
+                } else {
+                    addMsg('ai', reply);
+                }
+                setStatus(false, "Ready");
+            }
+
         } catch (e) {
             console.error(e);
-            addMsg('ai', "MasterAI Error: Could not reach the cloud. Please refresh.");
-            document.getElementById('status').innerText = "Connection Failed";
+            addMsg('ai', `**Error:** ${e.message}`);
+            setStatus(false, "Error");
         }
     }
 
+    // Helper: Update Canvas
+    function updateCanvas(code, lang) {
+        emptyState.style.display = 'none';
+        codePreview.style.display = 'block';
+        
+        // Remove existing highlighting classes
+        codeBlock.className = '';
+        codeBlock.classList.add(`language-${lang}`);
+        codeBlock.textContent = code;
+        
+        // Apply Highlight.js
+        hljs.highlightElement(codeBlock);
+    }
+
+    // Helper: Add Message
     function addMsg(role, text) {
         const div = document.createElement('div');
         div.className = `msg ${role}`;
         div.innerHTML = marked.parse(text);
-        document.getElementById('chat').appendChild(div);
-        document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Auto-status update
-    window.onload = () => { document.getElementById('status').innerText = "Online"; };
-    
+    // Helper: Set Status
+    function setStatus(loading, text) {
+        const dot = document.querySelector('.status-dot');
+        const txt = document.getElementById('status');
+        if (loading) {
+            statusDiv.classList.add('thinking');
+            txt.innerHTML = `<span class="status-dot"></span> ${text}`;
+        } else {
+            statusDiv.classList.remove('thinking');
+            txt.innerHTML = `<span class="status-dot"></span> ${text}`;
+        }
+    }
+
+    // Helper: Copy Canvas Content
+    function copyCanvas() {
+        const text = document.getElementById('codeBlock').textContent;
+        navigator.clipboard.writeText(text);
+        alert("Canvas content copied!");
+    }
+
     // Enter key support
     document.getElementById('userInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') askAI();
+        if (e.key === 'Enter') handleRequest();
     });
 </script>
 </body>
