@@ -4,96 +4,123 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MasterAI | Canvas Edition</title>
+    
     <script src="https://js.puter.com/v2/"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --accent: #58a6ff; --text: #c9d1d9; --canvas-bg: #010409; }
+        :root { 
+            --bg: #0d1117; 
+            --panel: #161b22; 
+            --border: #30363d; 
+            --accent: #58a6ff; 
+            --text: #c9d1d9; 
+            --canvas-bg: #010409; 
+        }
         * { box-sizing: border-box; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* Main Layout */
+        /* Main Container */
         .container { display: flex; width: 100%; height: 100%; }
         
-        /* Left: Chat Side */
-        .chat-pane { width: 400px; display: flex; flex-direction: column; border-right: 1px solid var(--border); flex-shrink: 0; transition: width 0.3s; }
-        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: var(--panel); font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        /* LEFT: Chat Pane */
+        .chat-pane { width: 400px; min-width: 250px; display: flex; flex-direction: column; background: var(--bg); }
+        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: var(--panel); font-weight: bold; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px;}
         .chat-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
         .chat-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--panel); display: flex; gap: 10px; }
 
-        /* Right: Canvas Side */
-        .canvas-pane { flex: 1; display: flex; flex-direction: column; background: var(--canvas-bg); position: relative; }
-        .canvas-header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 14px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; }
-        .canvas-content { flex: 1; overflow: auto; padding: 0; position: relative; }
+        /* RESIZER: Draggable Bar */
+        .resizer { width: 5px; background: var(--border); cursor: col-resize; transition: background 0.2s; z-index: 10; }
+        .resizer:hover, .resizer.active { background: var(--accent); }
+
+        /* RIGHT: Canvas Pane */
+        .canvas-pane { flex: 1; min-width: 300px; display: flex; flex-direction: column; background: var(--canvas-bg); overflow: hidden; }
+        .canvas-header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 13px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; font-weight: 600; text-transform: uppercase; }
+        .canvas-content { flex: 1; padding: 0; position: relative; overflow: auto; display: flex; align-items: center; justify-content: center; }
+
+        /* Canvas Content Areas */
+        #codeContainer { width: 100%; height: 100%; display: none; padding: 20px; text-align: left; align-items: flex-start; }
+        #mediaContainer { width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         
-        /* Code Editor Style in Canvas */
-        #codeEditor { width: 100%; height: 100%; padding: 20px; border: none; background: transparent; color: #e6edf3; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 14px; outline: none; resize: none; display: none; }
-        #codePreview { width: 100%; height: 100%; padding: 20px; display: none; }
-        .empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #484f58; text-align: center; }
+        /* Empty State */
+        .empty-state { color: #484f58; text-align: center; font-size: 14px; }
+        
+        /* Media Elements */
+        img.generated-image { max-width: 100%; max-height: 90vh; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        audio { width: 300px; margin-top: 20px; }
 
         /* Messages */
         .msg { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
         .user { align-self: flex-end; background: #1f6feb; color: white; }
         .ai { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
-        .ai img { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
         
         /* Inputs */
-        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; }
+        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; transition: border 0.2s; }
         input:focus { border-color: var(--accent); }
-        button { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
         
-        /* Status indicator */
-        .status-dot { height: 8px; width: 8px; background-color: #238636; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        /* Status Dot */
+        .status-dot { height: 8px; width: 8px; background-color: #238636; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .thinking .status-dot { background-color: #e3b341; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
-
-        /* Code block styling in chat */
-        pre { background: #0d1117; padding: 10px; border-radius: 6px; overflow-x: auto; margin: 5px 0; border: 1px solid var(--border); }
-        code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; }
+        
+        /* Code Block Styling */
+        pre { margin: 0; border-radius: 6px; }
+        code { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="chat-pane">
+<div class="container" id="mainContainer">
+    <div class="chat-pane" id="chatPane">
         <div class="chat-header">
-            <div>MasterAI <span style="font-size:11px; opacity:0.6; font-weight:normal;">GPT-5 Nano</span></div>
-            <div id="status" style="font-size: 12px; display: flex; align-items: center;"><span class="status-dot"></span>Ready</div>
+            <div>MASTERAI</div>
+            <div id="status" style="font-size: 12px; display: flex; align-items: center; color: #8b949e;"><span class="status-dot"></span>Online</div>
         </div>
         <div id="chat" class="chat-body">
             <div class="msg ai">
-                Hello! I am connected to <b>gpt-5-nano</b>.
+                Hello. I am MasterAI.
                 <br><br>
-                • Ask me to write code to see the <b>Canvas</b>.
+                • <b>Web Search:</b> "What is the price of Bitcoin?"
                 <br>
-                • Ask me to <b>"draw an image"</b>.
+                • <b>Generate Image:</b> "Draw a futuristic city."
                 <br>
-                • Ask me to <b>"say something"</b> for audio.
+                • <b>Audio:</b> "Say 'System Ready' in a robot voice."
+                <br>
+                • <b>Coding:</b> "Write a python script to calculate pi."
             </div>
         </div>
         <div class="chat-footer">
-            <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
+            <input type="text" id="userInput" placeholder="Message MasterAI..." autocomplete="off">
             <button onclick="handleRequest()" id="sendBtn">Send</button>
         </div>
     </div>
 
-    <div class="canvas-pane">
+    <div class="resizer" id="resizer"></div>
+
+    <div class="canvas-pane" id="canvasPane">
         <div class="canvas-header">
-            <span>CANVAS</span>
-            <button onclick="copyCanvas()" style="padding: 4px 12px; font-size: 12px;">Copy</button>
+            <span>CANVAS WORKSPACE</span>
+            <button onclick="clearCanvas()" style="padding: 4px 10px; font-size: 11px; background: #21262d; border: 1px solid var(--border);">Clear</button>
         </div>
         <div class="canvas-content">
             <div class="empty-state" id="emptyState">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:10px; opacity: 0.5;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:10px; opacity: 0.5;">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
                 </svg>
-                <br>Generated content will appear here
+                <br>Generated media & code appear here
             </div>
-            <pre id="codePreview"><code id="codeBlock" class="language-javascript"></code></pre>
+
+            <div id="codeContainer">
+                <pre style="width:100%;"><code id="codeBlock"></code></pre>
+            </div>
+
+            <div id="mediaContainer"></div>
         </div>
     </div>
 </div>
@@ -101,105 +128,136 @@
 <script>
     let conversationHistory = [];
     const chatBox = document.getElementById('chat');
-    const statusDiv = document.getElementById('status');
+    
+    // Canvas Elements
     const emptyState = document.getElementById('emptyState');
-    const codePreview = document.getElementById('codePreview');
+    const codeContainer = document.getElementById('codeContainer');
+    const mediaContainer = document.getElementById('mediaContainer');
     const codeBlock = document.getElementById('codeBlock');
 
-    // 1. MAIN HANDLER
+    // 1. MAIN LOGIC
     async function handleRequest() {
         const input = document.getElementById('userInput');
         const text = input.value.trim();
         if (!text) return;
 
+        // Verify Puter is loaded
+        if (typeof puter === 'undefined') {
+            alert("Error: Puter.js failed to load. Please check your internet connection.");
+            return;
+        }
+
         // UI Updates
         addMsg('user', text);
         input.value = '';
-        setStatus(true, "Thinking...");
+        setStatus(true, "Processing...");
         
-        // 2. DETECT INTENT (Image vs Speech vs Chat)
         const lowerText = text.toLowerCase();
         
         try {
             // --- IMAGE GENERATION ---
-            if (lowerText.startsWith("draw") || lowerText.startsWith("generate image") || lowerText.includes("create an image")) {
-                addMsg('ai', "🎨 Generating image...");
+            if (lowerText.startsWith("draw") || lowerText.includes("generate image") || lowerText.includes("create an image")) {
+                addMsg('ai', "🎨 Generating artwork...");
                 const image = await puter.ai.txt2img(text);
-                
-                // Remove the "Generating..." placeholder (last child)
-                chatBox.removeChild(chatBox.lastChild);
-                
-                // Create image container
-                const div = document.createElement('div');
-                div.className = 'msg ai';
-                div.appendChild(image);
-                chatBox.appendChild(div);
-                setStatus(false, "Ready");
+                showMedia(image, 'image');
+                addMsg('ai', "Image generated on Canvas.");
+                setStatus(false, "Online");
             } 
             
             // --- TEXT TO SPEECH ---
             else if (lowerText.startsWith("say") || lowerText.startsWith("speak")) {
-                // Remove "say" or "speak" from the text to get the content
                 const contentToSpeak = text.replace(/^(say|speak)/i, "").trim();
-                
                 if(contentToSpeak) {
+                    addMsg('ai', "🔊 Generating audio...");
                     const audio = await puter.ai.txt2speech(contentToSpeak);
-                    audio.play();
-                    addMsg('ai', `🔊 *Speaking:* "${contentToSpeak}"`);
+                    showMedia(audio, 'audio');
+                    addMsg('ai', `Audio generated on Canvas.`);
                 } else {
-                    addMsg('ai', "What would you like me to say?");
+                    addMsg('ai', "What should I say?");
                 }
-                setStatus(false, "Ready");
+                setStatus(false, "Online");
             }
 
-            // --- STANDARD CHAT (GPT-5-NANO) ---
+            // --- CHAT + WEB SEARCH + CODE ---
             else {
                 conversationHistory.push({ role: 'user', content: text });
 
+                // Call Chat with Web Search Tool Enabled
                 const response = await puter.ai.chat(conversationHistory, { 
-                    model: 'gpt-5-nano' 
+                    model: 'gpt-4o-mini', // or 'gpt-4o' if available
+                    tools: [{ type: "web_search" }] 
                 });
                 
                 const reply = response.message.content;
                 conversationHistory.push(response.message);
                 
-                // Check for Code to move to Canvas
+                // Detect Code Block
                 const codeMatch = reply.match(/```(\w+)?\n([\s\S]*?)```/);
                 
                 if (codeMatch) {
-                    // Update Canvas
-                    updateCanvas(codeMatch[2], codeMatch[1] || 'plaintext');
-                    // Show message without the code block (optional, or keep it)
-                    // For this demo, we keep the full message in chat too, but Canvas focuses on it.
+                    // Show code on canvas
+                    showCode(codeMatch[2], codeMatch[1] || 'plaintext');
+                    // Show text response in chat
                     addMsg('ai', reply); 
                 } else {
                     addMsg('ai', reply);
                 }
-                setStatus(false, "Ready");
+                setStatus(false, "Online");
             }
 
         } catch (e) {
             console.error(e);
-            addMsg('ai', `**Error:** ${e.message}`);
+            addMsg('ai', `**System Error:** ${e.message}`);
             setStatus(false, "Error");
         }
     }
 
-    // Helper: Update Canvas
-    function updateCanvas(code, lang) {
+    // 2. CANVAS DISPLAY HELPERS
+    function resetCanvas() {
         emptyState.style.display = 'none';
-        codePreview.style.display = 'block';
-        
-        // Remove existing highlighting classes
-        codeBlock.className = '';
-        codeBlock.classList.add(`language-${lang}`);
+        codeContainer.style.display = 'none';
+        mediaContainer.style.display = 'none';
+        mediaContainer.innerHTML = ''; // Clear previous media
+    }
+
+    function showCode(code, lang) {
+        resetCanvas();
+        codeContainer.style.display = 'flex';
+        codeBlock.className = `language-${lang}`;
         codeBlock.textContent = code;
-        
-        // Apply Highlight.js
         hljs.highlightElement(codeBlock);
     }
 
-    // Helper: Add Message
+    function showMedia(element, type) {
+        resetCanvas();
+        mediaContainer.style.display = 'flex';
+        
+        if(type === 'image') {
+            element.className = 'generated-image';
+            mediaContainer.appendChild(element);
+        } else if (type === 'audio') {
+            element.controls = true;
+            element.autoplay = true;
+            mediaContainer.appendChild(element);
+            
+            // Visual Label
+            const label = document.createElement('div');
+            label.innerText = "Audio Generated";
+            label.style.marginTop = "15px";
+            label.style.color = "#8b949e";
+            mediaContainer.appendChild(label);
+        }
+    }
+
+    function clearCanvas() {
+        emptyState.style.display = 'block';
+        codeContainer.style.display = 'none';
+        mediaContainer.style.display = 'none';
+        mediaContainer.innerHTML = '';
+        codeBlock.textContent = '';
+    }
+
+    // 3. CHAT HELPERS
     function addMsg(role, text) {
         const div = document.createElement('div');
         div.className = `msg ${role}`;
@@ -208,30 +266,51 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Helper: Set Status
     function setStatus(loading, text) {
-        const dot = document.querySelector('.status-dot');
-        const txt = document.getElementById('status');
+        const statusDiv = document.getElementById('status');
+        const dot = statusDiv.querySelector('.status-dot');
+        
         if (loading) {
             statusDiv.classList.add('thinking');
-            txt.innerHTML = `<span class="status-dot"></span> ${text}`;
+            statusDiv.innerHTML = `<span class="status-dot"></span> ${text}`;
         } else {
             statusDiv.classList.remove('thinking');
-            txt.innerHTML = `<span class="status-dot"></span> ${text}`;
+            statusDiv.innerHTML = `<span class="status-dot"></span> ${text}`;
         }
     }
 
-    // Helper: Copy Canvas Content
-    function copyCanvas() {
-        const text = document.getElementById('codeBlock').textContent;
-        navigator.clipboard.writeText(text);
-        alert("Canvas content copied!");
-    }
+    // 4. RESIZER LOGIC
+    const resizer = document.getElementById('resizer');
+    const chatPane = document.getElementById('chatPane');
+    let isResizing = false;
 
-    // Enter key support
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizer.classList.add('active');
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const newWidth = e.clientX;
+        // Constraints (min widths)
+        if (newWidth > 200 && newWidth < window.innerWidth - 300) {
+            chatPane.style.width = `${newWidth}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isResizing = false;
+        resizer.classList.remove('active');
+        document.body.style.cursor = 'default';
+    });
+
+    // Enter Key
     document.getElementById('userInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleRequest();
     });
+
 </script>
 </body>
 </html>
