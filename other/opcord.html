@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>OPCord</title>
+<style>
+:root {
+  --bg-main: #36393f;
+  --bg-dark: #2f3136;
+  --bg-darker: #202225;
+  --accent: #5865f2;
+  --text: #dcddde;
+  --muted: #72767d;
+  --input: #40444b;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--bg-main);
+  color: var(--text);
+  display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: var(--bg-darker);
+  padding: 12px;
+}
+
+.server {
+  background: var(--accent);
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.channel {
+  padding: 8px;
+  border-radius: 5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.channel.active {
+  background: var(--bg-dark);
+  color: var(--text);
+}
+
+/* Chat area */
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 12px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid #000;
+}
+
+.messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.message {
+  margin-bottom: 12px;
+}
+
+.username {
+  color: var(--accent);
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+.input-area {
+  padding: 12px;
+  background: var(--bg-dark);
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  outline: none;
+  background: var(--input);
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="server">OPCord</div>
+  <div class="channel active"># general</div>
+</div>
+
+<div class="chat">
+  <div class="header"># general</div>
+  <div class="messages" id="messages"></div>
+  <div class="input-area">
+    <input id="input" placeholder="Message #general" />
+  </div>
+</div>
+
+<script>
+const username = "User" + Math.floor(Math.random() * 9999);
+const channel = new BroadcastChannel("opcord");
+const messages = document.getElementById("messages");
+const input = document.getElementById("input");
+
+function addMessage(user, text) {
+  const div = document.createElement("div");
+  div.className = "message";
+  div.innerHTML = `<span class="username">${user}</span>${text}`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+channel.onmessage = (e) => {
+  addMessage(e.data.user, e.data.text);
+};
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && input.value.trim()) {
+    channel.postMessage({ user: username, text: input.value });
+    input.value = "";
+  }
+});
+</script>
+
+</body>
+</html>
