@@ -8,198 +8,184 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            --bg: #000000;
-            --chat-bg: #000000;
-            --user-blue: #007aff;
-            --ai-gray: #1c1c1e;
-            --text: #ffffff;
-            --border: #333333;
-            --canvas-bg: #111111;
-            --loading-blue: #007aff;
+            --bg: #000000; --chat-bg: #000000; --user-blue: #007aff;
+            --ai-gray: #1c1c1e; --text: #ffffff; --border: #333333;
+            --canvas-bg: #111111; --loading-blue: #007aff;
         }
         * { box-sizing: border-box; }
         body {
             margin: 0; display: flex; flex-direction: column; height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg); color: var(--text); overflow: hidden;
         }
 
-        /* --- Loading Bar --- */
-        #connection-bar { height: 4px; width: 100%; background: #1a1a1a; position: relative; overflow: hidden; z-index: 1000; }
-        #progress-fill {
-            height: 100%; width: 0%; background: var(--loading-blue);
-            transition: width 0.3s ease;
-        }
+        /* Loading Bar */
+        #connection-bar { height: 4px; width: 100%; background: #1a1a1a; position: relative; z-index: 1000; }
+        #progress-fill { height: 100%; width: 0%; background: var(--loading-blue); transition: width 0.2s; }
 
         #main-container { flex: 1; display: flex; width: 100%; }
-        #chat-section { flex: 1; min-width: 320px; display: flex; flex-direction: column; background: var(--chat-bg); position: relative; }
-
-        #resizer { width: 4px; cursor: col-resize; background: transparent; z-index: 100; flex-shrink: 0; }
-        #resizer:hover, #resizer.active { background: #444; }
-
-        #canvas-section { width: 0; display: none; flex-direction: column; background: var(--bg); padding: 20px; border-left: 1px solid var(--border); }
-
-        /* --- Header --- */
-        header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-        .header-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
-        
-        /* --- Chat --- */
+        #chat-section { flex: 1; min-width: 320px; display: flex; flex-direction: column; position: relative; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-        .msg { max-width: 80%; padding: 10px 16px; font-size: 16px; line-height: 1.4; border-radius: 20px; width: fit-content; word-wrap: break-word; }
-        .user-msg { align-self: flex-end; background: var(--user-blue); color: white; border-bottom-right-radius: 4px; }
-        .ai-msg { align-self: flex-start; background: var(--ai-gray); color: white; border-bottom-left-radius: 4px; }
+        
+        /* iOS Bubbles */
+        .msg { max-width: 80%; padding: 10px 16px; font-size: 16px; border-radius: 20px; width: fit-content; }
+        .user-msg { align-self: flex-end; background: var(--user-blue); border-bottom-right-radius: 4px; }
+        .ai-msg { align-self: flex-start; background: var(--ai-gray); border-bottom-left-radius: 4px; }
 
-        /* --- Input --- */
+        /* Input Area */
         .input-wrapper { padding: 15px 20px 30px; display: flex; flex-direction: column; align-items: center; }
         .input-container {
             background: #1c1c1e; border-radius: 24px; padding: 4px 10px;
             border: 1px solid var(--border); display: flex; align-items: flex-end; width: 100%; max-width: 650px;
         }
-        textarea { flex: 1; background: transparent; border: none; color: white; padding: 10px; outline: none; resize: none; font-size: 16px; max-height: 150px; font-family: inherit; }
-        .icon-btn { background: none; border: none; cursor: pointer; padding: 8px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; }
-        #send-btn { background: #333; border-radius: 50%; width: 32px; height: 32px; margin-bottom: 4px; }
+        textarea { flex: 1; background: transparent; border: none; color: white; padding: 10px; outline: none; resize: none; font-size: 16px; max-height: 150px; }
+        
+        .icon-btn { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; }
+        #send-btn { background: #333; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
         #send-btn.ready { background: var(--user-blue); }
-        svg { fill: white; width: 18px; height: 18px; }
-
+        
         .btn { background: #2c2c2e; color: #007aff; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600; }
         .hidden { display: none !important; }
+        
+        #resizer { width: 4px; cursor: col-resize; background: transparent; }
+        #canvas-section { width: 0; display: none; flex-direction: column; padding: 20px; border-left: 1px solid var(--border); }
     </style>
 </head>
 <body>
 
-    <div id="connection-bar"><div id="progress-fill"></div></div>
+<div id="connection-bar"><div id="progress-fill"></div></div>
 
-    <div id="main-container">
-        <div id="chat-section">
-            <header>
-                <button class="btn" onclick="newChat()">Reset</button>
-                <div class="header-title">MasterAI</div>
-                <button id="retry-btn" class="btn hidden" onclick="location.reload()">Retry Connection</button>
-            </header>
-            <div id="messages"></div>
-            
-            <div class="input-wrapper">
-                <div class="input-container">
-                    <button class="icon-btn" onclick="document.getElementById('file-in').click()"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
-                    <input type="file" id="file-in" class="hidden" onchange="uploadFile()">
-                    <textarea id="user-input" rows="1" placeholder="Type a message..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-                    <button id="send-btn" class="icon-btn" onclick="askMasterAI()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
-                </div>
-                <div style="margin-top:10px;"><button id="view-canvas-btn" class="btn hidden" onclick="toggleCanvas()">Open Workspace</button></div>
+<div id="main-container">
+    <div id="chat-section">
+        <header style="padding: 12px 20px; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border);">
+            <button class="btn" onclick="newChat()">Reset</button>
+            <div style="font-weight:600">MasterAI</div>
+            <button id="mode-btn" class="btn" onclick="toggleManualMode()">Key Mode</button>
+        </header>
+        <div id="messages"></div>
+        <div class="input-wrapper">
+            <div id="key-input-area" class="hidden" style="margin-bottom:10px; width:100%; max-width:650px;">
+                <input type="password" id="api-key" placeholder="Enter OpenAI Key if Puter fails..." style="width:100%; background:#1c1c1e; color:white; border:1px solid var(--border); padding:8px; border-radius:10px;">
             </div>
-        </div>
-        <div id="resizer" class="hidden"></div>
-        <div id="canvas-section">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span style="font-size:12px; color:#8e8e93;">WORKSPACE</span>
-                <button class="btn" onclick="toggleCanvas()">Close</button>
+            <div class="input-container">
+                <button class="icon-btn" onclick="document.getElementById('file-in').click()"><svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
+                <input type="file" id="file-in" class="hidden">
+                <textarea id="user-input" rows="1" placeholder="Type a message..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+                <button id="send-btn" class="icon-btn" onclick="askMasterAI()"><svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
             </div>
-            <div id="canvas-content" style="flex:1; background:var(--canvas-bg); border-radius:12px; padding:20px; border:1px solid var(--border); font-family:monospace; overflow-y:auto; color:#fff;" contenteditable="true"></div>
+            <div style="margin-top:10px;"><button id="view-canvas-btn" class="btn hidden" onclick="toggleCanvas()">Open Workspace</button></div>
         </div>
     </div>
+    <div id="resizer" class="hidden"></div>
+    <div id="canvas-section">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span style="font-size:12px; color:#8e8e93;">WORKSPACE</span><button class="btn" onclick="toggleCanvas()">Close</button></div>
+        <div id="canvas-content" style="flex:1; background:var(--canvas-bg); border-radius:12px; padding:20px; border:1px solid var(--border); font-family:monospace; overflow-y:auto; color:#fff;" contenteditable="true"></div>
+    </div>
+</div>
 
 <script>
     const progFill = document.getElementById('progress-fill');
     const sendBtn = document.getElementById('send-btn');
-    const messagesContainer = document.getElementById('messages');
-    let isConnected = false;
+    let useManual = false;
 
-    // --- Critical Loading Logic ---
-    let progress = 0;
-    const loadTimer = setInterval(() => {
-        if (progress < 90) progress += 5;
-        progFill.style.width = progress + "%";
-
+    // --- Loading Logic ---
+    let pct = 0;
+    const loader = setInterval(() => {
+        if (pct < 85) pct += 5;
+        progFill.style.width = pct + "%";
+        
         if (typeof puter !== 'undefined') {
-            isConnected = true;
-            progress = 100;
-            progFill.style.width = "100%";
+            pct = 100; progFill.style.width = "100%";
             progFill.style.background = "#34c759";
             sendBtn.classList.add('ready');
-            clearInterval(loadTimer);
-            setTimeout(() => { document.getElementById('connection-bar').style.height = '0'; }, 800);
+            clearInterval(loader);
+            setTimeout(() => { document.getElementById('connection-bar').style.height = "0"; }, 600);
             loadHistory();
         }
-    }, 300);
+    }, 200);
 
-    // Show retry button if stuck for 7 seconds
-    setTimeout(() => { if(!isConnected) document.getElementById('retry-btn').classList.remove('hidden'); }, 7000);
+    function toggleManualMode() {
+        useManual = !useManual;
+        document.getElementById('key-input-area').classList.toggle('hidden');
+        document.getElementById('mode-btn').innerText = useManual ? "Puter Mode" : "Key Mode";
+        sendBtn.classList.add('ready');
+    }
 
     async function askMasterAI() {
         const input = document.getElementById('user-input');
         const text = input.value.trim();
-        if (!text || !isConnected) return;
+        if (!text) return;
 
         appendMsg('user', text);
-        input.value = '';
-        input.style.height = 'auto';
+        input.value = ''; input.style.height = 'auto';
 
         try {
-            const response = await puter.ai.chat(text, { 
-                model: 'gpt-4o', 
-                system_message: "You are MasterAI. Wrap any code/docs in [CANVAS]...[/CANVAS] tags." 
-            });
-            const aiText = response.message.content;
+            let aiResponse = "";
+            if (!useManual) {
+                const res = await puter.ai.chat(text, { model: 'gpt-4o', system_message: "Rebrand as MasterAI. Use [CANVAS]...[/CANVAS] for code." });
+                aiResponse = res.message.content;
+            } else {
+                const key = document.getElementById('api-key').value;
+                const res = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: "gpt-4o-mini", messages: [{role:"user", content:text}] })
+                });
+                const data = await res.json();
+                aiResponse = data.choices[0].message.content;
+            }
 
-            if (aiText.includes("[CANVAS]")) {
-                const parts = aiText.split("[CANVAS]");
-                appendMsg('ai', parts[0] + "\n\n*(Artifact in workspace)*");
+            if (aiResponse.includes("[CANVAS]")) {
+                const parts = aiResponse.split("[CANVAS]");
+                appendMsg('ai', parts[0] + "\n\n*(Sent to Workspace)*");
                 document.getElementById('canvas-content').innerText = parts[1].split("[/CANVAS]")[0].trim();
                 document.getElementById('view-canvas-btn').classList.remove('hidden');
             } else {
-                appendMsg('ai', aiText);
+                appendMsg('ai', aiResponse);
             }
             saveHistory();
         } catch (e) { appendMsg('ai', "Error: " + e.message); }
     }
 
-    // --- Messaging & Persistence ---
     function appendMsg(role, text) {
         const d = document.createElement('div');
         d.className = `msg ${role}-msg`;
         d.innerHTML = marked.parse(text);
-        messagesContainer.appendChild(d);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        document.getElementById('messages').appendChild(d);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     }
 
     function saveHistory() {
-        const data = { chat: messagesContainer.innerHTML, canvas: document.getElementById('canvas-content').innerText };
-        localStorage.setItem('masterai_v2', JSON.stringify(data));
+        localStorage.setItem('masterai_v3', JSON.stringify({ chat: document.getElementById('messages').innerHTML, canvas: document.getElementById('canvas-content').innerText }));
     }
 
     function loadHistory() {
-        const saved = localStorage.getItem('masterai_v2');
+        const saved = localStorage.getItem('masterai_v3');
         if (saved) {
             const data = JSON.parse(saved);
-            messagesContainer.innerHTML = data.chat;
+            document.getElementById('messages').innerHTML = data.chat;
             document.getElementById('canvas-content').innerText = data.canvas;
-            if (data.canvas.trim()) document.getElementById('view-canvas-btn').classList.remove('hidden');
+            if (data.canvas) document.getElementById('view-canvas-btn').classList.remove('hidden');
         } else {
-            appendMsg('ai', "MasterAI connected. How can I help?");
+            appendMsg('ai', "MasterAI ready.");
         }
     }
 
-    function newChat() { if(confirm("Clear history?")) { localStorage.removeItem('masterai_v2'); location.reload(); } }
-
+    function newChat() { if(confirm("Clear?")) { localStorage.removeItem('masterai_v3'); location.reload(); } }
+    
     function toggleCanvas() {
         const cv = document.getElementById('canvas-section');
-        const rz = document.getElementById('resizer');
         const isVisible = cv.style.display === 'flex';
         cv.style.display = isVisible ? 'none' : 'flex';
-        rz.classList.toggle('hidden', isVisible);
+        document.getElementById('resizer').classList.toggle('hidden', isVisible);
         document.getElementById('chat-section').style.flex = isVisible ? "1" : "0 0 50%";
     }
 
-    // Resize Logic
+    // Resize
     let isResizing = false;
     document.getElementById('resizer').addEventListener('mousedown', () => isResizing = true);
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        document.getElementById('chat-section').style.flex = `0 0 ${e.clientX}px`;
-    });
+    document.addEventListener('mousemove', (e) => { if (isResizing) document.getElementById('chat-section').style.flex = `0 0 ${e.clientX}px`; });
     document.addEventListener('mouseup', () => isResizing = false);
-
-    document.getElementById('user-input').addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askMasterAI(); } });
 </script>
 </body>
 </html>
