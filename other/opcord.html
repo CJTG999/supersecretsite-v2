@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>OPCord</title>
-
 <link id="dynamic-favicon" rel="icon" href="download-removebg-preview.png">
 
 <style>
@@ -17,108 +16,25 @@
   --input:#40444b;
 }
 
-* {
-  box-sizing:border-box;
-  font-family:"Segoe UI",sans-serif;
-}
-
-body {
-  margin:0;
-  height:100vh;
-  display:flex;
-  background:var(--bg-main);
-  color:var(--text);
-}
-
-.sidebar {
-  width:280px;
-  background:var(--bg-darker);
-  padding:12px;
-}
-
-.server {
-  background:var(--accent);
-  color:white;
-  padding:10px;
-  border-radius:8px;
-  text-align:center;
-  font-weight:bold;
-  margin-bottom:12px;
-}
-
-input, button {
-  width:100%;
-  margin-top:6px;
-  padding:8px;
-  background:var(--input);
-  border:none;
-  border-radius:5px;
-  color:var(--text);
-}
-
-button {
-  background:var(--accent);
-  cursor:pointer;
-}
-
-.status {
-  margin-top:10px;
-  font-size:12px;
-  color:var(--muted);
-}
-
-.chat {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
-.header {
-  background:var(--bg-dark);
-  padding:12px;
-  border-bottom:1px solid #000;
-}
-
-.messages {
-  flex:1;
-  padding:16px;
-  overflow-y:auto;
-}
-
-.message {
-  margin-bottom:10px;
-}
-
-.username {
-  color:var(--accent);
-  font-weight:bold;
-  margin-right:6px;
-}
-
-.input-area {
-  background:var(--bg-dark);
-  padding:12px;
-}
-
-.progress {
-  height:4px;
-  background:#111;
-  margin-top:6px;
-  border-radius:2px;
-  overflow:hidden;
-}
-
-.bar {
-  height:100%;
-  width:0%;
-  background:var(--accent);
-  transition:width .15s;
-}
+* { box-sizing:border-box; font-family:"Segoe UI",sans-serif; }
+body { margin:0; height:100vh; display:flex; background:var(--bg-main); color:var(--text); }
+.sidebar { width:280px; background:var(--bg-darker); padding:12px; }
+.server { background:var(--accent); color:white; padding:10px; border-radius:8px; text-align:center; font-weight:bold; margin-bottom:12px; }
+input, button { width:100%; margin-top:6px; padding:8px; background:var(--input); border:none; border-radius:5px; color:var(--text); }
+button { background:var(--accent); cursor:pointer; }
+.status { margin-top:10px; font-size:12px; color:var(--muted); }
+.chat { flex:1; display:flex; flex-direction:column; }
+.header { background:var(--bg-dark); padding:12px; border-bottom:1px solid #000; }
+.messages { flex:1; padding:16px; overflow-y:auto; }
+.message { margin-bottom:10px; }
+.username { color:var(--accent); font-weight:bold; margin-right:6px; }
+.input-area { background:var(--bg-dark); padding:12px; }
+.progress { height:4px; background:#111; margin-top:6px; border-radius:2px; overflow:hidden; }
+.bar { height:100%; width:0%; background:var(--accent); transition:width .15s; }
 </style>
 </head>
 
 <body>
-
 <div class="sidebar">
   <div class="server">OPCord</div>
 
@@ -146,6 +62,7 @@ let pc, dc, signal;
 let username = "";
 let isHost = false;
 let roomCode = "";
+let connected = false;
 
 const messages = document.getElementById("messages");
 const chatInput = document.getElementById("chatInput");
@@ -173,14 +90,15 @@ async function setupConnection(room) {
   pc = new RTCPeerConnection();
 
   pc.onicecandidate = e => {
-    if (e.candidate) signal.postMessage({ candidate: e.candidate });
+    if (e.candidate && !connected) signal.postMessage({ candidate: e.candidate });
   };
 
   pc.ondatachannel = e => {
     dc = e.channel;
     dc.onopen = () => {
       chatInput.disabled = false;
-      setStatus("Connected");
+      connected = true;
+      setStatus(isHost ? "Connected (Host)" : "Connected");
     };
     dc.onmessage = ev => {
       const data = JSON.parse(ev.data);
@@ -189,17 +107,21 @@ async function setupConnection(room) {
   };
 
   signal.onmessage = async e => {
+    if (connected) return; // ignore all after connection
+
     if (e.data.offer && !isHost) {
       await pc.setRemoteDescription(e.data.offer);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       signal.postMessage({ answer });
     }
+
     if (e.data.answer && isHost) {
       await pc.setRemoteDescription(e.data.answer);
     }
+
     if (e.data.candidate) {
-      pc.addIceCandidate(e.data.candidate);
+      await pc.addIceCandidate(e.data.candidate);
     }
   };
 
@@ -207,6 +129,7 @@ async function setupConnection(room) {
     dc = pc.createDataChannel("chat");
     dc.onopen = () => {
       chatInput.disabled = false;
+      connected = true;
       setStatus("Connected (Host)");
     };
     dc.onmessage = ev => {
@@ -266,6 +189,5 @@ chatInput.addEventListener("keydown", e => {
   }
 });
 </script>
-
 </body>
 </html>
