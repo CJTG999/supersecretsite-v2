@@ -2,56 +2,57 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Poxel-style FPS (P2P)</title>
+<title>Poxel-style FPS (Pure P2P)</title>
 <style>
   body { margin: 0; overflow: hidden; font-family: sans-serif; }
   #ui {
     position: fixed;
     top: 10px;
     left: 10px;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.65);
     color: white;
     padding: 10px;
     width: 320px;
+    z-index: 10;
   }
-  textarea { width: 100%; height: 80px; }
+  textarea { width: 100%; height: 90px; }
   button { width: 100%; margin-top: 4px; }
 </style>
 </head>
 <body>
+
 <div id="ui">
-  <b>P2P Connect</b><br>
+  <b>P2P Multiplayer</b><br>
   <button id="hostBtn">Host</button>
   <button id="joinBtn">Join</button>
-  <textarea id="signal"></textarea>
-  <small>Copy / paste offers & answers</small>
+  <textarea id="signal" placeholder="Offers / Answers appear here"></textarea>
+  <small>Manual copy & paste — no servers</small>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158/build/three.min.js"></script>
 
 <script>
-/* ------------------ THREE.JS FPS ------------------ */
+/* ================= THREE.JS SETUP ================= */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-camera.position.y = 1.6;
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+camera.position.set(0, 1.6, 5);
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-scene.add(light);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444));
 
-// Ground (voxely)
-const groundGeo = new THREE.BoxGeometry(50, 1, 50);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x55aa55 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
+const ground = new THREE.Mesh(
+  new THREE.BoxGeometry(50, 1, 50),
+  new THREE.MeshStandardMaterial({ color: 0x55aa55 })
+);
 ground.position.y = -0.5;
 scene.add(ground);
 
-// Player
+/* ================= PLAYER CONTROLS ================= */
 let yaw = 0, pitch = 0;
 const speed = 0.08;
 const keys = {};
@@ -71,24 +72,14 @@ document.addEventListener("mousemove", e => {
 document.addEventListener("keydown", e => keys[e.code] = true);
 document.addEventListener("keyup", e => keys[e.code] = false);
 
-const raycaster = new THREE.Raycaster();
-
-/* ------------------ SHOOTING ------------------ */
-document.addEventListener("mousedown", () => {
-  raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-  const hits = raycaster.intersectObjects(scene.children);
-  if (hits.length) console.log("Hit", hits[0].object.uuid);
-});
-
-/* ------------------ REMOTE PLAYER ------------------ */
+/* ================= REMOTE PLAYER ================= */
 const remote = new THREE.Mesh(
-  new THREE.BoxGeometry(1,1.6,1),
+  new THREE.BoxGeometry(1, 1.6, 1),
   new THREE.MeshStandardMaterial({ color: 0xff4444 })
 );
 scene.add(remote);
 
-/* ------------------ WEBRTC ------------------ */
-<script>
+/* ================= WEBRTC (FIXED) ================= */
 let pc, channel;
 
 const signal = document.getElementById("signal");
@@ -105,7 +96,7 @@ function createPC() {
   pc.onicecandidate = e => {
     if (!e.candidate) {
       signal.value = JSON.stringify(pc.localDescription, null, 2);
-      console.log("Offer/Answer ready");
+      console.log("Signal ready");
     }
   };
 
@@ -114,7 +105,9 @@ function createPC() {
 
 function setupChannel(ch) {
   channel = ch;
+
   channel.onopen = () => console.log("DataChannel open");
+
   channel.onmessage = e => {
     const data = JSON.parse(e.data);
     remote.position.set(data.x, data.y, data.z);
@@ -146,61 +139,29 @@ joinBtn.onclick = async () => {
   await pc.setLocalDescription(answer);
 };
 
-/* APPLY ANSWER BACK ON HOST */
+/* APPLY ANSWER BACK TO HOST */
 signal.addEventListener("input", async () => {
   if (!pc || pc.remoteDescription) return;
 
   try {
-    const answer = JSON.parse(signal.value);
-    if (answer.type === "answer") {
-      await pc.setRemoteDescription(answer);
+    const desc = JSON.parse(signal.value);
+    if (desc.type === "answer") {
+      await pc.setRemoteDescription(desc);
       console.log("Answer applied");
     }
   } catch {}
 });
-</script>
 
-
-/* HOST */
-hostBtn.onclick = async () => {
-  createPC();
-  setupChannel(pc.createDataChannel("game"));
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-};
-
-/* JOIN */
-joinBtn.onclick = async () => {
-  createPC();
-  const offer = JSON.parse(signal.value);
-  await pc.setRemoteDescription(offer);
-
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-};
-
-/* APPLY ANSWER */
-signal.addEventListener("change", async () => {
-  if (!pc || pc.remoteDescription) return;
-  try {
-    const answer = JSON.parse(signal.value);
-    await pc.setRemoteDescription(answer);
-  } catch {}
-});
-
-/* ------------------ GAME LOOP ------------------ */
+/* ================= GAME LOOP ================= */
 function animate() {
   requestAnimationFrame(animate);
 
   camera.rotation.set(pitch, yaw, 0);
 
-  const dir = new THREE.Vector3(
-    Math.sin(yaw), 0, Math.cos(yaw)
-  );
+  const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
 
-  if (keys["KeyW"]) camera.position.addScaledVector(dir, -speed);
-  if (keys["KeyS"]) camera.position.addScaledVector(dir, speed);
+  if (keys["KeyW"]) camera.position.addScaledVector(forward, -speed);
+  if (keys["KeyS"]) camera.position.addScaledVector(forward, speed);
   if (keys["KeyA"]) camera.position.x -= speed;
   if (keys["KeyD"]) camera.position.x += speed;
 
@@ -223,5 +184,6 @@ window.addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 </script>
+
 </body>
 </html>
