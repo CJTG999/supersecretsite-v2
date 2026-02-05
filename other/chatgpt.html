@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puter AI Canvas</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { --bg: #0f0f0f; --panel: #1a1a1a; --accent: #007bff; --text: #e0e0e0; --border: #333; }
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+        
+        /* Left: Chat */
+        #chat-sidebar { width: 400px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--panel); }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; font-size: 14px; }
+        .msg { margin-bottom: 15px; padding: 12px; border-radius: 10px; line-height: 1.5; }
+        .user-msg { background: #2a2a2a; align-self: flex-end; }
+        .ai-msg { border-left: 3px solid var(--accent); background: #1f1f1f; }
+        
+        /* Right: Canvas */
+        #canvas { flex: 1; display: flex; flex-direction: column; padding: 20px; background: var(--bg); }
+        #canvas-header { padding: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        #canvas-content { flex: 1; margin-top: 20px; padding: 30px; background: var(--panel); border-radius: 12px; border: 1px solid var(--border); overflow-y: auto; font-family: 'Fira Code', monospace; white-space: pre-wrap; outline: none; }
+
+        /* Controls */
+        .input-area { padding: 20px; border-top: 1px solid var(--border); }
+        textarea { width: 100%; background: #222; color: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; resize: none; margin-bottom: 10px; }
+        .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; background: var(--accent); color: white; }
+        .btn-secondary { background: #444; }
+        .btn:hover { opacity: 0.8; }
+        img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
+        .loader { font-size: 12px; color: #888; display: none; }
+    </style>
+</head>
+<body>
+
+<section id="chat-sidebar">
+    <div id="messages">
+        <div class="msg ai-msg">Welcome! I'm powered by Puter.js. Ask me to write code or generate images. No API key needed!</div>
+    </div>
+    <div class="input-area">
+        <div id="status" class="loader">AI is thinking...</div>
+        <div class="toolbar">
+            <input type="file" id="file-picker" style="display:none" onchange="uploadFile()">
+            <button class="btn btn-secondary" onclick="document.getElementById('file-picker').click()">📎 Upload</button>
+            <button class="btn btn-secondary" onclick="generateImage()">🎨 Image</button>
+        </div>
+        <textarea id="user-input" rows="3" placeholder="Write a Python script..."></textarea>
+        <button class="btn" onclick="askAI()">Send to GPT-4o</button>
+    </div>
+</section>
+
+<section id="canvas">
+    <div id="canvas-header">
+        <strong>Canvas Workspace</strong>
+        <button class="btn btn-secondary" style="width: auto;" onclick="downloadCanvas()">Download File</button>
+    </div>
+    <div id="canvas-content" contenteditable="true">AI generated code or text will appear here...</div>
+</section>
+
+<script>
+    const chatHistory = [];
+
+    async function askAI() {
+        const input = document.getElementById('user-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        appendMessage('user', text);
+        input.value = '';
+        toggleLoader(true);
+
+        try {
+            // Instructions for the Canvas behavior
+            const prompt = `System: If the user asks for code or a long document, wrap the primary content in [CANVAS] tags. 
+                            User Request: ${text}`;
+
+            // Puter.js Chat Call (GPT-4o)
+            const response = await puter.ai.chat(prompt, { model: 'openai/gpt-4o' });
+            const aiText = response.message.content;
+
+            handleResponse(aiText);
+        } catch (err) {
+            appendMessage('ai', "Error: " + err.message);
+        } finally {
+            toggleLoader(false);
+        }
+    }
+
+    function handleResponse(text) {
+        if (text.includes("[CANVAS]")) {
+            const parts = text.split(/\[CANVAS\]/);
+            const chatPart = parts[0];
+            const canvasPart = parts[1].split("[/CANVAS]")[0];
+            
+            appendMessage('ai', chatPart + "\n\n*(Sent to Canvas)*");
+            document.getElementById('canvas-content').innerText = canvasPart.trim();
+        } else {
+            appendMessage('ai', text);
+        }
+    }
+
+    async function generateImage() {
+        const prompt = prompt("What image should I generate?");
+        if (!prompt) return;
+
+        appendMessage('user', `Generating: ${prompt}...`);
+        toggleLoader(true);
+
+        try {
+            // Puter.js Image Generation (DALL-E 3)
+            const img = await puter.ai.txt2img(prompt);
+            const msgDiv = appendMessage('ai', "Generated Image:");
+            msgDiv.appendChild(img);
+        } catch (err) {
+            appendMessage('ai', "Image Error: " + err.message);
+        } finally {
+            toggleLoader(false);
+        }
+    }
+
+    async function uploadFile() {
+        const fileInput = document.getElementById('file-picker');
+        if (fileInput.files.length === 0) return;
+
+        const file = fileInput.files[0];
+        appendMessage('user', `Uploading: ${file.name}...`);
+
+        try {
+            // Puter.js Cloud Filesystem upload
+            const uploadedFile = await puter.fs.upload(fileInput.files);
+            appendMessage('ai', `File saved to Puter Cloud: ${uploadedFile[0].path}. I can now read this if you ask!`);
+        } catch (err) {
+            appendMessage('ai', "Upload Error: " + err.message);
+        }
+    }
+
+    function appendMessage(role, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `msg ${role}-msg`;
+        msgDiv.innerHTML = marked.parse(text);
+        document.getElementById('messages').appendChild(msgDiv);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        return msgDiv;
+    }
+
+    function toggleLoader(show) {
+        document.getElementById('status').style.display = show ? 'block' : 'none';
+    }
+
+    function downloadCanvas() {
+        const content = document.getElementById('canvas-content').innerText;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ai_canvas_export.txt';
+        a.click();
+    }
+</script>
+
+</body>
+</html>
