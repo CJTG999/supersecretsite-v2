@@ -1,196 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAI | Local Edition</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MasterAI | Puter Edition</title>
 
-    <style>
-        :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --accent: #238636; --text: #c9d1d9; }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Ubuntu', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-        /* LOADING OVERLAY */
-        #loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); z-index: 999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s;
-        }
-        .bar-container { width: 300px; height: 6px; background: var(--border); border-radius: 3px; margin-top: 15px; overflow: hidden; }
-        .bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.2s; }
-        #loadText { margin-top: 10px; font-size: 13px; color: #8b949e; }
+<!-- PUTER SDK -->
+<script src="https://js.puter.com/v2/"></script>
 
-        /* APP LAYOUT */
-        .header { padding: 15px; background: var(--panel); border-bottom: 1px solid var(--border); font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .chat-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
-        .input-area { padding: 20px; background: var(--panel); border-top: 1px solid var(--border); display: flex; gap: 10px; }
-
-        /* MESSAGES */
-        .msg { padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 1.5; max-width: 800px; }
-        .user { align-self: flex-end; background: #1f6feb; color: white; }
-        .ai { align-self: flex-start; background: #21262d; border: 1px solid var(--border); }
-        
-        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 12px 15px; border-radius: 25px; outline: none; font-family: inherit; }
-        input:disabled { opacity: 0.5; cursor: not-allowed; }
-        button { background: var(--accent); color: white; border: none; padding: 10px 25px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:hover { opacity: 0.9; }
-        button:disabled { background: var(--border); cursor: not-allowed; }
-
-        /* CODE BLOCKS */
-        pre { margin: 10px 0; border-radius: 6px; overflow-x: auto; background: #0d1117; padding: 10px; border: 1px solid var(--border); }
-        code { font-family: 'Consolas', monospace; font-size: 13px; }
-    </style>
+<style>
+:root {
+    --bg:#0d1117; --panel:#161b22; --border:#30363d;
+    --accent:#238636; --text:#c9d1d9;
+}
+*{box-sizing:border-box}
+body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:'Ubuntu',sans-serif;height:100vh;
+    display:flex;flex-direction:column;overflow:hidden;
+}
+#loader{
+    position:fixed;inset:0;background:var(--bg);z-index:999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.bar-container{width:300px;height:6px;background:var(--border);border-radius:3px;margin-top:15px}
+.bar{height:100%;width:100%;background:var(--accent)}
+.header{
+    padding:15px;background:var(--panel);border-bottom:1px solid var(--border);
+    font-weight:bold;display:flex;justify-content:space-between;
+}
+.chat-area{
+    flex:1;overflow-y:auto;padding:20px;display:flex;
+    flex-direction:column;gap:15px;
+}
+.input-area{
+    padding:20px;background:var(--panel);border-top:1px solid var(--border);
+    display:flex;gap:10px;
+}
+.msg{
+    padding:12px 16px;border-radius:12px;font-size:15px;
+    line-height:1.5;max-width:800px;
+}
+.user{align-self:flex-end;background:#1f6feb;color:white}
+.ai{align-self:flex-start;background:#21262d;border:1px solid var(--border)}
+input{
+    flex:1;background:var(--bg);border:1px solid var(--border);
+    color:white;padding:12px 15px;border-radius:25px;outline:none;
+}
+button{
+    background:var(--accent);color:white;border:none;
+    padding:10px 25px;border-radius:25px;font-weight:bold;cursor:pointer;
+}
+pre{
+    margin:10px 0;border-radius:6px;overflow-x:auto;
+    background:#0d1117;padding:10px;border:1px solid var(--border);
+}
+code{font-family:Consolas,monospace;font-size:13px}
+</style>
 </head>
 <body>
 
 <div id="loader">
-    <div style="font-size: 24px; font-weight: bold;">MASTERAI LOCAL</div>
-    <div class="bar-container"><div class="bar" id="loadBar"></div></div>
-    <div id="loadText">Initializing WebGPU...</div>
+    <div style="font-size:24px;font-weight:bold">MASTERAI</div>
+    <div class="bar-container"><div class="bar"></div></div>
+    <div style="margin-top:10px;font-size:13px;color:#8b949e">
+        Connecting to Puter AI…
+    </div>
 </div>
 
 <div class="header">
-    <span>MASTERAI <span style="font-size:11px; opacity:0.6; border:1px solid var(--border); padding:2px 6px; border-radius:4px; margin-left:8px;">OFFLINE MODE</span></span>
-    <span id="gpuStatus" style="font-size:12px; color:#238636;">● GPU Ready</span>
+    <span>MASTERAI <span style="font-size:11px;opacity:.6;border:1px solid var(--border);
+        padding:2px 6px;border-radius:4px;margin-left:8px;">PUTER CLOUD</span></span>
+    <span style="font-size:12px;color:#238636">● Online</span>
 </div>
 
 <div class="chat-area" id="chat">
     <div class="msg ai">
         <b>System Ready.</b><br>
-        I am running locally on your graphics card (Llama-3-8B).
-        <br><br>
-        No internet connection is required for chatting.
+        Running on Puter AI with streaming responses.
     </div>
 </div>
 
 <div class="input-area">
-    <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
-    <button id="sendBtn" onclick="generate()">Send</button>
+    <input id="userInput" placeholder="Type a message…" autocomplete="off">
+    <button id="sendBtn">Send</button>
 </div>
 
-<script type="module">
-    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+<script>
+const loader = document.getElementById('loader');
+const chatBox = document.getElementById('chat');
+const input = document.getElementById('userInput');
+const btn = document.getElementById('sendBtn');
 
-    // --- CONFIGURATION ---
-    // We use Llama-3-8B (Quantized) which balances speed and smarts
-    const SELECTED_MODEL = "Llama-3.2-1B-Instruct-q4f32_1-MLC"; 
-    
-    let engine = null;
-    const loader = document.getElementById('loader');
-    const loadBar = document.getElementById('loadBar');
-    const loadText = document.getElementById('loadText');
-    const chatBox = document.getElementById('chat');
-    const input = document.getElementById('userInput');
-    const btn = document.getElementById('sendBtn');
+const history = [
+    { role: "system", content: "You are a helpful AI assistant." }
+];
 
-    // --- INITIALIZATION ---
-    async function initAI() {
-        try {
-            // Callback to update the loading bar
-            const initProgressCallback = (report) => {
-                console.log(report.text);
-                loadText.innerText = report.text;
-                // Parse percentage from text (e.g., "Loading... 50%")
-                const match = report.text.match(/\[(\d+)\/(\d+)\]/) || report.text.match(/(\d+)%/);
-                let percent = 0;
-                if (report.progress) {
-                    percent = report.progress * 100;
-                }
-                loadBar.style.width = percent + "%";
-            };
+// INIT
+(async () => {
+    await puter.ready;
+    loader.style.display = 'none';
+})();
 
-            engine = new webllm.MLCEngine();
-            engine.setInitProgressCallback(initProgressCallback);
+// SEND MESSAGE
+btn.onclick = send;
+input.addEventListener('keypress', e => {
+    if (e.key === 'Enter') send();
+});
 
-            loadText.innerText = "Downloading AI Model (This happens once)...";
-            
-            // Reload model
-            await engine.reload(SELECTED_MODEL);
+async function send() {
+    const text = input.value.trim();
+    if (!text) return;
 
-            // Hide Loader
-            loader.style.opacity = '0';
-            setTimeout(() => { loader.style.display = 'none'; }, 500);
-            
-        } catch (err) {
-            loadText.innerHTML = `<span style="color:#da3633">Error: WebGPU not supported or blocked.<br>${err.message}</span>`;
-            loadBar.style.background = '#da3633';
-        }
-    }
+    addMsg(text, 'user');
+    history.push({ role:'user', content:text });
+    input.value = '';
+    input.disabled = btn.disabled = true;
 
-    // --- CHAT LOGIC ---
-    window.generate = async () => {
-        const text = input.value.trim();
-        if (!text || !engine) return;
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'msg ai';
+    aiBubble.textContent = 'Thinking…';
+    chatBox.appendChild(aiBubble);
+    chatBox.scrollTop = chatBox.scrollHeight;
 
-        // UI Setup
-        addMsg(text, 'user');
-        input.value = '';
-        input.disabled = true;
-        btn.disabled = true;
+    let full = '';
 
-        // Create AI Message Bubble
-        const aiBubble = document.createElement('div');
-        aiBubble.className = 'msg ai';
-        aiBubble.innerText = "Thinking...";
-        chatBox.appendChild(aiBubble);
-        chatBox.scrollTop = chatBox.scrollHeight;
+    try {
+        const stream = await puter.ai.chat(history, { stream:true });
 
-        let fullResponse = "";
-
-        try {
-            const chunks = await engine.chat.completions.create({
-                messages: [
-                    { role: "system", content: "You are a helpful AI assistant." },
-                    // In a real app, you would pass previous history here
-                    { role: "user", content: text } 
-                ],
-                stream: true,
-            });
-
-            // Streaming Response
-            for await (const chunk of chunks) {
-                const delta = chunk.choices[0]?.delta.content || "";
-                fullResponse += delta;
-                aiBubble.innerHTML = marked.parse(fullResponse);
-                // Re-highlight code blocks while typing
-                if (fullResponse.includes("```")) hljs.highlightAll();
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-
-        } catch (e) {
-            aiBubble.innerHTML += `<br><br><i>Error: ${e.message}</i>`;
+        for await (const part of stream) {
+            full += part.text;
+            aiBubble.innerHTML = marked.parse(full);
+            hljs.highlightAll();
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // Reset UI
-        input.disabled = false;
-        btn.disabled = false;
-        input.focus();
-    };
+        history.push({ role:'assistant', content:full });
 
-    // Helper: Add Message
-    function addMsg(text, role) {
-        const div = document.createElement('div');
-        div.className = `msg ${role}`;
-        div.innerHTML = marked.parse(text);
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (err) {
+        aiBubble.innerHTML = `<i>Error: ${err.message}</i>`;
     }
 
-    // Start
-    initAI();
+    input.disabled = btn.disabled = false;
+    input.focus();
+}
 
-    // Keypress
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !input.disabled) window.generate();
-    });
-
+function addMsg(text, role) {
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = marked.parse(text);
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
 </script>
+
 </body>
 </html>
