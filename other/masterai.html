@@ -3,21 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MasterAI | Puter Edition</title>
+<title>MasterAI | Local Edition</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-<!-- PUTER SDK -->
-<script src="https://js.puter.com/v2/"></script>
-
 <style>
-:root {
-    --bg:#0d1117; --panel:#161b22; --border:#30363d;
-    --accent:#238636; --text:#c9d1d9;
-}
+:root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --accent:#238636; --text:#c9d1d9; }
 *{box-sizing:border-box}
 body{
     margin:0;background:var(--bg);color:var(--text);
@@ -28,15 +22,15 @@ body{
     position:fixed;inset:0;background:var(--bg);z-index:999;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
-.bar-container{width:300px;height:6px;background:var(--border);border-radius:3px;margin-top:15px}
-.bar{height:100%;width:100%;background:var(--accent)}
+.bar-container{width:300px;height:6px;background:var(--border);border-radius:3px;margin-top:15px;overflow:hidden}
+.bar{height:100%;width:0%;background:var(--accent);transition:width .2s}
 .header{
     padding:15px;background:var(--panel);border-bottom:1px solid var(--border);
-    font-weight:bold;display:flex;justify-content:space-between;
+    font-weight:bold;display:flex;justify-content:space-between;align-items:center;
 }
 .chat-area{
-    flex:1;overflow-y:auto;padding:20px;display:flex;
-    flex-direction:column;gap:15px;
+    flex:1;overflow-y:auto;padding:20px;
+    display:flex;flex-direction:column;gap:15px;
 }
 .input-area{
     padding:20px;background:var(--panel);border-top:1px solid var(--border);
@@ -63,26 +57,31 @@ pre{
 code{font-family:Consolas,monospace;font-size:13px}
 </style>
 </head>
+
 <body>
 
 <div id="loader">
-    <div style="font-size:24px;font-weight:bold">MASTERAI</div>
-    <div class="bar-container"><div class="bar"></div></div>
-    <div style="margin-top:10px;font-size:13px;color:#8b949e">
-        Connecting to Puter AI…
+    <div style="font-size:24px;font-weight:bold">MASTERAI LOCAL</div>
+    <div class="bar-container"><div class="bar" id="loadBar"></div></div>
+    <div id="loadText" style="margin-top:10px;font-size:13px;color:#8b949e">
+        Initializing WebGPU…
     </div>
 </div>
 
 <div class="header">
-    <span>MASTERAI <span style="font-size:11px;opacity:.6;border:1px solid var(--border);
-        padding:2px 6px;border-radius:4px;margin-left:8px;">PUTER CLOUD</span></span>
-    <span style="font-size:12px;color:#238636">● Online</span>
+    <span>MASTERAI
+        <span style="font-size:11px;opacity:.6;border:1px solid var(--border);
+        padding:2px 6px;border-radius:4px;margin-left:8px;">
+        LOCAL AI
+        </span>
+    </span>
+    <span id="gpuStatus" style="font-size:12px;color:#238636">● GPU Ready</span>
 </div>
 
 <div class="chat-area" id="chat">
     <div class="msg ai">
         <b>System Ready.</b><br>
-        Running on Puter AI with streaming responses.
+        Running locally in your browser using WebGPU.
     </div>
 </div>
 
@@ -91,51 +90,90 @@ code{font-family:Consolas,monospace;font-size:13px}
     <button id="sendBtn">Send</button>
 </div>
 
-<script>
-    const loader = document.getElementById('loader');
-    const chatBox = document.getElementById('chat');
-    const input = document.getElementById('userInput');
-    const btn = document.getElementById('sendBtn');
-    
-    const history = [
-        { role: "system", content: "You are a helpful AI assistant." }
-    ];
-    
-    // SAFETY TIMEOUT
-    async function initPuter() {
-        if (!window.puter) {
-            loader.innerHTML = `
-                <div style="color:#da3633;text-align:center">
-                    <b>Puter SDK not available</b><br><br>
-                    This app must be run inside <b>puter.com</b><br>
-                    or an authorized Puter environment.
-                </div>`;
-            return;
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+// ✅ CORRECT, LIGHTWEIGHT MODEL
+const MODEL = "Llama-3.2-1B-Instruct-q4f32_1-MLC";
+
+const loader = document.getElementById("loader");
+const loadBar = document.getElementById("loadBar");
+const loadText = document.getElementById("loadText");
+const chatBox = document.getElementById("chat");
+const input = document.getElementById("userInput");
+const btn = document.getElementById("sendBtn");
+
+let engine;
+
+// ✅ CHAT HISTORY (FIXED)
+const history = [
+    { role:"system", content:"You are a helpful AI assistant." }
+];
+
+// INIT
+async function initAI() {
+    engine = new webllm.MLCEngine();
+
+    engine.setInitProgressCallback(r => {
+        loadText.textContent = r.text;
+        if (r.progress !== undefined) {
+            loadBar.style.width = (r.progress * 100).toFixed(0) + "%";
         }
-    
-        try {
-            await Promise.race([
-                puter.ready,
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Puter not responding")), 4000)
-                )
-            ]);
-    
-            loader.style.display = 'none';
-    
-        } catch (err) {
-            loader.innerHTML = `
-                <div style="color:#da3633;text-align:center">
-                    <b>Failed to connect to Puter</b><br><br>
-                    ${err.message}<br><br>
-                    Are you running this inside puter.com?
-                </div>`;
-        }
+    });
+
+    await engine.reload(MODEL);
+
+    loader.style.display = "none";
+}
+
+initAI();
+
+// SEND
+btn.onclick = send;
+input.addEventListener("keypress", e => {
+    if (e.key === "Enter") send();
+});
+
+async function send() {
+    const text = input.value.trim();
+    if (!text || !engine) return;
+
+    addMsg(text, "user");
+    history.push({ role:"user", content:text });
+
+    input.value = "";
+    input.disabled = btn.disabled = true;
+
+    const aiBubble = addMsg("Thinking…", "ai");
+    let full = "";
+
+    const stream = await engine.chat.completions.create({
+        messages: history,
+        stream: true
+    });
+
+    for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        full += delta;
+        aiBubble.innerHTML = marked.parse(full);
     }
-    
-    initPuter();
-    </script>
-    
+
+    history.push({ role:"assistant", content:full });
+    hljs.highlightAll();
+
+    input.disabled = btn.disabled = false;
+    input.focus();
+}
+
+function addMsg(text, role) {
+    const div = document.createElement("div");
+    div.className = `msg ${role}`;
+    div.innerHTML = marked.parse(text);
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    return div;
+}
+</script>
 
 </body>
 </html>
