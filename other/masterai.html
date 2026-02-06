@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MasterAI | Canvas Edition</title>
     
-    <script src="https://js.puter.com/v2/" onerror="window.puterLoadError=true"></script>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
@@ -36,7 +34,7 @@
             overflow: hidden; 
         }
 
-        /* SPLASH SCREEN STYLES */
+        /* SPLASH SCREEN */
         #splash-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -48,11 +46,8 @@
             justify-content: center;
             transition: opacity 0.5s ease-out, visibility 0.5s;
         }
-        .splash-hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
+        .splash-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        
         .splash-logo {
             font-size: 32px;
             font-weight: 700;
@@ -83,9 +78,10 @@
             color: #8b949e;
             text-align: center;
             min-height: 40px;
+            max-width: 300px;
+            line-height: 1.4;
         }
         
-        /* Retry Button (Hidden by default) */
         #retryBtn {
             display: none;
             margin-top: 10px;
@@ -100,7 +96,7 @@
         }
         #retryBtn:hover { border-color: var(--text); }
 
-        /* MAIN APP STYLES */
+        /* APP LAYOUT */
         .container { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 1s; }
         .container.loaded { opacity: 1; }
         
@@ -147,8 +143,8 @@
     <div class="loading-container">
         <div class="loading-bar" id="progressBar"></div>
     </div>
-    <div id="loading-text">Connecting to server...</div>
-    <button id="retryBtn" onclick="location.reload()">Retry Connection</button>
+    <div id="loading-text">Initializing System...</div>
+    <button id="retryBtn" onclick="location.reload()">Retry</button>
 </div>
 
 <div class="container" id="mainContainer">
@@ -159,17 +155,13 @@
         </div>
         <div id="chat" class="chat-body">
             <div class="msg ai">
-                System initialized. Welcome to MasterAI.
+                System initialized via secure proxy.
                 <br><br>
-                Try these commands:
-                <br>
-                • <b>Search:</b> "Who is the CEO of Apple?"
-                <br>
-                • <b>Draw:</b> "Draw a neon city."
-                <br>
-                • <b>Code:</b> "Write a snake game in HTML."
-                <br>
-                • <b>Speak:</b> "Say 'Hello World' in a deep voice."
+                <b>Commands:</b>
+                <br>• "Draw a cat in space"
+                <br>• "Say 'System Online'"
+                <br>• "Write python code for a calculator"
+                <br>• "Search for current stock prices"
             </div>
         </div>
         <div class="chat-footer">
@@ -200,59 +192,49 @@
 </div>
 
 <script>
-    // --- APP INITIALIZATION & SPLASH SCREEN LOGIC ---
-    window.addEventListener('load', initApp);
+    // --- ADVANCED SCRIPT LOADER (WITH PROXY) ---
+    const PUTER_URL = 'https://js.puter.com/v2/';
+    const PROXY_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(PUTER_URL);
+    
+    const bar = document.getElementById('progressBar');
+    const txt = document.getElementById('loading-text');
+    const retryBtn = document.getElementById('retryBtn');
 
-    function initApp() {
-        const bar = document.getElementById('progressBar');
-        const txt = document.getElementById('loading-text');
-        const retryBtn = document.getElementById('retryBtn');
+    window.addEventListener('load', () => {
+        loadPuter(PUTER_URL);
+    });
+
+    function loadPuter(url, isProxy = false) {
+        if(isProxy) txt.innerText = "Direct connection failed. Attempting Proxy...";
+        else txt.innerText = "Connecting to server...";
+
+        const script = document.createElement('script');
+        script.src = url;
         
-        // Check for immediate error (e.g., blocked by AdBlock)
-        if (window.puterLoadError) {
-             showError(bar, txt, retryBtn);
-             return;
-        }
+        script.onload = () => {
+            bar.style.width = '100%';
+            txt.innerText = "Connected.";
+            setTimeout(() => {
+                document.getElementById('splash-screen').classList.add('splash-hidden');
+                document.getElementById('mainContainer').classList.add('loaded');
+            }, 500);
+        };
 
-        let width = 0;
-        // Fake loading progress
-        const interval = setInterval(() => {
-            if (width >= 80) {
-                clearInterval(interval);
-                checkPuterConnection(bar, txt, retryBtn);
+        script.onerror = () => {
+            if (!isProxy) {
+                // First failure: Try Proxy
+                bar.style.width = '50%';
+                loadPuter(PROXY_URL, true);
             } else {
-                width += Math.random() * 10;
-                if(width > 80) width = 80;
-                bar.style.width = width + '%';
+                // Second failure: Fatal
+                bar.style.background = '#da3633';
+                txt.innerHTML = "Fatal Error: blocked.<br>Try disabling AdBlock/VPN.";
+                txt.style.color = '#da3633';
+                retryBtn.style.display = 'block';
             }
-        }, 150);
-    }
+        };
 
-    function checkPuterConnection(bar, txt, retryBtn) {
-        txt.innerText = "Initializing AI Services...";
-        
-        // Give it a moment to define 'puter' if script loaded late
-        setTimeout(() => {
-            if (typeof puter !== 'undefined') {
-                // Success
-                bar.style.width = '100%';
-                txt.innerText = "Ready.";
-                setTimeout(() => {
-                    document.getElementById('splash-screen').classList.add('splash-hidden');
-                    document.getElementById('mainContainer').classList.add('loaded');
-                }, 500);
-            } else {
-                showError(bar, txt, retryBtn);
-            }
-        }, 1000);
-    }
-
-    function showError(bar, txt, retryBtn) {
-        bar.style.background = '#da3633'; // Red
-        bar.style.boxShadow = '0 0 10px #da3633';
-        txt.innerHTML = "Connection Failed.<br>Please disable AdBlocker or check internet.";
-        txt.style.color = '#da3633';
-        retryBtn.style.display = 'block';
+        document.head.appendChild(script);
     }
 
     // --- MAIN APP LOGIC ---
@@ -268,9 +250,8 @@
         const text = input.value.trim();
         if (!text) return;
 
-        // Final safety check
         if (typeof puter === 'undefined') {
-            alert("Connection lost. Please reload the page.");
+            alert("Error: Connection lost.");
             return;
         }
 
@@ -282,7 +263,7 @@
         
         try {
             // IMAGE
-            if (lowerText.startsWith("draw") || lowerText.includes("generate image") || lowerText.includes("create an image")) {
+            if (lowerText.startsWith("draw") || lowerText.includes("generate image")) {
                 addMsg('ai', "🎨 Generating artwork...");
                 const image = await puter.ai.txt2img(text);
                 showMedia(image, 'image');
@@ -291,14 +272,10 @@
             // AUDIO
             else if (lowerText.startsWith("say") || lowerText.startsWith("speak")) {
                 const contentToSpeak = text.replace(/^(say|speak)/i, "").trim();
-                if(contentToSpeak) {
-                    addMsg('ai', "🔊 Generating audio...");
-                    const audio = await puter.ai.txt2speech(contentToSpeak);
-                    showMedia(audio, 'audio');
-                    addMsg('ai', `Audio generated on Canvas.`);
-                } else {
-                    addMsg('ai', "What would you like me to say?");
-                }
+                addMsg('ai', "🔊 Generating audio...");
+                const audio = await puter.ai.txt2speech(contentToSpeak);
+                showMedia(audio, 'audio');
+                addMsg('ai', `Audio generated on Canvas.`);
             }
             // TEXT / CODE / SEARCH
             else {
@@ -411,7 +388,6 @@
         resizer.classList.remove('active');
         document.body.style.cursor = 'default';
     });
-
     document.getElementById('userInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleRequest();
     });
