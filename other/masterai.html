@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MasterAI | Canvas Edition</title>
     
-    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://js.puter.com/v2/" onerror="window.puterLoadError=true"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,15 +23,15 @@
             --accent: #58a6ff; 
             --text: #c9d1d9; 
             --canvas-bg: #010409; 
+            --error: #da3633;
         }
         * { box-sizing: border-box; }
         
-        /* Updated Font Family here */
         body { 
             margin: 0; 
             background: var(--bg); 
             color: var(--text); 
-            font-family: 'Ubuntu', sans-serif; /* Set Ubuntu as default */
+            font-family: 'Ubuntu', sans-serif; 
             height: 100vh; 
             overflow: hidden; 
         }
@@ -55,7 +55,7 @@
         }
         .splash-logo {
             font-size: 32px;
-            font-weight: 700; /* Ubuntu Bold */
+            font-weight: 700;
             letter-spacing: 2px;
             margin-bottom: 20px;
             color: white;
@@ -74,14 +74,31 @@
             width: 0%;
             background: var(--accent);
             border-radius: 2px;
-            transition: width 0.4s ease;
+            transition: width 0.4s ease, background 0.3s;
             box-shadow: 0 0 10px var(--accent);
         }
         #loading-text {
             margin-top: 15px;
             font-size: 13px;
             color: #8b949e;
+            text-align: center;
+            min-height: 40px;
         }
+        
+        /* Retry Button (Hidden by default) */
+        #retryBtn {
+            display: none;
+            margin-top: 10px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Ubuntu', sans-serif;
+            font-size: 12px;
+        }
+        #retryBtn:hover { border-color: var(--text); }
 
         /* MAIN APP STYLES */
         .container { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 1s; }
@@ -106,12 +123,10 @@
         img.generated-image { max-width: 100%; max-height: 90vh; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         audio { width: 300px; margin-top: 20px; }
 
-        /* Message Bubbles */
         .msg { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
         .user { align-self: flex-end; background: #1f6feb; color: white; }
         .ai { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
         
-        /* Inputs & Buttons */
         input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; transition: border 0.2s; font-family: 'Ubuntu', sans-serif; }
         input:focus { border-color: var(--accent); }
         button { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 700; transition: opacity 0.2s; font-family: 'Ubuntu', sans-serif; }
@@ -121,7 +136,6 @@
         .thinking .status-dot { background-color: #e3b341; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         
-        /* Keep Code font Monospace */
         pre { margin: 0; border-radius: 6px; }
         code { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; }
     </style>
@@ -134,6 +148,7 @@
         <div class="loading-bar" id="progressBar"></div>
     </div>
     <div id="loading-text">Connecting to server...</div>
+    <button id="retryBtn" onclick="location.reload()">Retry Connection</button>
 </div>
 
 <div class="container" id="mainContainer">
@@ -191,23 +206,35 @@
     function initApp() {
         const bar = document.getElementById('progressBar');
         const txt = document.getElementById('loading-text');
+        const retryBtn = document.getElementById('retryBtn');
         
+        // Check for immediate error (e.g., blocked by AdBlock)
+        if (window.puterLoadError) {
+             showError(bar, txt, retryBtn);
+             return;
+        }
+
         let width = 0;
+        // Fake loading progress
         const interval = setInterval(() => {
-            if (width >= 90) {
+            if (width >= 80) {
                 clearInterval(interval);
-                checkPuterConnection();
+                checkPuterConnection(bar, txt, retryBtn);
             } else {
-                width += Math.random() * 15;
-                if(width > 90) width = 90;
+                width += Math.random() * 10;
+                if(width > 80) width = 80;
                 bar.style.width = width + '%';
             }
-        }, 200);
+        }, 150);
+    }
 
-        function checkPuterConnection() {
-            txt.innerText = "Initializing Puter.js...";
-            
+    function checkPuterConnection(bar, txt, retryBtn) {
+        txt.innerText = "Initializing AI Services...";
+        
+        // Give it a moment to define 'puter' if script loaded late
+        setTimeout(() => {
             if (typeof puter !== 'undefined') {
+                // Success
                 bar.style.width = '100%';
                 txt.innerText = "Ready.";
                 setTimeout(() => {
@@ -215,11 +242,17 @@
                     document.getElementById('mainContainer').classList.add('loaded');
                 }, 500);
             } else {
-                bar.style.background = '#da3633';
-                txt.innerText = "Error: Puter.js failed to load. Check ad-blocker or internet.";
-                txt.style.color = '#da3633';
+                showError(bar, txt, retryBtn);
             }
-        }
+        }, 1000);
+    }
+
+    function showError(bar, txt, retryBtn) {
+        bar.style.background = '#da3633'; // Red
+        bar.style.boxShadow = '0 0 10px #da3633';
+        txt.innerHTML = "Connection Failed.<br>Please disable AdBlocker or check internet.";
+        txt.style.color = '#da3633';
+        retryBtn.style.display = 'block';
     }
 
     // --- MAIN APP LOGIC ---
@@ -235,14 +268,15 @@
         const text = input.value.trim();
         if (!text) return;
 
+        // Final safety check
         if (typeof puter === 'undefined') {
-            addMsg('ai', "**Error:** Puter.js is not loaded. Please refresh the page.");
+            alert("Connection lost. Please reload the page.");
             return;
         }
 
         addMsg('user', text);
         input.value = '';
-        setStatus(true, "Processing...");
+        setStatus(true, "Thinking...");
         
         const lowerText = text.toLowerCase();
         
@@ -263,7 +297,7 @@
                     showMedia(audio, 'audio');
                     addMsg('ai', `Audio generated on Canvas.`);
                 } else {
-                    addMsg('ai', "What should I say?");
+                    addMsg('ai', "What would you like me to say?");
                 }
             }
             // TEXT / CODE / SEARCH
@@ -293,6 +327,7 @@
         }
     }
 
+    // --- UI HELPERS ---
     function resetCanvas() {
         emptyState.style.display = 'none';
         codeContainer.style.display = 'none';
@@ -353,6 +388,7 @@
         }
     }
 
+    // --- RESIZER ---
     const resizer = document.getElementById('resizer');
     const chatPane = document.getElementById('chatPane');
     let isResizing = false;
