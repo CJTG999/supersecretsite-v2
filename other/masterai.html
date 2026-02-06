@@ -92,72 +92,50 @@ code{font-family:Consolas,monospace;font-size:13px}
 </div>
 
 <script>
-const loader = document.getElementById('loader');
-const chatBox = document.getElementById('chat');
-const input = document.getElementById('userInput');
-const btn = document.getElementById('sendBtn');
-
-const history = [
-    { role: "system", content: "You are a helpful AI assistant." }
-];
-
-// INIT
-(async () => {
-    await puter.ready;
-    loader.style.display = 'none';
-})();
-
-// SEND MESSAGE
-btn.onclick = send;
-input.addEventListener('keypress', e => {
-    if (e.key === 'Enter') send();
-});
-
-async function send() {
-    const text = input.value.trim();
-    if (!text) return;
-
-    addMsg(text, 'user');
-    history.push({ role:'user', content:text });
-    input.value = '';
-    input.disabled = btn.disabled = true;
-
-    const aiBubble = document.createElement('div');
-    aiBubble.className = 'msg ai';
-    aiBubble.textContent = 'Thinking…';
-    chatBox.appendChild(aiBubble);
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    let full = '';
-
-    try {
-        const stream = await puter.ai.chat(history, { stream:true });
-
-        for await (const part of stream) {
-            full += part.text;
-            aiBubble.innerHTML = marked.parse(full);
-            hljs.highlightAll();
-            chatBox.scrollTop = chatBox.scrollHeight;
+    const loader = document.getElementById('loader');
+    const chatBox = document.getElementById('chat');
+    const input = document.getElementById('userInput');
+    const btn = document.getElementById('sendBtn');
+    
+    const history = [
+        { role: "system", content: "You are a helpful AI assistant." }
+    ];
+    
+    // SAFETY TIMEOUT
+    async function initPuter() {
+        if (!window.puter) {
+            loader.innerHTML = `
+                <div style="color:#da3633;text-align:center">
+                    <b>Puter SDK not available</b><br><br>
+                    This app must be run inside <b>puter.com</b><br>
+                    or an authorized Puter environment.
+                </div>`;
+            return;
         }
-
-        history.push({ role:'assistant', content:full });
-
-    } catch (err) {
-        aiBubble.innerHTML = `<i>Error: ${err.message}</i>`;
+    
+        try {
+            await Promise.race([
+                puter.ready,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Puter not responding")), 4000)
+                )
+            ]);
+    
+            loader.style.display = 'none';
+    
+        } catch (err) {
+            loader.innerHTML = `
+                <div style="color:#da3633;text-align:center">
+                    <b>Failed to connect to Puter</b><br><br>
+                    ${err.message}<br><br>
+                    Are you running this inside puter.com?
+                </div>`;
+        }
     }
-
-    input.disabled = btn.disabled = false;
-    input.focus();
-}
-
-function addMsg(text, role) {
-    const div = document.createElement('div');
-    div.className = `msg ${role}`;
-    div.innerHTML = marked.parse(text);
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-</script>
+    
+    initPuter();
+    </script>
+    
 
 </body>
 </html>
