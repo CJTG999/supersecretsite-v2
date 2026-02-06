@@ -7,6 +7,10 @@
     
     <script src="https://js.puter.com/v2/"></script>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -21,59 +25,116 @@
             --canvas-bg: #010409; 
         }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; height: 100vh; display: flex; overflow: hidden; }
-
-        /* Main Container */
-        .container { display: flex; width: 100%; height: 100%; }
         
-        /* LEFT: Chat Pane */
+        /* Updated Font Family here */
+        body { 
+            margin: 0; 
+            background: var(--bg); 
+            color: var(--text); 
+            font-family: 'Ubuntu', sans-serif; /* Set Ubuntu as default */
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* SPLASH SCREEN STYLES */
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+        .splash-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .splash-logo {
+            font-size: 32px;
+            font-weight: 700; /* Ubuntu Bold */
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            color: white;
+            text-transform: uppercase;
+        }
+        .loading-container {
+            width: 250px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        .loading-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.4s ease;
+            box-shadow: 0 0 10px var(--accent);
+        }
+        #loading-text {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        /* MAIN APP STYLES */
+        .container { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 1s; }
+        .container.loaded { opacity: 1; }
+        
         .chat-pane { width: 400px; min-width: 250px; display: flex; flex-direction: column; background: var(--bg); }
-        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: var(--panel); font-weight: bold; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px;}
+        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: var(--panel); font-weight: 700; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px;}
         .chat-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
         .chat-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--panel); display: flex; gap: 10px; }
 
-        /* RESIZER: Draggable Bar */
         .resizer { width: 5px; background: var(--border); cursor: col-resize; transition: background 0.2s; z-index: 10; }
         .resizer:hover, .resizer.active { background: var(--accent); }
 
-        /* RIGHT: Canvas Pane */
         .canvas-pane { flex: 1; min-width: 300px; display: flex; flex-direction: column; background: var(--canvas-bg); overflow: hidden; }
-        .canvas-header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 13px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; font-weight: 600; text-transform: uppercase; }
+        .canvas-header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 13px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; font-weight: 700; text-transform: uppercase; }
         .canvas-content { flex: 1; padding: 0; position: relative; overflow: auto; display: flex; align-items: center; justify-content: center; }
 
-        /* Canvas Content Areas */
         #codeContainer { width: 100%; height: 100%; display: none; padding: 20px; text-align: left; align-items: flex-start; }
         #mediaContainer { width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         
-        /* Empty State */
         .empty-state { color: #484f58; text-align: center; font-size: 14px; }
-        
-        /* Media Elements */
         img.generated-image { max-width: 100%; max-height: 90vh; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         audio { width: 300px; margin-top: 20px; }
 
-        /* Messages */
+        /* Message Bubbles */
         .msg { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
         .user { align-self: flex-end; background: #1f6feb; color: white; }
         .ai { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
         
-        /* Inputs */
-        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; transition: border 0.2s; }
+        /* Inputs & Buttons */
+        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; transition: border 0.2s; font-family: 'Ubuntu', sans-serif; }
         input:focus { border-color: var(--accent); }
-        button { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+        button { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 700; transition: opacity 0.2s; font-family: 'Ubuntu', sans-serif; }
         button:hover { opacity: 0.9; }
         
-        /* Status Dot */
         .status-dot { height: 8px; width: 8px; background-color: #238636; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .thinking .status-dot { background-color: #e3b341; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         
-        /* Code Block Styling */
+        /* Keep Code font Monospace */
         pre { margin: 0; border-radius: 6px; }
         code { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; }
     </style>
 </head>
 <body>
+
+<div id="splash-screen">
+    <div class="splash-logo">MASTERAI</div>
+    <div class="loading-container">
+        <div class="loading-bar" id="progressBar"></div>
+    </div>
+    <div id="loading-text">Connecting to server...</div>
+</div>
 
 <div class="container" id="mainContainer">
     <div class="chat-pane" id="chatPane">
@@ -83,15 +144,17 @@
         </div>
         <div id="chat" class="chat-body">
             <div class="msg ai">
-                Hello. I am MasterAI.
+                System initialized. Welcome to MasterAI.
                 <br><br>
-                • <b>Web Search:</b> "What is the price of Bitcoin?"
+                Try these commands:
                 <br>
-                • <b>Generate Image:</b> "Draw a futuristic city."
+                • <b>Search:</b> "Who is the CEO of Apple?"
                 <br>
-                • <b>Audio:</b> "Say 'System Ready' in a robot voice."
+                • <b>Draw:</b> "Draw a neon city."
                 <br>
-                • <b>Coding:</b> "Write a python script to calculate pi."
+                • <b>Code:</b> "Write a snake game in HTML."
+                <br>
+                • <b>Speak:</b> "Say 'Hello World' in a deep voice."
             </div>
         </div>
         <div class="chat-footer">
@@ -115,39 +178,68 @@
                 </svg>
                 <br>Generated media & code appear here
             </div>
-
-            <div id="codeContainer">
-                <pre style="width:100%;"><code id="codeBlock"></code></pre>
-            </div>
-
+            <div id="codeContainer"><pre style="width:100%;"><code id="codeBlock"></code></pre></div>
             <div id="mediaContainer"></div>
         </div>
     </div>
 </div>
 
 <script>
+    // --- APP INITIALIZATION & SPLASH SCREEN LOGIC ---
+    window.addEventListener('load', initApp);
+
+    function initApp() {
+        const bar = document.getElementById('progressBar');
+        const txt = document.getElementById('loading-text');
+        
+        let width = 0;
+        const interval = setInterval(() => {
+            if (width >= 90) {
+                clearInterval(interval);
+                checkPuterConnection();
+            } else {
+                width += Math.random() * 15;
+                if(width > 90) width = 90;
+                bar.style.width = width + '%';
+            }
+        }, 200);
+
+        function checkPuterConnection() {
+            txt.innerText = "Initializing Puter.js...";
+            
+            if (typeof puter !== 'undefined') {
+                bar.style.width = '100%';
+                txt.innerText = "Ready.";
+                setTimeout(() => {
+                    document.getElementById('splash-screen').classList.add('splash-hidden');
+                    document.getElementById('mainContainer').classList.add('loaded');
+                }, 500);
+            } else {
+                bar.style.background = '#da3633';
+                txt.innerText = "Error: Puter.js failed to load. Check ad-blocker or internet.";
+                txt.style.color = '#da3633';
+            }
+        }
+    }
+
+    // --- MAIN APP LOGIC ---
     let conversationHistory = [];
     const chatBox = document.getElementById('chat');
-    
-    // Canvas Elements
     const emptyState = document.getElementById('emptyState');
     const codeContainer = document.getElementById('codeContainer');
     const mediaContainer = document.getElementById('mediaContainer');
     const codeBlock = document.getElementById('codeBlock');
 
-    // 1. MAIN LOGIC
     async function handleRequest() {
         const input = document.getElementById('userInput');
         const text = input.value.trim();
         if (!text) return;
 
-        // Verify Puter is loaded
         if (typeof puter === 'undefined') {
-            alert("Error: Puter.js failed to load. Please check your internet connection.");
+            addMsg('ai', "**Error:** Puter.js is not loaded. Please refresh the page.");
             return;
         }
 
-        // UI Updates
         addMsg('user', text);
         input.value = '';
         setStatus(true, "Processing...");
@@ -155,16 +247,14 @@
         const lowerText = text.toLowerCase();
         
         try {
-            // --- IMAGE GENERATION ---
+            // IMAGE
             if (lowerText.startsWith("draw") || lowerText.includes("generate image") || lowerText.includes("create an image")) {
                 addMsg('ai', "🎨 Generating artwork...");
                 const image = await puter.ai.txt2img(text);
                 showMedia(image, 'image');
                 addMsg('ai', "Image generated on Canvas.");
-                setStatus(false, "Online");
             } 
-            
-            // --- TEXT TO SPEECH ---
+            // AUDIO
             else if (lowerText.startsWith("say") || lowerText.startsWith("speak")) {
                 const contentToSpeak = text.replace(/^(say|speak)/i, "").trim();
                 if(contentToSpeak) {
@@ -175,49 +265,39 @@
                 } else {
                     addMsg('ai', "What should I say?");
                 }
-                setStatus(false, "Online");
             }
-
-            // --- CHAT + WEB SEARCH + CODE ---
+            // TEXT / CODE / SEARCH
             else {
                 conversationHistory.push({ role: 'user', content: text });
-
-                // Call Chat with Web Search Tool Enabled
                 const response = await puter.ai.chat(conversationHistory, { 
-                    model: 'gpt-4o-mini', // or 'gpt-4o' if available
+                    model: 'gpt-4o-mini', 
                     tools: [{ type: "web_search" }] 
                 });
                 
                 const reply = response.message.content;
                 conversationHistory.push(response.message);
                 
-                // Detect Code Block
                 const codeMatch = reply.match(/```(\w+)?\n([\s\S]*?)```/);
-                
                 if (codeMatch) {
-                    // Show code on canvas
                     showCode(codeMatch[2], codeMatch[1] || 'plaintext');
-                    // Show text response in chat
                     addMsg('ai', reply); 
                 } else {
                     addMsg('ai', reply);
                 }
-                setStatus(false, "Online");
             }
-
+            setStatus(false, "Online");
         } catch (e) {
             console.error(e);
-            addMsg('ai', `**System Error:** ${e.message}`);
+            addMsg('ai', `**Error:** ${e.message}`);
             setStatus(false, "Error");
         }
     }
 
-    // 2. CANVAS DISPLAY HELPERS
     function resetCanvas() {
         emptyState.style.display = 'none';
         codeContainer.style.display = 'none';
         mediaContainer.style.display = 'none';
-        mediaContainer.innerHTML = ''; // Clear previous media
+        mediaContainer.innerHTML = ''; 
     }
 
     function showCode(code, lang) {
@@ -231,7 +311,6 @@
     function showMedia(element, type) {
         resetCanvas();
         mediaContainer.style.display = 'flex';
-        
         if(type === 'image') {
             element.className = 'generated-image';
             mediaContainer.appendChild(element);
@@ -239,8 +318,6 @@
             element.controls = true;
             element.autoplay = true;
             mediaContainer.appendChild(element);
-            
-            // Visual Label
             const label = document.createElement('div');
             label.innerText = "Audio Generated";
             label.style.marginTop = "15px";
@@ -257,7 +334,6 @@
         codeBlock.textContent = '';
     }
 
-    // 3. CHAT HELPERS
     function addMsg(role, text) {
         const div = document.createElement('div');
         div.className = `msg ${role}`;
@@ -268,8 +344,6 @@
 
     function setStatus(loading, text) {
         const statusDiv = document.getElementById('status');
-        const dot = statusDiv.querySelector('.status-dot');
-        
         if (loading) {
             statusDiv.classList.add('thinking');
             statusDiv.innerHTML = `<span class="status-dot"></span> ${text}`;
@@ -279,7 +353,6 @@
         }
     }
 
-    // 4. RESIZER LOGIC
     const resizer = document.getElementById('resizer');
     const chatPane = document.getElementById('chatPane');
     let isResizing = false;
@@ -290,27 +363,22 @@
         document.body.style.cursor = 'col-resize';
         e.preventDefault();
     });
-
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
         const newWidth = e.clientX;
-        // Constraints (min widths)
         if (newWidth > 200 && newWidth < window.innerWidth - 300) {
             chatPane.style.width = `${newWidth}px`;
         }
     });
-
     document.addEventListener('mouseup', () => {
         isResizing = false;
         resizer.classList.remove('active');
         document.body.style.cursor = 'default';
     });
 
-    // Enter Key
     document.getElementById('userInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleRequest();
     });
-
 </script>
 </body>
 </html>
