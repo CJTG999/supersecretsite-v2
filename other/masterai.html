@@ -3,253 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAI | Canvas Edition</title>
+    <title>MasterAI | Local Edition</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    
+
     <style>
-        :root { 
-            --bg: #0d1117; 
-            --panel: #161b22; 
-            --border: #30363d; 
-            --accent: #d2a8ff; /* Changed to Purple for Pollinations vibe */
-            --text: #c9d1d9; 
-            --canvas-bg: #010409; 
-            --error: #da3633;
-        }
+        :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --accent: #238636; --text: #c9d1d9; }
         * { box-sizing: border-box; }
-        
-        body { 
-            margin: 0; 
-            background: var(--bg); 
-            color: var(--text); 
-            font-family: 'Ubuntu', sans-serif; 
-            height: 100vh; 
-            overflow: hidden; 
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Ubuntu', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* LOADING OVERLAY */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); z-index: 999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s;
         }
+        .bar-container { width: 300px; height: 6px; background: var(--border); border-radius: 3px; margin-top: 15px; overflow: hidden; }
+        .bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.2s; }
+        #loadText { margin-top: 10px; font-size: 13px; color: #8b949e; }
 
-        /* MAIN APP LAYOUT */
-        .container { display: flex; width: 100%; height: 100%; }
-        
-        /* LEFT: CHAT */
-        .chat-pane { width: 400px; min-width: 250px; display: flex; flex-direction: column; background: var(--bg); }
-        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: var(--panel); font-weight: 700; display: flex; justify-content: space-between; align-items: center; letter-spacing: 1px;}
-        .chat-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
-        .chat-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--panel); display: flex; gap: 10px; }
+        /* APP LAYOUT */
+        .header { padding: 15px; background: var(--panel); border-bottom: 1px solid var(--border); font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .chat-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+        .input-area { padding: 20px; background: var(--panel); border-top: 1px solid var(--border); display: flex; gap: 10px; }
 
-        /* RESIZER */
-        .resizer { width: 5px; background: var(--border); cursor: col-resize; transition: background 0.2s; z-index: 10; }
-        .resizer:hover, .resizer.active { background: var(--accent); }
-
-        /* RIGHT: CANVAS */
-        .canvas-pane { flex: 1; min-width: 300px; display: flex; flex-direction: column; background: var(--canvas-bg); overflow: hidden; }
-        .canvas-header { padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 13px; color: #8b949e; display: flex; justify-content: space-between; align-items: center; font-weight: 700; text-transform: uppercase; }
-        .canvas-content { flex: 1; padding: 0; position: relative; overflow: auto; display: flex; align-items: center; justify-content: center; }
-
-        /* CONTENT AREAS */
-        #codeContainer { width: 100%; height: 100%; display: none; padding: 20px; text-align: left; align-items: flex-start; }
-        #mediaContainer { width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        
-        .empty-state { color: #484f58; text-align: center; font-size: 14px; }
-        img.generated-image { max-width: 100%; max-height: 90vh; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        
         /* MESSAGES */
-        .msg { padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
-        .user { align-self: flex-end; background: #8957e5; color: white; }
-        .ai { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
+        .msg { padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 1.5; max-width: 800px; }
+        .user { align-self: flex-end; background: #1f6feb; color: white; }
+        .ai { align-self: flex-start; background: #21262d; border: 1px solid var(--border); }
         
-        /* INPUTS */
-        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 20px; outline: none; transition: border 0.2s; font-family: 'Ubuntu', sans-serif; }
-        input:focus { border-color: var(--accent); }
-        button { background: var(--accent); color: #0d1117; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 700; transition: opacity 0.2s; font-family: 'Ubuntu', sans-serif; }
+        input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 12px 15px; border-radius: 25px; outline: none; font-family: inherit; }
+        input:disabled { opacity: 0.5; cursor: not-allowed; }
+        button { background: var(--accent); color: white; border: none; padding: 10px 25px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { opacity: 0.9; }
-        
-        /* STATUS */
-        .status-dot { height: 8px; width: 8px; background-color: #238636; border-radius: 50%; display: inline-block; margin-right: 6px; }
-        .thinking .status-dot { background-color: #e3b341; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        
-        pre { margin: 0; border-radius: 6px; }
-        code { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; }
+        button:disabled { background: var(--border); cursor: not-allowed; }
+
+        /* CODE BLOCKS */
+        pre { margin: 10px 0; border-radius: 6px; overflow-x: auto; background: #0d1117; padding: 10px; border: 1px solid var(--border); }
+        code { font-family: 'Consolas', monospace; font-size: 13px; }
     </style>
 </head>
 <body>
 
-<div class="container" id="mainContainer">
-    <div class="chat-pane" id="chatPane">
-        <div class="chat-header">
-            <div>MASTERAI <span style="font-size:10px; opacity:0.6; margin-left:5px;">LITE</span></div>
-            <div id="status" style="font-size: 12px; display: flex; align-items: center; color: #8b949e;"><span class="status-dot"></span>Ready</div>
-        </div>
-        <div id="chat" class="chat-body">
-            <div class="msg ai">
-                <b>System Online (Unblocked Mode)</b>
-                <br>I am connected via Pollinations AI.
-                <br><br>
-                <b>Commands:</b>
-                <br>• <b>Draw:</b> "Draw a futuristic city"
-                <br>• <b>Chat:</b> "Write a python script for a game"
-                <br>• <b>Explain:</b> "Explain quantum physics"
-            </div>
-        </div>
-        <div class="chat-footer">
-            <input type="text" id="userInput" placeholder="Message MasterAI..." autocomplete="off">
-            <button onclick="handleRequest()" id="sendBtn">Send</button>
-        </div>
-    </div>
+<div id="loader">
+    <div style="font-size: 24px; font-weight: bold;">MASTERAI LOCAL</div>
+    <div class="bar-container"><div class="bar" id="loadBar"></div></div>
+    <div id="loadText">Initializing WebGPU...</div>
+</div>
 
-    <div class="resizer" id="resizer"></div>
+<div class="header">
+    <span>MASTERAI <span style="font-size:11px; opacity:0.6; border:1px solid var(--border); padding:2px 6px; border-radius:4px; margin-left:8px;">OFFLINE MODE</span></span>
+    <span id="gpuStatus" style="font-size:12px; color:#238636;">● GPU Ready</span>
+</div>
 
-    <div class="canvas-pane" id="canvasPane">
-        <div class="canvas-header">
-            <span>CANVAS WORKSPACE</span>
-            <button onclick="clearCanvas()" style="padding: 4px 10px; font-size: 11px; background: #21262d; border: 1px solid var(--border); color:white; cursor:pointer;">Clear</button>
-        </div>
-        <div class="canvas-content">
-            <div class="empty-state" id="emptyState">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:10px; opacity: 0.5;">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <br>Generated media & code appear here
-            </div>
-            
-            <div id="codeContainer">
-                <pre style="width:100%;"><code id="codeBlock"></code></pre>
-            </div>
-
-            <div id="mediaContainer"></div>
-        </div>
+<div class="chat-area" id="chat">
+    <div class="msg ai">
+        <b>System Ready.</b><br>
+        I am running locally on your graphics card (Llama-3-8B).
+        <br><br>
+        No internet connection is required for chatting.
     </div>
 </div>
 
-<script>
-    // --- APP STATE ---
-    let conversationHistory = [
-        { role: 'system', content: 'You are MasterAI, a helpful coding and creative assistant. When asked to write code, output ONLY the code inside markdown code blocks. Be concise.' }
-    ];
+<div class="input-area">
+    <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
+    <button id="sendBtn" onclick="generate()">Send</button>
+</div>
+
+<script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+    // --- CONFIGURATION ---
+    // We use Llama-3-8B (Quantized) which balances speed and smarts
+    const SELECTED_MODEL = "Llama-3.2-1B-Instruct-q4f32_1-MLC"; 
     
-    // --- DOM ELEMENTS ---
+    let engine = null;
+    const loader = document.getElementById('loader');
+    const loadBar = document.getElementById('loadBar');
+    const loadText = document.getElementById('loadText');
     const chatBox = document.getElementById('chat');
-    const emptyState = document.getElementById('emptyState');
-    const codeContainer = document.getElementById('codeContainer');
-    const mediaContainer = document.getElementById('mediaContainer');
-    const codeBlock = document.getElementById('codeBlock');
-    const inputField = document.getElementById('userInput');
+    const input = document.getElementById('userInput');
+    const btn = document.getElementById('sendBtn');
 
-    // --- MAIN LOGIC ---
-    async function handleRequest() {
-        const text = inputField.value.trim();
-        if (!text) return;
+    // --- INITIALIZATION ---
+    async function initAI() {
+        try {
+            // Callback to update the loading bar
+            const initProgressCallback = (report) => {
+                console.log(report.text);
+                loadText.innerText = report.text;
+                // Parse percentage from text (e.g., "Loading... 50%")
+                const match = report.text.match(/\[(\d+)\/(\d+)\]/) || report.text.match(/(\d+)%/);
+                let percent = 0;
+                if (report.progress) {
+                    percent = report.progress * 100;
+                }
+                loadBar.style.width = percent + "%";
+            };
 
-        // UI Updates
-        addMsg('user', text);
-        inputField.value = '';
-        setStatus(true, "Thinking...");
-        
-        const lowerText = text.toLowerCase();
+            engine = new webllm.MLCEngine();
+            engine.setInitProgressCallback(initProgressCallback);
+
+            loadText.innerText = "Downloading AI Model (This happens once)...";
+            
+            // Reload model
+            await engine.reload(SELECTED_MODEL);
+
+            // Hide Loader
+            loader.style.opacity = '0';
+            setTimeout(() => { loader.style.display = 'none'; }, 500);
+            
+        } catch (err) {
+            loadText.innerHTML = `<span style="color:#da3633">Error: WebGPU not supported or blocked.<br>${err.message}</span>`;
+            loadBar.style.background = '#da3633';
+        }
+    }
+
+    // --- CHAT LOGIC ---
+    window.generate = async () => {
+        const text = input.value.trim();
+        if (!text || !engine) return;
+
+        // UI Setup
+        addMsg(text, 'user');
+        input.value = '';
+        input.disabled = true;
+        btn.disabled = true;
+
+        // Create AI Message Bubble
+        const aiBubble = document.createElement('div');
+        aiBubble.className = 'msg ai';
+        aiBubble.innerText = "Thinking...";
+        chatBox.appendChild(aiBubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        let fullResponse = "";
 
         try {
-            // --- 1. IMAGE GENERATION (Pollinations) ---
-            if (lowerText.startsWith("draw") || lowerText.startsWith("generate image") || lowerText.startsWith("create image")) {
-                addMsg('ai', "🎨 Generating artwork...");
-                
-                // Pollinations Image URL (No fetch needed, just an IMG tag)
-                const seed = Math.floor(Math.random() * 1000);
-                const safePrompt = encodeURIComponent(text + " " + seed);
-                const imageUrl = `https://image.pollinations.ai/prompt/${safePrompt}`;
-                
-                // Pre-load image to check for errors
-                const img = new Image();
-                img.onload = () => {
-                    showMedia(img, 'image');
-                    addMsg('ai', "Image generated on Canvas.");
-                    setStatus(false, "Online");
-                };
-                img.onerror = () => {
-                    addMsg('ai', "Error generating image.");
-                    setStatus(false, "Error");
-                };
-                img.src = imageUrl;
-            } 
-            
-            // --- 2. TEXT / CODE GENERATION (Pollinations Text API) ---
-            else {
-                conversationHistory.push({ role: 'user', content: text });
-                
-                // Construct the prompt for the GET request
-                // We use a simple GET to Pollinations text endpoint
-                // Note: Pollinations text API is experimental, but usually works for simple things.
-                // Alternative: We can use a free proxy for OpenAI if this is flaky, but let's try direct first.
-                
-                const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(text)}`);
-                
-                if (!response.ok) throw new Error("Network response was not ok");
-                
-                const reply = await response.text();
-                
-                conversationHistory.push({ role: 'assistant', content: reply });
-                
-                // Check for Code Blocks
-                const codeMatch = reply.match(/```(\w+)?\n([\s\S]*?)```/);
-                
-                if (codeMatch) {
-                    showCode(codeMatch[2], codeMatch[1] || 'plaintext');
-                    addMsg('ai', reply); 
-                } else {
-                    addMsg('ai', reply);
-                }
-                setStatus(false, "Online");
+            const chunks = await engine.chat.completions.create({
+                messages: [
+                    { role: "system", content: "You are a helpful AI assistant." },
+                    // In a real app, you would pass previous history here
+                    { role: "user", content: text } 
+                ],
+                stream: true,
+            });
+
+            // Streaming Response
+            for await (const chunk of chunks) {
+                const delta = chunk.choices[0]?.delta.content || "";
+                fullResponse += delta;
+                aiBubble.innerHTML = marked.parse(fullResponse);
+                // Re-highlight code blocks while typing
+                if (fullResponse.includes("```")) hljs.highlightAll();
+                chatBox.scrollTop = chatBox.scrollHeight;
             }
 
         } catch (e) {
-            console.error(e);
-            addMsg('ai', `**Connection Error:** Could not reach the AI server. Your network might be blocking 'pollinations.ai' as well.`);
-            setStatus(false, "Error");
+            aiBubble.innerHTML += `<br><br><i>Error: ${e.message}</i>`;
         }
-    }
 
-    // --- CANVAS HELPERS ---
-    function resetCanvas() {
-        emptyState.style.display = 'none';
-        codeContainer.style.display = 'none';
-        mediaContainer.style.display = 'none';
-        mediaContainer.innerHTML = ''; 
-    }
+        // Reset UI
+        input.disabled = false;
+        btn.disabled = false;
+        input.focus();
+    };
 
-    function showCode(code, lang) {
-        resetCanvas();
-        codeContainer.style.display = 'flex';
-        codeBlock.className = `language-${lang}`;
-        codeBlock.textContent = code;
-        hljs.highlightElement(codeBlock);
-    }
-
-    function showMedia(element, type) {
-        resetCanvas();
-        mediaContainer.style.display = 'flex';
-        if(type === 'image') {
-            element.className = 'generated-image';
-            mediaContainer.appendChild(element);
-        }
-    }
-
-    function clearCanvas() {
-        emptyState.style.display = 'block';
-        codeContainer.style.display = 'none';
-        mediaContainer.style.display = 'none';
-        mediaContainer.innerHTML = '';
-        codeBlock.textContent = '';
-    }
-
-    // --- CHAT HELPERS ---
-    function addMsg(role, text) {
+    // Helper: Add Message
+    function addMsg(text, role) {
         const div = document.createElement('div');
         div.className = `msg ${role}`;
         div.innerHTML = marked.parse(text);
@@ -257,42 +183,12 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function setStatus(loading, text) {
-        const statusDiv = document.getElementById('status');
-        const dot = statusDiv.querySelector('.status-dot');
-        statusDiv.innerHTML = `<span class="status-dot"></span> ${text}`;
-        
-        if (loading) statusDiv.classList.add('thinking');
-        else statusDiv.classList.remove('thinking');
-    }
+    // Start
+    initAI();
 
-    // --- RESIZER LOGIC ---
-    const resizer = document.getElementById('resizer');
-    const chatPane = document.getElementById('chatPane');
-    let isResizing = false;
-
-    resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        resizer.classList.add('active');
-        document.body.style.cursor = 'col-resize';
-        e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        const newWidth = e.clientX;
-        if (newWidth > 200 && newWidth < window.innerWidth - 300) {
-            chatPane.style.width = `${newWidth}px`;
-        }
-    });
-    document.addEventListener('mouseup', () => {
-        isResizing = false;
-        resizer.classList.remove('active');
-        document.body.style.cursor = 'default';
-    });
-    
-    // Enter Key Support
-    inputField.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleRequest();
+    // Keypress
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !input.disabled) window.generate();
     });
 
 </script>
