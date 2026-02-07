@@ -243,10 +243,7 @@
     }
 
     // --- DIRECT IMAGE DOWNLOAD ---
-    async function generateImage(prompt) {
-        modelBadge.innerText = "Painting...";
-        const cleanPrompt = encodeURIComponent(prompt);
-        const targetUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
+    
 
         let displayUrl = "";
 
