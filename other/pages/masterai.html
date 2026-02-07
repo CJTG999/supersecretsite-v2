@@ -4,313 +4,176 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Assistant</title>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
     <style>
-        :root {
-            --bg: #0f1115;
-            --panel: #181b21;
-            --border: #2d333b;
-            --accent: #3b82f6; /* Generic Blue */
-            --text: #e0e6ed;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Header */
-        .header {
-            padding: 15px 20px;
-            background: var(--panel);
-            border-bottom: 1px solid var(--border);
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            letter-spacing: 0.5px;
-        }
-
-        /* Chat Area */
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            scroll-behavior: smooth;
-        }
-
-        /* Input Area */
-        .input-area {
-            padding: 20px;
-            background: var(--panel);
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 12px;
-        }
-
-        /* Messages */
-        .msg {
-            padding: 14px 18px;
-            border-radius: 12px;
-            font-size: 15px;
-            line-height: 1.6;
-            max-width: 800px;
-            word-wrap: break-word;
-        }
-
-        .user {
-            align-self: flex-end;
-            background: var(--accent);
-            color: white;
-            border-bottom-right-radius: 2px;
-        }
-
-        .ai {
-            align-self: flex-start;
-            background: #22262e;
-            border: 1px solid var(--border);
-            border-bottom-left-radius: 2px;
-        }
-
-        .error {
-            align-self: center;
-            background: #3d1a1a;
-            color: #ff6b6b;
-            border: 1px solid #822;
-            font-size: 13px;
-        }
-
-        /* Images */
-        .ai-image {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border);
-        }
-
-        /* Inputs & Buttons */
-        input {
-            flex: 1;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: white;
-            padding: 12px 18px;
-            border-radius: 8px;
-            outline: none;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-
-        input:focus {
-            border-color: var(--accent);
-        }
-
-        button {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        button:disabled {
-            background: #30363d;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        /* Code Blocks */
-        pre {
-            margin: 10px 0;
-            border-radius: 6px;
-            overflow-x: auto;
-            background: #0d1117;
-            padding: 15px;
-            border: 1px solid var(--border);
-        }
-
-        code {
-            font-family: 'Consolas', monospace;
-            font-size: 13px;
-        }
-        
-        /* Status Dot */
-        .status-dot {
-            height: 8px; width: 8px; 
-            background-color: #238636; 
-            border-radius: 50%; 
-            display: inline-block;
-        }
+        :root{--bg:#0f1115;--panel:#181b21;--border:#2d333b;--accent:#3b82f6;--text:#e0e6ed}
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column}
+        .header{padding:15px 20px;background:var(--panel);border-bottom:1px solid var(--border);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+        .chat-area{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:20px}
+        .input-area{padding:20px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:12px}
+        .msg{padding:14px 18px;border-radius:12px;font-size:15px;line-height:1.6;max-width:800px;word-wrap:break-word}
+        .user{align-self:flex-end;background:var(--accent);color:white}
+        .ai{align-self:flex-start;background:#22262e;border:1px solid var(--border)}
+        .error{align-self:center;background:#3d1a1a;color:#ff6b6b;border:1px solid #822;font-size:13px}
+        .ai-image{max-width:100%;border-radius:8px;margin-top:10px;border:1px solid var(--border)}
+        input{flex:1;background:var(--bg);border:1px solid var(--border);color:white;padding:12px 18px;border-radius:8px;outline:none;transition:border-color .2s}
+        input:focus{border-color:var(--accent)}
+        button{background:var(--accent);color:white;border:none;padding:0 24px;border-radius:8px;font-weight:600;cursor:pointer}
+        button:disabled{background:#30363d;cursor:not-allowed;opacity:.6}
+        pre{margin:10px 0;border-radius:6px;overflow-x:auto;background:#0d1117;padding:15px;border:1px solid var(--border)}
+        code{font-family:'Consolas',monospace;font-size:13px}
+        .status-dot{height:8px;width:8px;background-color:#238636;border-radius:50%;display:inline-block}
     </style>
 </head>
-
 <body>
 
-    <div class="header">
-        <span>AI ASSISTANT</span>
-        <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#8b949e;">
-            <span class="status-dot"></span> Online
-        </div>
+<div class="header">
+    <span>AI ASSISTANT</span>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8b949e">
+        <span class="status-dot"></span> Online
     </div>
+</div>
 
-    <div class="chat-area" id="chat">
-        <div class="msg ai">
-            Hello. How can I help you today?
-        </div>
+<div class="chat-area" id="chat">
+    <div class="msg ai">
+        System Online. I am ready to help.
     </div>
+</div>
 
-    <div class="input-area">
-        <input id="userInput" placeholder="Type a message..." autocomplete="off">
-        <button id="sendBtn">Send</button>
-    </div>
+<div class="input-area">
+    <input id="userInput" placeholder="Type a message..." autocomplete="off">
+    <button id="sendBtn">Send</button>
+</div>
 
-    <script>
-        // ==========================================
-        // 🔑 INSERT KEY HERE
-        // ==========================================
-        const API_KEY = "AIzaSyCzpkJytXuVCNanzTM6opB9zTaV-DFpBgo";
-        // ==========================================
+<script>
+    // ==========================================
+    // 🔑 INSERT YOUR API KEY BELOW
+    // ==========================================
+    const API_KEY = "AIzaSyCzpkJytXuVCNanzTM6opB9zTaV-DFpBgo";
+    
+    // We use 'gemini-pro' because it is the most stable free model.
+    // If you want to try others later, you can change this to 'gemini-1.5-flash'
+    const MODEL_NAME = "gemini-pro"; 
+    // ==========================================
 
-        const chatBox = document.getElementById("chat");
-        const input = document.getElementById("userInput");
-        const btn = document.getElementById("sendBtn");
+    const chatBox = document.getElementById("chat");
+    const input = document.getElementById("userInput");
+    const btn = document.getElementById("sendBtn");
 
-        input.focus();
+    input.focus();
 
-        btn.onclick = handleSend;
-        input.addEventListener("keypress", e => {
-            if (e.key === "Enter") handleSend();
+    btn.onclick = handleSend;
+    input.addEventListener("keypress", e => {
+        if (e.key === "Enter") handleSend();
+    });
+
+    async function handleSend() {
+        const text = input.value.trim();
+        if (!text) return;
+
+        if (API_KEY.includes("INSERT_YOUR") || API_KEY.length < 10) {
+            addMsg("⚠️ <b>Configuration Error:</b> Please edit the HTML file and insert a valid API Key.", "error");
+            return;
+        }
+
+        addMsg(text, "user");
+        input.value = "";
+        setLoading(true);
+
+        try {
+            const lower = text.toLowerCase();
+            const isImageRequest = lower.startsWith("draw") || lower.startsWith("generate") || lower.includes("picture of");
+
+            if (isImageRequest) {
+                await generateImage(text);
+            } else {
+                await generateText(text);
+            }
+
+        } catch (err) {
+            console.error(err);
+            addMsg(`❌ <b>Error:</b> ${err.message}`, "error");
+        }
+
+        setLoading(false);
+    }
+
+    async function generateText(prompt) {
+        // Construct the URL dynamically based on the model name
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
         });
 
-        async function handleSend() {
-            const text = input.value.trim();
-            if (!text) return;
-
-            // 1. Validate Key
-            if (API_KEY.includes("INSERT_YOUR") || API_KEY.length < 10) {
-                addMsg("⚠️ <b>Configuration Error:</b> Please edit the HTML file and insert a valid API Key.", "error");
-                return;
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            // Nice error handling
+            if (response.status === 404) {
+                throw new Error(`Model '${MODEL_NAME}' not found. Try changing MODEL_NAME to 'gemini-1.0-pro' in the code.`);
             }
+            throw new Error(`API Error (${response.status}): ${errorData.error?.message || response.statusText}`);
+        }
 
-            addMsg(text, "user");
-            input.value = "";
-            setLoading(true);
-
-            try {
-                const lower = text.toLowerCase();
-                const isImageRequest = lower.startsWith("draw") || 
-                                       lower.startsWith("generate") || 
-                                       lower.startsWith("/image") ||
-                                       lower.includes("picture of");
-
-                if (isImageRequest) {
-                    await generateImage(text);
-                } else {
-                    await generateText(text);
-                }
-
-            } catch (err) {
-                console.error(err);
-                addMsg(`❌ <b>Error:</b> ${err.message}`, "error");
+        const data = await response.json();
+        
+        if (!data.candidates || data.candidates.length === 0) {
+            // Safety fallback if the AI blocks the response
+            if (data.promptFeedback) {
+                throw new Error("Response blocked by safety filters.");
             }
-
-            setLoading(false);
+            throw new Error("The AI returned no response.");
         }
 
-        async function generateText(prompt) {
-            // Using the specific model endpoint
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        const aiText = data.candidates[0].content.parts[0].text;
+        addMsg(aiText, "ai");
+        hljs.highlightAll(); 
+    }
 
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            });
+    async function generateImage(prompt) {
+        const loadDiv = addMsg("Generating image...", "ai");
+        const cleanPrompt = encodeURIComponent(prompt);
+        const imageUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
 
-            // Detailed Error Handling
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.error?.message || response.statusText || "Unknown API Error";
-                throw new Error(`API returned ${response.status}: ${errorMessage}`);
-            }
+        const img = new Image();
+        img.src = imageUrl;
+        img.className = "ai-image";
+        img.alt = prompt;
 
-            const data = await response.json();
-            
-            if(!data.candidates || data.candidates.length === 0) {
-                throw new Error("The AI returned no response.");
-            }
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error("Image generation failed."));
+        });
 
-            const aiText = data.candidates[0].content.parts[0].text;
-            const div = addMsg(aiText, "ai");
-            hljs.highlightAll(); 
-        }
+        loadDiv.innerHTML = "";
+        loadDiv.appendChild(img);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-        async function generateImage(prompt) {
-            const loadDiv = addMsg("Generating image...", "ai");
-            const cleanPrompt = encodeURIComponent(prompt);
-            
-            // Pollinations URL
-            const imageUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
+    function addMsg(text, role) {
+        const div = document.createElement("div");
+        div.className = `msg ${role}`;
+        div.innerHTML = marked.parse(text);
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return div;
+    }
 
-            const img = new Image();
-            img.src = imageUrl;
-            img.className = "ai-image";
-            img.alt = prompt;
-
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = () => reject(new Error("Image generation failed (Network/Blocker)."));
-            });
-
-            loadDiv.innerHTML = "";
-            loadDiv.appendChild(img);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        function addMsg(text, role) {
-            const div = document.createElement("div");
-            div.className = `msg ${role}`;
-            div.innerHTML = marked.parse(text);
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            return div;
-        }
-
-        function setLoading(isLoading) {
-            input.disabled = isLoading;
-            btn.disabled = isLoading;
-            btn.innerText = isLoading ? "..." : "Send";
-            if (!isLoading) input.focus();
-        }
-    </script>
+    function setLoading(isLoading) {
+        input.disabled = isLoading;
+        btn.disabled = isLoading;
+        btn.innerText = isLoading ? "..." : "Send";
+        if (!isLoading) input.focus();
+    }
+</script>
 
 </body>
 </html>
