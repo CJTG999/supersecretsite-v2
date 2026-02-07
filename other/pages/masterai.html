@@ -1,179 +1,314 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MasterAI | Local Edition</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MasterAI | Cloud Edition</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-<style>
-:root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --accent:#238636; --text:#c9d1d9; }
-*{box-sizing:border-box}
-body{
-    margin:0;background:var(--bg);color:var(--text);
-    font-family:'Ubuntu',sans-serif;height:100vh;
-    display:flex;flex-direction:column;overflow:hidden;
-}
-#loader{
-    position:fixed;inset:0;background:var(--bg);z-index:999;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-}
-.bar-container{width:300px;height:6px;background:var(--border);border-radius:3px;margin-top:15px;overflow:hidden}
-.bar{height:100%;width:0%;background:var(--accent);transition:width .2s}
-.header{
-    padding:15px;background:var(--panel);border-bottom:1px solid var(--border);
-    font-weight:bold;display:flex;justify-content:space-between;align-items:center;
-}
-.chat-area{
-    flex:1;overflow-y:auto;padding:20px;
-    display:flex;flex-direction:column;gap:15px;
-}
-.input-area{
-    padding:20px;background:var(--panel);border-top:1px solid var(--border);
-    display:flex;gap:10px;
-}
-.msg{
-    padding:12px 16px;border-radius:12px;font-size:15px;
-    line-height:1.5;max-width:800px;
-}
-.user{align-self:flex-end;background:#1f6feb;color:white}
-.ai{align-self:flex-start;background:#21262d;border:1px solid var(--border)}
-input{
-    flex:1;background:var(--bg);border:1px solid var(--border);
-    color:white;padding:12px 15px;border-radius:25px;outline:none;
-}
-button{
-    background:var(--accent);color:white;border:none;
-    padding:10px 25px;border-radius:25px;font-weight:bold;cursor:pointer;
-}
-pre{
-    margin:10px 0;border-radius:6px;overflow-x:auto;
-    background:#0d1117;padding:10px;border:1px solid var(--border);
-}
-code{font-family:Consolas,monospace;font-size:13px}
-</style>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --border: #30363d;
+            --accent: #238636;
+            --text: #c9d1d9;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Ubuntu', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            padding: 15px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            scroll-behavior: smooth;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Messages */
+        .msg {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            line-height: 1.6;
+            max-width: 800px;
+            word-wrap: break-word;
+        }
+
+        .user {
+            align-self: flex-end;
+            background: #1f6feb;
+            color: white;
+        }
+
+        .ai {
+            align-self: flex-start;
+            background: #21262d;
+            border: 1px solid var(--border);
+        }
+
+        .error {
+            align-self: center;
+            background: #3d1a1a;
+            color: #ff6b6b;
+            border: 1px solid #822;
+        }
+
+        /* Images */
+        .ai-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Inputs & Buttons */
+        input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 25px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:disabled {
+            background: #30363d;
+            cursor: not-allowed;
+        }
+
+        /* Code Blocks */
+        pre {
+            margin: 10px 0;
+            border-radius: 6px;
+            overflow-x: auto;
+            background: #0d1117;
+            padding: 15px;
+            border: 1px solid var(--border);
+        }
+
+        code {
+            font-family: Consolas, monospace;
+            font-size: 13px;
+        }
+    </style>
 </head>
 
 <body>
 
-<div id="loader">
-    <div style="font-size:24px;font-weight:bold">MASTERAI LOCAL</div>
-    <div class="bar-container"><div class="bar" id="loadBar"></div></div>
-    <div id="loadText" style="margin-top:10px;font-size:13px;color:#8b949e">
-        Initializing WebGPU…
-    </div>
-</div>
-
-<div class="header">
-    <span>MASTERAI
-        <span style="font-size:11px;opacity:.6;border:1px solid var(--border);
-        padding:2px 6px;border-radius:4px;margin-left:8px;">
-        LOCAL AI
+    <div class="header">
+        <span>MASTERAI
+            <span style="font-size:11px;opacity:.6;border:1px solid var(--border); padding:2px 6px;border-radius:4px;margin-left:8px;">
+                CLOUD
+            </span>
         </span>
-    </span>
-    <span id="gpuStatus" style="font-size:12px;color:#238636">● GPU Ready</span>
-</div>
-
-<div class="chat-area" id="chat">
-    <div class="msg ai">
-        <b>System Ready.</b><br>
-        Running locally in your browser using WebGPU.
+        <span style="font-size:12px;color:#238636">● Gemini Flash Active</span>
     </div>
-</div>
 
-<div class="input-area">
-    <input id="userInput" placeholder="Type a message…" autocomplete="off">
-    <button id="sendBtn">Send</button>
-</div>
+    <div class="chat-area" id="chat">
+        <div class="msg ai">
+            <b>System Ready.</b><br>
+            I can chat using Google Gemini and generate images via Pollinations.<br>
+            <i>Try: "Draw a futuristic city" or "Explain quantum physics".</i>
+        </div>
+    </div>
 
-<script type="module">
-import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+    <div class="input-area">
+        <input id="userInput" placeholder="Type a message or 'draw...'" autocomplete="off">
+        <button id="sendBtn">Send</button>
+    </div>
 
-// ✅ CORRECT, LIGHTWEIGHT MODEL
-const MODEL = "Llama-3.2-1B-Instruct-q4f32_1-MLC";
+    <script>
+        // ==========================================
+        // 🔑 CONFIGURATION
+        // ==========================================
+        const GOOGLE_API_KEY = "AIzaSyCzpkJytXuVCNanzTM6opB9zTaV-DFpBgo";
+        // ==========================================
 
-const loader = document.getElementById("loader");
-const loadBar = document.getElementById("loadBar");
-const loadText = document.getElementById("loadText");
-const chatBox = document.getElementById("chat");
-const input = document.getElementById("userInput");
-const btn = document.getElementById("sendBtn");
+        const chatBox = document.getElementById("chat");
+        const input = document.getElementById("userInput");
+        const btn = document.getElementById("sendBtn");
 
-let engine;
+        // Auto-focus input on load
+        input.focus();
 
-// ✅ CHAT HISTORY (FIXED)
-const history = [
-    { role:"system", content:"You are a helpful AI assistant." }
-];
+        // Event Listeners
+        btn.onclick = handleSend;
+        input.addEventListener("keypress", e => {
+            if (e.key === "Enter") handleSend();
+        });
 
-// INIT
-async function initAI() {
-    engine = new webllm.MLCEngine();
+        async function handleSend() {
+            const text = input.value.trim();
+            if (!text) return;
 
-    engine.setInitProgressCallback(r => {
-        loadText.textContent = r.text;
-        if (r.progress !== undefined) {
-            loadBar.style.width = (r.progress * 100).toFixed(0) + "%";
+            // 1. Check for missing key
+            if (GOOGLE_API_KEY === "INSERT_YOUR_GOOGLE_API_KEY_HERE") {
+                addMsg("⚠️ <b>Missing API Key</b><br>Please open the code and replace 'INSERT_YOUR_GOOGLE_API_KEY_HERE' with your actual Google Gemini API key.", "error");
+                return;
+            }
+
+            // 2. Add User Message
+            addMsg(text, "user");
+            input.value = "";
+            setLoading(true);
+
+            try {
+                // 3. IMAGE DETECTION LOGIC
+                const lower = text.toLowerCase();
+                const isImageRequest = lower.startsWith("draw") ||
+                                       lower.startsWith("generate image") ||
+                                       lower.startsWith("/image") ||
+                                       lower.includes("picture of");
+
+                if (isImageRequest) {
+                    await generateImage(text);
+                }
+                // 4. TEXT LOGIC (Gemini)
+                else {
+                    await generateText(text);
+                }
+
+            } catch (err) {
+                addMsg(`Error: ${err.message}`, "error");
+            }
+
+            setLoading(false);
         }
-    });
 
-    await engine.reload(MODEL);
+        // --- GEMINI API FUNCTION ---
+        async function generateText(prompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
 
-    loader.style.display = "none";
-}
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                })
+            });
 
-initAI();
+            if (!response.ok) throw new Error("Gemini API Error: " + response.statusText);
 
-// SEND
-btn.onclick = send;
-input.addEventListener("keypress", e => {
-    if (e.key === "Enter") send();
-});
+            const data = await response.json();
+            const aiText = data.candidates[0].content.parts[0].text;
 
-async function send() {
-    const text = input.value.trim();
-    if (!text || !engine) return;
+            const div = addMsg(aiText, "ai");
+            hljs.highlightAll(); // Syntax highlighting for code
+        }
 
-    addMsg(text, "user");
-    history.push({ role:"user", content:text });
+        // --- POLLINATIONS IMAGE FUNCTION ---
+        async function generateImage(prompt) {
+            // Create a loading bubble first
+            const loadDiv = addMsg("🎨 Generating image...", "ai");
 
-    input.value = "";
-    input.disabled = btn.disabled = true;
+            // Clean prompt for URL
+            const cleanPrompt = encodeURIComponent(prompt);
+            const imageUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
 
-    const aiBubble = addMsg("Thinking…", "ai");
-    let full = "";
+            // Create Image Object to preload
+            const img = new Image();
+            img.src = imageUrl;
+            img.className = "ai-image";
+            img.alt = prompt;
 
-    const stream = await engine.chat.completions.create({
-        messages: history,
-        stream: true
-    });
+            // Wait for load
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = () => reject(new Error("Failed to load image"));
+            });
 
-    for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || "";
-        full += delta;
-        aiBubble.innerHTML = marked.parse(full);
-    }
+            // Replace text with image
+            loadDiv.innerHTML = `<b>Generated:</b> ${prompt}<br>`;
+            loadDiv.appendChild(img);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
-    history.push({ role:"assistant", content:full });
-    hljs.highlightAll();
+        // --- UI HELPERS ---
+        function addMsg(text, role) {
+            const div = document.createElement("div");
+            div.className = `msg ${role}`;
+            // Only parse Markdown if it's text (not raw HTML injection)
+            div.innerHTML = marked.parse(text);
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return div;
+        }
 
-    input.disabled = btn.disabled = false;
-    input.focus();
-}
-
-function addMsg(text, role) {
-    const div = document.createElement("div");
-    div.className = `msg ${role}`;
-    div.innerHTML = marked.parse(text);
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-    return div;
-}
-</script>
+        function setLoading(isLoading) {
+            input.disabled = isLoading;
+            btn.disabled = isLoading;
+            btn.innerText = isLoading ? "..." : "Send";
+            if (!isLoading) input.focus();
+        }
+    </script>
 
 </body>
 </html>
