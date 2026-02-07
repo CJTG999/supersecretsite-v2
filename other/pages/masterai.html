@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MasterAI - Unrestricted</title>
+<title>MasterAI- Personal AI Assistant</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
 <style>
@@ -173,8 +173,11 @@
         userInput.style.height = "auto";
         
         const currentChat = chats.find(c => c.id === currentChatId);
-        if (currentChat && currentChat.messages.length === 1) {
-            currentChat.title = text.substring(0, 30);
+        
+        // --- CHAT NAMING LOGIC ---
+        // Only rename if it's the very first message and still "New Chat"
+        if (currentChat && currentChat.messages.length === 1 && currentChat.title === "New Chat") {
+            currentChat.title = text.substring(0, 30); // Grab first 30 chars
             saveChats();
             renderHistory();
         }
@@ -239,40 +242,30 @@
         saveMessage(responseText, "ai");
     }
 
-    // --- ANTI-BLOCK IMAGE GENERATION ---
+    // --- DIRECT IMAGE DOWNLOAD ---
     async function generateImage(prompt) {
         modelBadge.innerText = "Painting...";
         const cleanPrompt = encodeURIComponent(prompt);
         const targetUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
 
-        // Strategy: Try Fetch -> If Blocked -> Try Proxy
-        let blob = null;
+        let displayUrl = "";
 
         try {
-            // Attempt 1: Direct Fetch
+            // Attempt 1: Direct Fetch (Try to download file)
             const res = await fetch(targetUrl);
-            if (!res.ok) throw new Error("Direct fetch failed");
-            blob = await res.blob();
+            if (!res.ok) throw new Error("Fetch failed");
+            const blob = await res.blob();
+            displayUrl = URL.createObjectURL(blob); // Create local blob URL
+
         } catch (e) {
-            // Attempt 2: Proxy (Bypasses firewall)
-            console.log("Direct blocked. Attempting Proxy bypass...");
-            try {
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-                const res = await fetch(proxyUrl);
-                if (!res.ok) throw new Error("Proxy fetch failed");
-                blob = await res.blob();
-            } catch (err2) {
-                throw new Error("All download methods blocked. Try a different network.");
-            }
+            // Attempt 2: Fallback to Hotlink (Standard IMG tag)
+            displayUrl = targetUrl;
         }
 
-        // Convert Blob to Local Object URL
-        const localUrl = URL.createObjectURL(blob);
-        const imgHtml = `<img src="${localUrl}" onload="scrollToBottom()">`;
+        const imgHtml = `<img src="${displayUrl}" onload="scrollToBottom()" onerror="this.style.display='none'; this.parentElement.innerHTML='❌ Image blocked by network firewall.'">`;
         
         addMessageToUI(imgHtml, "ai", true);
-        saveMessage(imgHtml, "ai"); // Note: This saves the Blob URL which expires on refresh.
-        // For persistent storage in localStorage, we ideally need Base64, but Blob URL is faster for session.
+        saveMessage(imgHtml, "ai"); 
         modelBadge.innerText = "Done";
     }
 
@@ -323,7 +316,7 @@
         saveChats();
         renderHistory();
         chatContainer.innerHTML = '';
-        addMessageToUI("<b>MasterAI v2.5 Online.</b><br>Anti-Block Image System Active.", "ai");
+        addMessageToUI("<b>MasterAI v2.5 Online.</b><br>Titles & Headers Locked.", "ai");
         if(window.innerWidth < 768) document.getElementById("sidebar").classList.add("collapsed");
     }
 
