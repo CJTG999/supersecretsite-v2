@@ -160,7 +160,14 @@
     const sendBtn = document.getElementById("sendBtn");
     const modelBadge = document.getElementById("modelBadge");
 
-    userInput.addEventListener("keypress", (e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } });
+    // FIXED: Switched from keypress to keydown for better compatibility
+    userInput.addEventListener("keydown", (e) => { 
+        if(e.key === "Enter" && !e.shiftKey) { 
+            e.preventDefault(); 
+            handleSend(); 
+        } 
+    });
+    
     sendBtn.addEventListener("click", handleSend);
 
     async function handleSend() {
@@ -243,7 +250,10 @@
     }
 
     // --- DIRECT IMAGE DOWNLOAD ---
-    
+    async function generateImage(prompt) {
+        modelBadge.innerText = "Painting...";
+        const cleanPrompt = encodeURIComponent(prompt);
+        const targetUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
 
         let displayUrl = "";
 
