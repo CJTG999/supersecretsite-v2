@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAI | Cloud Edition</title>
+    <title>AI Assistant</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <style>
         :root {
-            --bg: #0d1117;
-            --panel: #161b22;
-            --border: #30363d;
-            --accent: #238636;
-            --text: #c9d1d9;
+            --bg: #0f1115;
+            --panel: #181b21;
+            --border: #2d333b;
+            --accent: #3b82f6; /* Generic Blue */
+            --text: #e0e6ed;
         }
 
         * {
@@ -27,7 +27,7 @@
             margin: 0;
             background: var(--bg);
             color: var(--text);
-            font-family: 'Ubuntu', sans-serif;
+            font-family: 'Inter', sans-serif;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -36,13 +36,14 @@
 
         /* Header */
         .header {
-            padding: 15px;
+            padding: 15px 20px;
             background: var(--panel);
             border-bottom: 1px solid var(--border);
-            font-weight: bold;
+            font-weight: 600;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            letter-spacing: 0.5px;
         }
 
         /* Chat Area */
@@ -52,7 +53,7 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
             scroll-behavior: smooth;
         }
 
@@ -62,12 +63,12 @@
             background: var(--panel);
             border-top: 1px solid var(--border);
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
 
         /* Messages */
         .msg {
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-radius: 12px;
             font-size: 15px;
             line-height: 1.6;
@@ -77,14 +78,16 @@
 
         .user {
             align-self: flex-end;
-            background: #1f6feb;
+            background: var(--accent);
             color: white;
+            border-bottom-right-radius: 2px;
         }
 
         .ai {
             align-self: flex-start;
-            background: #21262d;
+            background: #22262e;
             border: 1px solid var(--border);
+            border-bottom-left-radius: 2px;
         }
 
         .error {
@@ -92,6 +95,7 @@
             background: #3d1a1a;
             color: #ff6b6b;
             border: 1px solid #822;
+            font-size: 13px;
         }
 
         /* Images */
@@ -100,6 +104,7 @@
             border-radius: 8px;
             margin-top: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
         }
 
         /* Inputs & Buttons */
@@ -108,9 +113,10 @@
             background: var(--bg);
             border: 1px solid var(--border);
             color: white;
-            padding: 12px 15px;
-            border-radius: 25px;
+            padding: 12px 18px;
+            border-radius: 8px;
             outline: none;
+            font-family: inherit;
             transition: border-color 0.2s;
         }
 
@@ -122,20 +128,21 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 10px 25px;
-            border-radius: 25px;
-            font-weight: bold;
+            padding: 0 24px;
+            border-radius: 8px;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: opacity 0.2s;
         }
 
-        button:active {
-            transform: scale(0.95);
+        button:hover {
+            opacity: 0.9;
         }
 
         button:disabled {
             background: #30363d;
             cursor: not-allowed;
+            opacity: 0.6;
         }
 
         /* Code Blocks */
@@ -149,8 +156,16 @@
         }
 
         code {
-            font-family: Consolas, monospace;
+            font-family: 'Consolas', monospace;
             font-size: 13px;
+        }
+        
+        /* Status Dot */
+        .status-dot {
+            height: 8px; width: 8px; 
+            background-color: #238636; 
+            border-radius: 50%; 
+            display: inline-block;
         }
     </style>
 </head>
@@ -158,42 +173,36 @@
 <body>
 
     <div class="header">
-        <span>MASTERAI
-            <span style="font-size:11px;opacity:.6;border:1px solid var(--border); padding:2px 6px;border-radius:4px;margin-left:8px;">
-                CLOUD
-            </span>
-        </span>
-        <span style="font-size:12px;color:#238636">● Gemini Flash Active</span>
+        <span>AI ASSISTANT</span>
+        <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#8b949e;">
+            <span class="status-dot"></span> Online
+        </div>
     </div>
 
     <div class="chat-area" id="chat">
         <div class="msg ai">
-            <b>System Ready.</b><br>
-            I can chat using Google Gemini and generate images via Pollinations.<br>
-            <i>Try: "Draw a futuristic city" or "Explain quantum physics".</i>
+            Hello. How can I help you today?
         </div>
     </div>
 
     <div class="input-area">
-        <input id="userInput" placeholder="Type a message or 'draw...'" autocomplete="off">
+        <input id="userInput" placeholder="Type a message..." autocomplete="off">
         <button id="sendBtn">Send</button>
     </div>
 
     <script>
         // ==========================================
-        // 🔑 CONFIGURATION
+        // 🔑 INSERT KEY HERE
         // ==========================================
-        const GOOGLE_API_KEY = "AIzaSyCzpkJytXuVCNanzTM6opB9zTaV-DFpBgo";
+        const API_KEY = "INSERT_YOUR_GOOGLE_API_KEY_HERE";
         // ==========================================
 
         const chatBox = document.getElementById("chat");
         const input = document.getElementById("userInput");
         const btn = document.getElementById("sendBtn");
 
-        // Auto-focus input on load
         input.focus();
 
-        // Event Listeners
         btn.onclick = handleSend;
         input.addEventListener("keypress", e => {
             if (e.key === "Enter") handleSend();
@@ -203,99 +212,92 @@
             const text = input.value.trim();
             if (!text) return;
 
-            // 1. Check for missing key
-            if (GOOGLE_API_KEY === "INSERT_YOUR_GOOGLE_API_KEY_HERE") {
-                addMsg("⚠️ <b>Missing API Key</b><br>Please open the code and replace 'INSERT_YOUR_GOOGLE_API_KEY_HERE' with your actual Google Gemini API key.", "error");
+            // 1. Validate Key
+            if (API_KEY.includes("INSERT_YOUR") || API_KEY.length < 10) {
+                addMsg("⚠️ <b>Configuration Error:</b> Please edit the HTML file and insert a valid API Key.", "error");
                 return;
             }
 
-            // 2. Add User Message
             addMsg(text, "user");
             input.value = "";
             setLoading(true);
 
             try {
-                // 3. IMAGE DETECTION LOGIC
                 const lower = text.toLowerCase();
-                const isImageRequest = lower.startsWith("draw") ||
-                                       lower.startsWith("generate image") ||
+                const isImageRequest = lower.startsWith("draw") || 
+                                       lower.startsWith("generate") || 
                                        lower.startsWith("/image") ||
                                        lower.includes("picture of");
 
                 if (isImageRequest) {
                     await generateImage(text);
-                }
-                // 4. TEXT LOGIC (Gemini)
-                else {
+                } else {
                     await generateText(text);
                 }
 
             } catch (err) {
-                addMsg(`Error: ${err.message}`, "error");
+                console.error(err);
+                addMsg(`❌ <b>Error:</b> ${err.message}`, "error");
             }
 
             setLoading(false);
         }
 
-        // --- GEMINI API FUNCTION ---
         async function generateText(prompt) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`;
+            // Using the specific model endpoint
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
             const response = await fetch(url, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }]
+                    contents: [{ parts: [{ text: prompt }] }]
                 })
             });
 
-            if (!response.ok) throw new Error("Gemini API Error: " + response.statusText);
+            // Detailed Error Handling
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.error?.message || response.statusText || "Unknown API Error";
+                throw new Error(`API returned ${response.status}: ${errorMessage}`);
+            }
 
             const data = await response.json();
-            const aiText = data.candidates[0].content.parts[0].text;
+            
+            if(!data.candidates || data.candidates.length === 0) {
+                throw new Error("The AI returned no response.");
+            }
 
+            const aiText = data.candidates[0].content.parts[0].text;
             const div = addMsg(aiText, "ai");
-            hljs.highlightAll(); // Syntax highlighting for code
+            hljs.highlightAll(); 
         }
 
-        // --- POLLINATIONS IMAGE FUNCTION ---
         async function generateImage(prompt) {
-            // Create a loading bubble first
-            const loadDiv = addMsg("🎨 Generating image...", "ai");
-
-            // Clean prompt for URL
+            const loadDiv = addMsg("Generating image...", "ai");
             const cleanPrompt = encodeURIComponent(prompt);
+            
+            // Pollinations URL
             const imageUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
 
-            // Create Image Object to preload
             const img = new Image();
             img.src = imageUrl;
             img.className = "ai-image";
             img.alt = prompt;
 
-            // Wait for load
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
-                img.onerror = () => reject(new Error("Failed to load image"));
+                img.onerror = () => reject(new Error("Image generation failed (Network/Blocker)."));
             });
 
-            // Replace text with image
-            loadDiv.innerHTML = `<b>Generated:</b> ${prompt}<br>`;
+            loadDiv.innerHTML = "";
             loadDiv.appendChild(img);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // --- UI HELPERS ---
         function addMsg(text, role) {
             const div = document.createElement("div");
             div.className = `msg ${role}`;
-            // Only parse Markdown if it's text (not raw HTML injection)
             div.innerHTML = marked.parse(text);
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
