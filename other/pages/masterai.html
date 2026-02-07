@@ -83,8 +83,7 @@
     /* Markdown & Code */
     pre { background: #18181b; padding: 16px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); }
     code { font-family: 'Consolas', monospace; font-size: 13px; color: #a5b4fc; }
-    img { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #333; }
-
+    
     @media (max-width: 768px) { .sidebar { position: absolute; height: 100%; } .chat-container, .input-container { padding: 20px 5%; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
@@ -160,7 +159,6 @@
     const sendBtn = document.getElementById("sendBtn");
     const modelBadge = document.getElementById("modelBadge");
 
-    // FIXED: Switched from keypress to keydown for better compatibility
     userInput.addEventListener("keydown", (e) => { 
         if(e.key === "Enter" && !e.shiftKey) { 
             e.preventDefault(); 
@@ -184,7 +182,7 @@
         // --- CHAT NAMING LOGIC ---
         // Only rename if it's the very first message and still "New Chat"
         if (currentChat && currentChat.messages.length === 1 && currentChat.title === "New Chat") {
-            currentChat.title = text.substring(0, 30); // Grab first 30 chars
+            currentChat.title = text.substring(0, 30);
             saveChats();
             renderHistory();
         }
@@ -193,11 +191,7 @@
         setLoadingState(true);
 
         try {
-            if (isImageRequest(text)) {
-                await generateImage(text);
-            } else {
-                await generateTextWithHistory(currentChat.messages);
-            }
+            await generateTextWithHistory(currentChat.messages);
         } catch (err) {
             addMessageToUI(`⚠️ Error: ${err.message}`, "ai");
         }
@@ -208,13 +202,11 @@
 
     // --- TEXT GENERATION ---
     async function generateTextWithHistory(history) {
-        // Filter out image blobs from history before sending to Gemini
-        const geminiHistory = history
-            .filter(msg => !msg.text.includes("<img")) // Don't send img HTML to AI
-            .map(msg => ({
-                role: msg.role === "user" ? "user" : "model",
-                parts: [{ text: msg.text }]
-            }));
+        // Prepare history for API
+        const geminiHistory = history.map(msg => ({
+            role: msg.role === "user" ? "user" : "model",
+            parts: [{ text: msg.text }]
+        }));
 
         let success = false;
         let responseText = "";
@@ -249,45 +241,14 @@
         saveMessage(responseText, "ai");
     }
 
-    // --- DIRECT IMAGE DOWNLOAD ---
-    async function generateImage(prompt) {
-        modelBadge.innerText = "Painting...";
-        const cleanPrompt = encodeURIComponent(prompt);
-        const targetUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?nologo=true`;
-
-        let displayUrl = "";
-
-        try {
-            // Attempt 1: Direct Fetch (Try to download file)
-            const res = await fetch(targetUrl);
-            if (!res.ok) throw new Error("Fetch failed");
-            const blob = await res.blob();
-            displayUrl = URL.createObjectURL(blob); // Create local blob URL
-
-        } catch (e) {
-            // Attempt 2: Fallback to Hotlink (Standard IMG tag)
-            displayUrl = targetUrl;
-        }
-
-        const imgHtml = `<img src="${displayUrl}" onload="scrollToBottom()" onerror="this.style.display='none'; this.parentElement.innerHTML='❌ Image blocked by network firewall.'">`;
-        
-        addMessageToUI(imgHtml, "ai", true);
-        saveMessage(imgHtml, "ai"); 
-        modelBadge.innerText = "Done";
-    }
-
-    function isImageRequest(text) {
-        return /draw|generate|picture|image/i.test(text);
-    }
-
     // --- UI HELPERS ---
-    function addMessageToUI(text, role, isHtml = false) {
+    function addMessageToUI(text, role) {
         const row = document.createElement("div");
         row.className = `msg-row ${role}`;
         
         const content = `
             ${role === 'ai' ? '<div class="avatar ai-avatar"><i class="fa-solid fa-robot"></i></div>' : ''}
-            <div class="msg-bubble">${isHtml ? text : (role==='ai' ? marked.parse(text) : text)}</div>
+            <div class="msg-bubble">${role==='ai' ? marked.parse(text) : text}</div>
         `;
         row.innerHTML = content;
         chatContainer.appendChild(row);
@@ -323,7 +284,7 @@
         saveChats();
         renderHistory();
         chatContainer.innerHTML = '';
-        addMessageToUI("<b>MasterAI v2.5 Online.</b><br>Titles & Headers Locked.", "ai");
+        addMessageToUI("<b>MasterAI v2.5 Online.</b><br>How can I help you today?", "ai");
         if(window.innerWidth < 768) document.getElementById("sidebar").classList.add("collapsed");
     }
 
@@ -331,7 +292,7 @@
         currentChatId = id;
         const chat = chats.find(c => c.id === id);
         chatContainer.innerHTML = '';
-        chat.messages.forEach(msg => addMessageToUI(msg.text, msg.role, msg.text.includes("<img")));
+        chat.messages.forEach(msg => addMessageToUI(msg.text, msg.role));
         renderHistory();
         if(window.innerWidth < 768) document.getElementById("sidebar").classList.add("collapsed");
     }
