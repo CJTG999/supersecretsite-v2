@@ -3,41 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epstien File Viewer</title>
+    <title>Epstein File & Epstein Links</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; padding: 50px; background-color: #eceff1; }
-        .container { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
-        h2 { color: #2c3e50; margin-bottom: 1rem; }
+        .container { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        h2 { color: #2c3e50; margin-bottom: 0.5rem; }
         p { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 1.5rem; }
+        
         input { width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #dfe6e9; border-radius: 6px; box-sizing: border-box; font-size: 1rem; outline: none; transition: border-color 0.3s; }
         input:focus { border-color: #3498db; }
-        button { width: 100%; padding: 12px; background-color: #2980b9; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold; }
+
+        .button-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin-top: 10px;
+        }
+
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: #2980b9; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            transition: background 0.2s;
+        }
+        
         button:hover { background-color: #3498db; }
+        
+        /* Style for the main search button */
+        .search-btn { grid-column: span 2; background-color: #2c3e50; margin-bottom: 10px; font-size: 1rem; }
+        .search-btn:hover { background-color: #34495e; }
+
+        /* Style for external link buttons to look different */
+        .link-btn { background-color: #27ae60; }
+        .link-btn:hover { background-color: #2ecc71; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Epsiten Files</h2>
-    <p>Enter the file number (1-2731812) to automatically locate the PDF.</p>
+    <h2>File & Link Portal</h2>
+    <p>Enter a file number or visit the other file links below.</p>
     
     <input type="number" id="file" placeholder="Enter File Number (e.g. 500)">
-    <button onclick="goToDocument()">Open Document</button>
+    
+    <div class="button-grid">
+        <button class="search-btn" onclick="openContent('manual')">Search File Number</button>
+
+
+        <button class="link-btn" onclick="openContent('https://jmail.world/')">JMail</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/photos')">JPhotos</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/drive/new-only')">JDrive</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/flights')">JFlights</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/vr')">JVR</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/jamazon')">JMazon</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/jemini')">Jemini</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/jotify')">Jotify</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/messages')">JMessages</button>
+        
+        <button class="link-btn" onclick="openContent('https://jmail.world/jacebook')">Jacebook</button>
+    </div>
 </div>
 
 <script>
-    function goToDocument() {
-        const fileInput = document.getElementById('file').value.trim();
-        if (!fileInput) {
-            alert("Please enter a file number.");
+    function openContent(target) {
+        let destination = target;
+
+        // If 'manual' is passed, get value from input field
+        if (target === 'manual') {
+            destination = document.getElementById('file').value.trim();
+        }
+
+        if (!destination) {
+            alert("Please enter a value or click a link.");
             return;
         }
 
-        const fileNumInt = parseInt(fileInput);
-        let datasetNum = 1;
+        // Check if the destination is a URL (starts with http)
+        if (destination.startsWith('http')) {
+            window.open(destination, '_blank');
+        } else {
+            // Otherwise, treat it as a file number search
+            handleFileSearch(destination);
+        }
+    }
 
-        // Dataset Mapping Logic
-        // Based on the DOJ structure (adjust these ranges if needed)
+    function handleFileSearch(fileInput) {
+        const fileNumInt = parseInt(fileInput);
+        if (isNaN(fileNumInt)) {
+            alert("Invalid file number.");
+            return;
+        }
+
+        let datasetNum = 1;
         if (fileNumInt >= 1 && fileNumInt <= 1184) {
             datasetNum = 1;
         } else if (fileNumInt >= 1185 && fileNumInt <= 2361) {
@@ -48,13 +119,9 @@
             datasetNum = 4;
         }
 
-        // Pad to 8 digits
-        const fileNumPadded = fileInput.padStart(8, '0');
-
-        // Construct URL
+        const fileNumPadded = fileInput.toString().padStart(8, '0');
         const url = `https://www.justice.gov/epstein/files/DataSet%20${datasetNum}/EFTA${fileNumPadded}.pdf`;
-
-        // Open in a new tab
+        
         window.open(url, '_blank');
     }
 </script>
