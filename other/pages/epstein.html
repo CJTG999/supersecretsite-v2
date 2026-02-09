@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epstein File Fetcher</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .controls { margin-bottom: 20px; }
+        input { padding: 8px; width: 100px; }
+        button { padding: 8px 16px; cursor: pointer; background: #007BFF; color: white; border: none; border-radius: 4px; }
+        #pdf-viewer { width: 90%; height: 80vh; border: 1px solid #ccc; display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Epstein Files Collection</h2>
+    
+    <div class="controls">
+        <input type="number" id="fileNumber" min="1" max="3158" placeholder="1-3158">
+        <button onclick="fetchFile()">View File</button>
+    </div>
+
+    <iframe id="pdf-viewer"></iframe>
+
+    <script>
+        function fetchFile() {
+            const num = document.getElementById('fileNumber').value;
+            
+            // Validate range
+            if (num < 1 || num > 3158 || num === "") {
+                alert("Please enter a number between 1 and 3158.");
+                return;
+            }
+
+            // Convert to 8-digit string with leading zeros
+            const paddedNum = num.toString().padStart(8, '0');
+            
+            // Construct the URL
+            const fileUrl = `https://www.justice.gov/epstein/files/DataSet%201/EFTA${paddedNum}.pdf`;
+
+            // Display in iframe
+            const viewer = document.getElementById('pdf-viewer');
+            viewer.src = fileUrl;
+            viewer.style.display = 'block';
+        }
+    </script>
+
+</body>
+</html>
