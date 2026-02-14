@@ -98,20 +98,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-        /* --- OFFLINE FALLBACKS --- */
+        /* --- CUSTOM CURSOR IMPLEMENTATION --- */
+        
+        /* Apply the normal cursor to the entire page */
+        html, body {
+            cursor: url('FGC/fnf-normal.cur'), auto !important;
+        }
+
+        /* Apply the select cursor to interactive elements */
+        /* This covers links, buttons, inputs, and your custom classes */
+        a, 
+        button, 
+        input, 
+        select, 
+        textarea,
+        .cursor-pointer, 
+        [onclick],
+        .key-test-key {
+            cursor: url('FGC/fnf-select.cur'), pointer !important;
+        }
+
+        /* Ensure the banned screen also uses the custom cursor if desired, 
+           otherwise the inline style there might override this. */
+
+        /* --- REST OF YOUR STYLES --- */
         .hidden { display: none !important; }
-        button { cursor: pointer; } 
-        /* ------------------------- */
 
         body {
             font-family: 'Pixelify Sans', sans-serif;
             background-color: #111827; 
-            /* RELIABLE FNF-THEMED GRADIENT BACKGROUND */
             background: linear-gradient(to bottom right, #1e1b4b, #4c1d95, #831843);
             background-size: cover;
             background-attachment: fixed;
             min-height: 100vh;
-            cursor: auto;
         }
         
         a, button, input, select, .cursor-pointer, [onclick] {
@@ -358,14 +377,6 @@
 
         </div>
 
-        <!-- PROXY BUTTON SECTION -->
-        <div class="container mx-auto px-4 mt-8 text-center flex flex-col items-center gap-4">
-            <a href="https://108.181.4.237/__cpi.php?s=UkQ2YXlSaWJuc3ZoeGR2dG04WW9LdThSTjlHcXV6YXFBY3JVVWRZRm44UWorSkEvektJenFGai9IK3gza0N6L2VNajNRVGN6amlIMUNFdlZKRnJRNjM5ellPM2ZDaWxqcTNEdE5rRGdGZ1U9&r=aHR0cHM6Ly8xMDguMTgxLjQuMjM3Lz9rbz1zJl9fY3BvPWFIUjBjSE02THk5emRHRnlkQzVrZFdOclpIVmphMmR2TG1OdmJR&__cpo=1" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            class="inline-block w-full md:w-1/2 bg-red-600 hover:bg-red-700 text-white font-black text-xl py-3 px-6 rounded-lg shadow-lg transition-transform duration-200 transform hover:scale-105 border-2 border-red-400">
-                Proxy
-            </a>
 
             <a href="https://html-classic.itch.zone/html/2876359-1480591/index.html" 
             target="_blank" 
