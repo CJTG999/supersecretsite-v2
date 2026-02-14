@@ -98,24 +98,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-        /* --- CUSTOM CURSOR IMPLEMENTATION --- */
-        
-        /* Apply the normal cursor to the entire page */
+        /* --- CUSTOM CURSOR FIX --- */
+
+        /* 1. Apply to the root and body */
         html, body {
-            cursor: url('FGC/fnf-normal.cur'), auto !important;
+            cursor: url('./FGC/fnf-normal.cur'), auto !important;
+            min-height: 100vh;
         }
 
-        /* Apply the select cursor to interactive elements */
-        /* This covers links, buttons, inputs, and your custom classes */
+        /* 2. Apply to all interactive elements */
+        /* We include 'a' tags, buttons, and tailwind-style pointer classes */
         a, 
         button, 
         input, 
         select, 
-        textarea,
+        textarea, 
         .cursor-pointer, 
-        [onclick],
-        .key-test-key {
-            cursor: url('FGC/fnf-select.cur'), pointer !important;
+        #keystroke-tester-container div,
+        [role="button"] {
+            cursor: url('./FGC/fnf-select.cur'), pointer !important;
+        }
+
+        /* 3. Special fix for iframes/modals */
+        #gameModal, .bg-gray-900-transparent {
+            cursor: url('./FGC/fnf-normal.cur'), auto !important;
         }
 
         /* Ensure the banned screen also uses the custom cursor if desired, 
