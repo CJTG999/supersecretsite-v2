@@ -6,50 +6,8 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity WebGL Player | Baldi's Basics Plus</title>
     <link rel="icon" href="https://codehs.com/uploads/9ac6357a7c4bb4f3591d2a4ea8565dec" type="image/jpeg">
+    <link rel="stylesheet" href="TemplateData/style.css" type="text/stylesheet">
   </head>
-    <style>
-      body { padding: 0; margin: 0 }
-      #unity-container { position: fixed; width: 100%; height: 100%; }
-      #unity-canvas { width: 100%; height: 100%; background: #000000 }
-      #unity-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none }
-      #unity-logo { width: 154px; height: 130px; background: url('unity-logo-dark.png') no-repeat center }
-      #unity-progress-bar-empty { margin-left: auto; margin-right: auto; width: 141px; height: 18px; margin-top: 10px; background: url('progress-bar-empty-dark.png') no-repeat center }
-      #unity-progress-bar-full { width: 0%; height: 18px; margin-top: 10px; background: url('progress-bar-full-dark.png') no-repeat center }
-      #unity-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none }
-      /* --- CUSTOM CURSOR FIX --- */
-
-      /* 1. Apply to the root and body */
-      html, body {
-          cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
-          min-height: 100vh;
-      }
-
-      /* 2. Apply to all interactive elements */
-      /* We include 'a' tags, buttons, and tailwind-style pointer classes */
-      a, 
-      button, 
-      input, 
-      select, 
-      textarea, 
-      .cursor-pointer, 
-      #keystroke-tester-container div,
-      [role="button"] {
-          cursor: url('https://codehs.com/uploads/83f80767e459872bcd2a56d8cc903e59'), pointer !important;
-      }
-
-      /* 3. Special fix for iframes/modals */
-      #gameModal, .bg-gray-900-transparent {
-          cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
-      }
-      body { padding: 0; margin: 0 }
-      #unity-container { position: fixed; width: 100%; height: 100%; }
-      #unity-canvas { width: 100%; height: 100%; background: #000000 }
-      #unity-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none }
-      #unity-logo { width: 154px; height: 130px; background: url('unity-logo-dark.png') no-repeat center }
-      #unity-progress-bar-empty { margin-left: auto; margin-right: auto; width: 141px; height: 18px; margin-top: 10px; background: url('progress-bar-empty-dark.png') no-repeat center }
-      #unity-progress-bar-full { width: 0%; height: 18px; margin-top: 10px; background: url('progress-bar-full-dark.png') no-repeat center }
-      #unity-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none }
-    </style>
   <body>
         <div
       id="loading-text"
