@@ -5,6 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>pc2web</title>
     <style>
+        .global-auth-bar {
+            background: rgba(20, 20, 30, 0.9);
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: sans-serif;
+            border-bottom: 2px solid #584dfd;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+        }
+        .auth-ui input {
+            background: #000; border: 1px solid #444; color: #fff;
+            padding: 5px; margin-right: 5px; border-radius: 4px;
+        }
+        .auth-ui button {
+            background: #584dfd; border: none; color: white;
+            padding: 5px 12px; border-radius: 4px; cursor: pointer;
+        }
+        .auth-ui button.alt { background: #333; margin-left: 5px; }
+        .hidden { display: none !important; }
+    </style>
+    
+    <div class="global-auth-bar">
+        <div>
+            <span id="g-user">Guest</span> | 
+            Visits: <span id="g-visits">0</span>
+        </div>
+        <div id="g-guest-ui" class="auth-ui">
+            <input type="email" id="g-email" placeholder="Email">
+            <input type="password" id="g-pass" placeholder="Password">
+            <button onclick="gAuth('login')">Login</button>
+            <button class="alt" onclick="gAuth('register')">Signup</button>
+        </div>
+        <div id="g-user-ui" class="auth-ui hidden">
+            <button class="alt" onclick="gLogout()">Logout</button>
+        </div>
+    </div>
+    
+    <script>
+        async function gAuth(type) {
+            const email = document.getElementById('g-email').value;
+            const pass = document.getElementById('g-pass').value;
+            if(!email || !pass) return alert("Enter credentials");
+    
+            const res = await fetch(`/api/${type}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, password: pass })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                localStorage.setItem('mp_user', email);
+                if(data.visits) localStorage.setItem('mp_visits', data.visits);
+                location.reload();
+            } else {
+                alert("Error: " + data.error);
+            }
+        }
+    
+        function gLogout() {
+            localStorage.removeItem('mp_user');
+            location.reload();
+        }
+    
+        // Run on every page load
+        (function initAuth() {
+            const user = localStorage.getItem('mp_user');
+            const visits = localStorage.getItem('mp_visits') || 0;
+            document.getElementById('g-visits').innerText = visits;
+            
+            if(user) {
+                document.getElementById('g-user').innerText = user;
+                document.getElementById('g-guest-ui').classList.add('hidden');
+                document.getElementById('g-user-ui').classList.remove('hidden');
+            }
+        })();
+    </script>
         /* --- RESET & BASIC STYLES --- */
         * {
             box-sizing: border-box;
