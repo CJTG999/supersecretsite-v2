@@ -6,6 +6,31 @@
   <title>GB Dash - Emulator</title>
   <link rel="shortcut icon" type="image/png" href="https://codehs.com/uploads/01e12206660fe765a10dbed8dd1411d1">
   <style>
+    /* --- CUSTOM CURSOR FIX --- */
+
+    /* 1. Apply to the root and body */
+    html, body {
+        cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
+        min-height: 100vh;
+    }
+
+    /* 2. Apply to all interactive elements */
+    /* We include 'a' tags, buttons, and tailwind-style pointer classes */
+    a, 
+    button, 
+    input, 
+    select, 
+    textarea, 
+    .cursor-pointer, 
+    #keystroke-tester-container div,
+    [role="button"] {
+        cursor: url('https://codehs.com/uploads/83f80767e459872bcd2a56d8cc903e59'), pointer !important;
+    }
+
+    /* 3. Special fix for iframes/modals */
+    #gameModal, .bg-gray-900-transparent {
+        cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
+    }
     /*
       1. Remove all default margin and padding from the browser.
       2. Set height to 100% so the body fills the window.

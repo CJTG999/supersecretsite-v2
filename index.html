@@ -13,6 +13,32 @@
     <link rel="icon" href="https://codehs.com/uploads/c69638d51ac51123c4b70ad422b59760">
 
     <style>
+        /* --- CUSTOM CURSOR FIX --- */
+
+        /* 1. Apply to the root and body */
+        html, body {
+            cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
+            min-height: 100vh;
+        }
+
+        /* 2. Apply to all interactive elements */
+        /* We include 'a' tags, buttons, and tailwind-style pointer classes */
+        a, 
+        button, 
+        input, 
+        select, 
+        textarea, 
+        .cursor-pointer, 
+        #keystroke-tester-container div,
+        [role="button"] {
+            cursor: url('https://codehs.com/uploads/83f80767e459872bcd2a56d8cc903e59'), pointer !important;
+        }
+
+        /* 3. Special fix for iframes/modals */
+        #gameModal, .bg-gray-900-transparent {
+            cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
+        }
+        
         /* RESET & BASICS */
         * {
             box-sizing: border-box;
