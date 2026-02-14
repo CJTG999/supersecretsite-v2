@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    
     <script src="https://quge5.com/88/tag.min.js" data-zone="210950" async data-cfasync="false"></script>
-
     <script>(function(s){s.dataset.zone='10606765',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
 
     <meta name="monetag" content="5b7fdedb4fcf8902d4d50f6b66de1f7d">
@@ -27,19 +25,72 @@
             color: #ffffff;
             display: flex;
             justify-content: center;
-            align-items: flex-start;F
+            align-items: flex-start;
             min-height: 100vh;
             text-align: center;
-            padding: 40px 0;
+            padding: 20px 0;
         }
 
         .container {
             width: 95%;
-            max-width: 1000px; /* Wider to accommodate the grid */
+            max-width: 1000px;
             padding: 10px;
         }
 
-        /* PROFILE IMAGE CONTAINER */
+        /* --- AUTH & VISITOR BAR STYLES --- */
+        .auth-bar {
+            background: rgba(88, 77, 253, 0.1);
+            border: 1px solid #333;
+            padding: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        .auth-inputs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .auth-inputs input {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            outline: none;
+            width: 140px;
+        }
+
+        .auth-btn {
+            background: #584dfd;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        .auth-btn:hover { opacity: 0.8; }
+
+        .visit-badge {
+            color: #4a90e2;
+            font-weight: bold;
+            background: #000;
+            padding: 2px 10px;
+            border-radius: 20px;
+            border: 1px solid #4a90e2;
+            margin-left: 5px;
+        }
+
+        /* --- ORIGINAL THEME STYLES --- */
         .profile-wrapper {
             width: 120px;
             height: 120px;
@@ -74,7 +125,6 @@
             font-family: monospace;
         }
 
-        /* SEARCH BAR STYLE */
         .search-container {
             margin: 20px auto 30px auto;
             max-width: 500px;
@@ -92,11 +142,8 @@
             transition: border-color 0.3s;
         }
 
-        #gameSearch:focus {
-            border-color: #584dfd;
-        }
+        #gameSearch:focus { border-color: #584dfd; }
 
-        /* GAME GRID (THE CARD LOOK) */
         .links-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -105,7 +152,7 @@
         }
 
         .link-btn {
-            background-color: #1e1e2e; /* Dark navy card bg */
+            background-color: #1e1e2e;
             border: 2px solid #2a2a3a;
             border-radius: 12px;
             padding: 20px 10px;
@@ -134,7 +181,6 @@
             justify-content: center;
         }
 
-        /* THE "PLAY NOW" BUTTON STYLE FROM IMAGE */
         .play-now-label {
             background-color: #584dfd;
             color: white;
@@ -154,7 +200,6 @@
             object-fit: contain;
         }
 
-        /* SOCIALS & ABOUT (Kept similar but centered) */
         .socials-row {
             display: flex;
             justify-content: center;
@@ -180,20 +225,31 @@
         }
 
         .footer { margin-top: 40px; font-size: 12px; color: #555; font-family: monospace; }
-        
-        /* Hidden class for search */
         .hidden { display: none !important; }
 
     </style>
 </head>
-
-<script src="https://quge5.com/88/tag.min.js" data-zone="210950" async data-cfasync="false"></script>
-
-<script>(function(s){s.dataset.zone='10606765',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-
 <body>
 
     <div class="container">
+        <div class="auth-bar">
+            <div id="user-display">
+                Welcome, <span id="username-text" style="color:#584dfd">Guest</span> 
+                | Visits: <span id="visit-count" class="visit-badge">0</span>
+            </div>
+            
+            <div class="auth-inputs" id="guest-controls">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Password">
+                <button class="auth-btn" onclick="authAction('login')">Login</button>
+                <button class="auth-btn" style="background:#2a2a3a" onclick="authAction('register')">Signup</button>
+            </div>
+
+            <div id="user-controls" class="hidden">
+                <button class="auth-btn" style="background:#ff4757" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
         <div class="profile-wrapper">
             <img src="https://codehs.com/uploads/c69638d51ac51123c4b70ad422b59760" alt="Master Programmer Logo">
         </div>
@@ -327,7 +383,63 @@
     </div>
 
     <script>
-        // LIVE SEARCH LOGIC
+        // --- 1. VISIT COUNTER LOGIC ---
+        function handleVisits() {
+            let localCount = parseInt(localStorage.getItem('mp_visits') || "0");
+            localCount++;
+            localStorage.setItem('mp_visits', localCount);
+            document.getElementById('visit-count').innerText = localCount;
+        }
+
+        // --- 2. AUTHENTICATION LOGIC ---
+        async function authAction(type) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const visitData = localStorage.getItem('mp_visits');
+
+            if (!email || !password) {
+                alert("Please enter both email and password.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/${type}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, visits: visitData })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(type === 'login' ? "Welcome back!" : "Account created successfully!");
+                    localStorage.setItem('mp_user', email);
+                    // If login returns a database visit count, sync it
+                    if (data.visits) localStorage.setItem('mp_visits', data.visits);
+                    location.reload();
+                } else {
+                    alert(data.error || "Something went wrong.");
+                }
+            } catch (err) {
+                alert("Error connecting to server. Make sure your Cloudflare Functions are deployed.");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('mp_user');
+            location.reload();
+        }
+
+        function checkUserSession() {
+            const user = localStorage.getItem('mp_user');
+            if (user) {
+                document.getElementById('username-text').innerText = user;
+                document.getElementById('guest-controls').classList.add('hidden');
+                document.getElementById('user-controls').classList.remove('hidden');
+            }
+        }
+
+        // --- 3. LIVE SEARCH LOGIC ---
         const searchInput = document.getElementById('gameSearch');
         const cards = document.querySelectorAll('.link-btn');
 
@@ -343,13 +455,19 @@
             });
         });
 
-        // SECRET REDIRECT
+        // --- 4. SECRET REDIRECT ---
         document.addEventListener('keydown', function(event) {
             if (event.ctrlKey && event.shiftKey && (event.key === 'p' || event.key === 'P')) {
                 event.preventDefault();
                 window.location.href = 'other/nexusproxy/public/index.html';
             }
         });
+
+        // RUN ON LOAD
+        window.onload = () => {
+            handleVisits();
+            checkUserSession();
+        };
     </script>
 
 </body>
