@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Folder Downloader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background: #f6f8fa; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #2ea44f; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #94d3a2; }
+        #status { margin-top: 15px; font-size: 0.9rem; color: #57606a; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>GitHub Downloader</h2>
+    <p>Paste a repo or folder URL:</p>
+    <input type="text" id="gh-url" placeholder="https://github.com/owner/repo/tree/main/folder">
+    <button id="dl-btn">Download as ZIP</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    const btn = document.getElementById('dl-btn');
+    const status = document.getElementById('status');
+
+    btn.addEventListener('click', async () => {
+        const url = document.getElementById('gh-url').value.trim();
+        if (!url) return alert("Please enter a URL");
+
+        try {
+            btn.disabled = true;
+            status.innerText = "Analyzing URL...";
+
+            // 1. Parse URL (matches: owner, repo, branch/ref, and optional path)
+            const match = url.match(/github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+)\/(.*))?/);
+            if (!match) throw new Error("Invalid GitHub URL format.");
+
+            const [_, owner, repo, ref = 'main', path = ''] = match;
+            
+            // 2. Fetch file tree from GitHub API
+            status.innerText = "Fetching file list...";
+            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}`;
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error("Failed to fetch repository data. Is it private?");
+            
+            const items = await response.json();
+            const zip = new JSZip();
+
+            // 3. Recursive function to handle files and subfolders
+            status.innerText = "Downloading files...";
+            await downloadRecursive(items, "", zip);
+
+            // 4. Generate and Save
+            status.innerText = "Compressing...";
+            const content = await zip.generateAsync({type: "blob"});
+            saveAs(content, `${path || repo}.zip`);
+            
+            status.innerText = "Done!";
+        } catch (err) {
+            status.innerText = "Error: " + err.message;
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    async function downloadRecursive(items, currentPath, zipObj) {
+        // If items is not an array, it's a single file
+        const itemList = Array.isArray(items) ? items : [items];
+
+        for (const item of itemList) {
+            if (item.type === 'file') {
+                const fileData = await fetch(item.download_url).then(res => res.blob());
+                zipObj.file(item.name, fileData);
+            } else if (item.type === 'dir') {
+                const folder = zipObj.folder(item.name);
+                const subItems = await fetch(item.url).then(res => res.json());
+                await downloadRecursive(subItems, item.path, folder);
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
