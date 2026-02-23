@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fready Fvckbear Entertainment Database</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin: 0;
+            padding: 50px;
+            /* Subtle CRT scanline effect */
+            background-image: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+        }
+        
+        h1 {
+            color: #cc0000;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-shadow: 2px 2px 5px rgba(204, 0, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .game-link {
+            display: block;
+            background-color: #111;
+            color: #aaa;
+            text-decoration: none;
+            padding: 20px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-link:hover {
+            background-color: #1a0000;
+            color: #fff;
+            border-color: #cc0000;
+            box-shadow: 0 0 15px rgba(204, 0, 0, 0.8);
+            cursor: pointer;
+        }
+
+        /* Adds a little ">" arrow on hover */
+        .game-link::before {
+            content: '>';
+            position: absolute;
+            left: -20px;
+            color: #cc0000;
+            transition: left 0.3s ease;
+        }
+
+        .game-link:hover::before {
+            left: 15px;
+        }
+
+        .game-link:hover span {
+            margin-left: 20px;
+        }
+
+        .game-link span {
+            transition: margin 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Fazbear Security Terminal</h1>
+    <p>Select a system to initialize...</p>
+
+    <div class="grid-container">
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/1/index.html" class="game-link"><span>FNaF 1</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/2/index.html" class="game-link"><span>FNaF 2</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/3/index.html" class="game-link"><span>FNaF 3</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/4/index.html" class="game-link"><span>FNaF 4</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/sl/index.html" class="game-link"><span>Sister Location</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/w/index.html" class="game-link"><span>FNaF World</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/ps/index.html" class="game-link"><span>Pizzeria Simulator</span></a>
+        <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/ucn/index.html" class="game-link"><span>UCN</span></a>
+    </div>
+
+</body>
+</html>
