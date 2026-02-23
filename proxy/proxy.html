@@ -3,81 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="5; url=https://playernation.esdata.info/">
-    <title>Redirecting...</title>
-    
+    <title>supersecretproxy</title>
     <style>
-        /* --- CUSTOM CURSOR FIX --- */
-
-        /* 1. Apply to the root and body */
-        html, body {
-            cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
-            min-height: 100vh;
-        }
-
-        /* 2. Apply to all interactive elements */
-        /* We include 'a' tags, buttons, and tailwind-style pointer classes */
-        a, 
-        button, 
-        input, 
-        select, 
-        textarea, 
-        .cursor-pointer, 
-        #keystroke-tester-container div,
-        [role="button"] {
-            cursor: url('https://codehs.com/uploads/83f80767e459872bcd2a56d8cc903e59'), pointer !important;
-        }
-
-        /* 3. Special fix for iframes/modals */
-        #gameModal, .bg-gray-900-transparent {
-            cursor: url('https://codehs.com/uploads/471381c796bfff3712cd05b64b44142a'), auto !important;
-        }
+        /* Base Dark Theme Styling */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0d1117; /* Deep dark gray/blue */
+            color: #c9d1d9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #f9f9f9;
-            color: #333;
         }
 
-        /* The Spinner */
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+        /* Title Styling */
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2.5rem;
+            color: #58a6ff; /* Neon blue accent */
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(88, 166, 255, 0.4);
+            font-weight: 600;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* Button Container */
+        .link-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            width: 100%;
+            max-width: 350px;
         }
 
-        .message {
-            text-align: center;
-        }
-
-        a {
-            color: #3498db;
+        /* Individual Link Buttons */
+        a.proxy-link {
+            background-color: #161b22;
+            color: #ffffff;
             text-decoration: none;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            text-align: center;
+            border: 1px solid #30363d;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        /* Hover Effects */
+        a.proxy-link:hover {
+            background-color: #1f242c;
+            border-color: #58a6ff;
+            color: #58a6ff;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(88, 166, 255, 0.15);
         }
     </style>
 </head>
 <body>
 
-    <div class="loader"></div>
+    <h1>supersecretproxy</h1>
 
-    <div class="message">
-        <h2>Hold on, we're moving!</h2>
-        <p>You will be redirected in 5 seconds...</p>
-        <p><small>Not working? reload.</a></small></p>
+    <div class="link-container">
+        <a href="https://reflect.supersecretsite.lol" class="proxy-link" target="_blank">Reflect</a>
+        <a href="https://playernation.esdata.info" class="proxy-link" target="_blank">Interstellar</a>
+        <a href="https://108.181.11.173/__cpi.php?s=UkQ2YXlSaWJuc3ZoeGR2dG04WW9LazBGek5mb0RVQVNhQ1plaVRIRWR5WkxrckJCUVdHNDFPcmJqcklBTllJOWczaEhLMDhXMi9taUhtOFJOUmF2VVhNa05qME50czJCZ2NRdE5qNU5HN3c9&r=aHR0cHM6Ly8xMDguMTgxLjExLjE3My8%2Fa289cyZfX2Nwbz1hSFIwY0hNNkx5OXpkR0Z5ZEM1a2RXTnJaSFZqYTJkdkxtTnZiUQ%3D%3D&__cpo=1" class="proxy-link" target="_blank">CroxyProxy</a>
     </div>
 
 </body>
