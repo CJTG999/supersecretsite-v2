@@ -170,16 +170,34 @@
         <a href="celeste.html" class="game-btn">Celeste</a>
         <a href="fnfmobile.html" class="game-btn">FNF Mobile (Psych Engine)</a>
         <a href="balatro.html" class="game-btn">FNF Mobile (Psych Engine)</a>
-
-
-
-
-
     </div>
 
     <footer>
         &copy; 2026 pc2web
     </footer>
+
+    <script>
+        const baseUrl = "https://cdn.jsdelivr.net/gh/CJTG999/master-programmer/pc2web/";
+
+        document.querySelectorAll('.game-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const fileName = btn.getAttribute('href');
+                const fullUrl = baseUrl + fileName;
+
+                try {
+                    const response = await fetch(fullUrl);
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(new Blob([blob], { type: 'text/html' }));
+                    window.location.href = blobUrl;
+                } catch (err) {
+                    console.error("Error loading file via blob:", err);
+                    // Fallback to direct link if fetch fails (e.g., CORS issues)
+                    window.location.href = fullUrl;
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>
