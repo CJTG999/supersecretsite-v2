@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FNF Web - Scaling & Keybinds Fix</title>
+    <title>FNF Web - Perfect Note Vanish Fix</title>
     <style>
         :root { --bg: #050505; --panel: #111; --text: #eee; --accent: #38EF7D; --error: #ff4b2b; --bot: #00D2FF; }
         body { 
             background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; 
-            display: flex; flex-direction: column; align-items: center; 
-            margin: 0; padding: 0; overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column; margin: 0; overflow: hidden; height: 100vh;
         }
         #ui { 
             background: var(--panel); padding: 8px; border-bottom: 1px solid #222; 
@@ -16,41 +15,15 @@
             font-size: 10px; z-index: 20; flex-wrap: wrap; box-sizing: border-box;
         }
         .input-group { display: flex; flex-direction: column; gap: 2px; }
-        select, input[type="range"] { background: #222; color: #fff; border: 1px solid #444; font-size: 10px; }
+        select, input[type="range"] { background: #222; color: #fff; border: 1px solid #444; font-size: 10px; border-radius: 3px; }
         input[type="file"] { width: 90px; color: #666; font-size: 8px; }
-        
-        /* SCALING FIX */
-        #game-container { 
-            position: relative; 
-            flex-grow: 1; 
-            width: 100%; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            overflow: hidden; 
-            background: #000;
-        }
-        #game { 
-            max-width: 100%; 
-            max-height: 100%; 
-            object-fit: contain; /* Keeps aspect ratio and fits everything on screen */
-            background: #000;
-        }
-
-        .screen-overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 10; 
-            backdrop-filter: blur(5px); 
-        }
+        #game-container { position: relative; flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; }
+        #game { width: 100%; height: 100%; object-fit: contain; }
+        .screen-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
         .btn-main { padding: 15px 40px; font-weight: bold; background: #fff; color: #000; border: none; border-radius: 4px; cursor: pointer; }
         .toggle { background: #222; color: #fff; border: 1px solid #333; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 9px; }
-        .toggle.active { background: var(--bot); color: #000; }
-        
+        .toggle.active { border-color: var(--accent); color: var(--accent); }
         .key-setter { background: #222; border: 1px solid #444; color: var(--accent); padding: 4px 6px; border-radius: 3px; cursor: pointer; min-width: 20px; text-align: center; font-weight: bold; }
-        .key-setter.waiting { background: var(--accent); color: #000; animation: blink 0.5s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-
         label { font-weight: bold; color: #555; text-transform: uppercase; font-size: 8px; }
         .hidden { display: none !important; }
     </style>
@@ -61,20 +34,18 @@
     <div class="input-group">
         <label>Audio Mode</label>
         <select id="audio-mode">
-            <option value="1">1 File (Merged)</option>
+            <option value="1">1 File</option>
             <option value="2" selected>2 Files (Inst+Voc)</option>
-            <option value="3">3 Files (Inst+P1+P2)</option>
+            <option value="3">3 Files</option>
         </select>
     </div>
-
     <div class="input-group"><label>Inst</label><input type="file" id="inst-up"></div>
     <div class="input-group" id="voc-group"><label>Vocals</label><input type="file" id="voc-up"></div>
     <div class="input-group hidden" id="opp-group"><label>Opponent</label><input type="file" id="opp-up"></div>
     <div class="input-group"><label>Chart</label><input type="file" id="chart-up"></div>
     
     <div style="width: 1px; height: 20px; background: #333;"></div>
-
-    <div class="input-group"><label>Keybinds</label>
+    <div class="input-group"><label>Binds</label>
         <div style="display: flex; gap: 3px;">
             <div class="key-setter" data-lane="0" id="bind-0">D</div>
             <div class="key-setter" data-lane="1" id="bind-1">F</div>
@@ -82,18 +53,18 @@
             <div class="key-setter" data-lane="3" id="bind-3">K</div>
         </div>
     </div>
-
     <div style="width: 1px; height: 20px; background: #333;"></div>
 
-    <button id="reset-defaults" class="toggle" style="background:var(--error)">LOAD GUNS</button>
+    <div class="input-group"><label>Scroll Speed</label><input type="range" id="speed-slider" min="1" max="6" step="0.1" value="3.2"></div>
+    <button id="scroll-toggle" class="toggle">UPSCROLL</button>
     <button id="bot-toggle" class="toggle">BOT: OFF</button>
     <button id="ghost-toggle" class="toggle">GHOST: OFF</button>
-    <div class="input-group"><label>Hit Vol</label><input type="range" id="vol-hit" min="0" max="2" step="0.1" value="1.0"></div>
+    <button id="reset-defaults" class="toggle" style="color:var(--error)">LOAD GUNS</button>
 </div>
 
 <div id="game-container">
     <div id="start-screen" class="screen-overlay">
-        <button id="start-btn" class="btn-main" disabled>WAITING FOR FILES</button>
+        <button id="start-btn" class="btn-main" disabled>AWAITING ASSETS</button>
     </div>
     <canvas id="game"></canvas>
 </div>
@@ -109,35 +80,21 @@ const ASSETS = {
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const startBtn = document.getElementById('start-btn');
-const audioModeSel = document.getElementById('audio-mode');
+const speedSlider = document.getElementById('speed-slider');
 
-// Fixed Resolution for Internal Logic
-canvas.width = 1280;
-canvas.height = 720;
+canvas.width = 1280; canvas.height = 720;
 
 let audioCtx, instBuf, playerBuf, oppBuf, hsBuf, chart;
 let instS, playerS, oppS, playerG;
-let startTime = 0, isPlaying = false, isPaused = false;
+let startTime = 0, isPlaying = false, isDownscroll = false;
 let isBotplay = false, ghostTapping = false, health = 1, activeNotes = [];
-let binds = ['d', 'f', 'j', 'k'], held = [false, false, false, false];
-let listeningForLane = -1;
+let combo = 0, comboBounce = 0, misses = 0, totalPlayed = 0, notesHit = 0;
+let binds = ['d', 'f', 'j', 'k'], held = [false, false, false, false], listeningForLane = -1;
+const colors = ['#FF4B2B', '#00D2FF', '#38EF7D', '#F9D423'];
 
-// Keybind Logic
 document.querySelectorAll('.key-setter').forEach(btn => {
-    btn.onclick = () => {
-        listeningForLane = parseInt(btn.dataset.lane);
-        btn.innerText = "...";
-        btn.classList.add('waiting');
-    };
+    btn.onclick = () => { listeningForLane = parseInt(btn.dataset.lane); btn.innerText = "..."; btn.classList.add('waiting'); };
 });
-
-audioModeSel.onchange = () => {
-    const val = audioModeSel.value;
-    document.getElementById('voc-group').classList.toggle('hidden', val === "1");
-    document.getElementById('voc-group').querySelector('label').innerText = val === "3" ? "PLAYER" : "VOCALS";
-    document.getElementById('opp-group').classList.toggle('hidden', val !== "3");
-    checkReady();
-};
 
 async function getBuf(src) {
     if (!audioCtx) audioCtx = new AudioContext();
@@ -147,67 +104,45 @@ async function getBuf(src) {
 
 getBuf(ASSETS.hs).then(b => hsBuf = b);
 
-function checkReady() {
-    const mode = audioModeSel.value;
-    let ready = instBuf && chart;
-    if (mode === "2") ready = ready && playerBuf;
-    if (mode === "3") ready = ready && playerBuf && oppBuf;
-    startBtn.disabled = !ready;
-    startBtn.innerText = ready ? "START SONG" : "NEED ASSETS";
-}
-
 function parseChart(raw) {
-    chart = raw.song || raw;
+    const data = raw.song || raw;
+    chart = data;
+    if (data.speed) speedSlider.value = data.speed;
     activeNotes = [];
-    chart.notes.forEach(s => {
+    data.notes.forEach(s => {
         s.sectionNotes.forEach(n => {
             const isP = (n[1] < 4) ? s.mustHitSection : !s.mustHitSection;
             activeNotes.push({ time: n[0], lane: n[1] % 4, isPlayer: isP, hit: false, botHeld: 0 });
         });
     });
-    checkReady();
+    startBtn.disabled = false; startBtn.innerText = "START SONG";
 }
 
 document.getElementById('reset-defaults').onclick = async () => {
-    audioModeSel.value = "2"; audioModeSel.onchange();
     const [i, v, c] = await Promise.all([getBuf(ASSETS.inst), getBuf(ASSETS.voc), fetch(ASSETS.chart).then(r => r.json())]);
     instBuf = i; playerBuf = v; parseChart(c);
 };
 
-document.getElementById('inst-up').onchange = async (e) => { instBuf = await getBuf(e.target.files[0]); checkReady(); };
-document.getElementById('voc-up').onchange = async (e) => { playerBuf = await getBuf(e.target.files[0]); checkReady(); };
-document.getElementById('opp-up').onchange = async (e) => { oppBuf = await getBuf(e.target.files[0]); checkReady(); };
+document.getElementById('inst-up').onchange = async (e) => { instBuf = await getBuf(e.target.files[0]); };
+document.getElementById('voc-up').onchange = async (e) => { playerBuf = await getBuf(e.target.files[0]); };
 document.getElementById('chart-up').onchange = async (e) => { parseChart(JSON.parse(await e.target.files[0].text())); };
 
 function playHS() {
     if(!hsBuf) return;
     const s = audioCtx.createBufferSource(); s.buffer = hsBuf;
-    const g = audioCtx.createGain(); g.gain.value = document.getElementById('vol-hit').value;
+    const g = audioCtx.createGain(); g.gain.value = 0.8;
     s.connect(g); g.connect(audioCtx.destination); s.start(0);
 }
 
 function startSong() {
     if(audioCtx.state === 'suspended') audioCtx.resume();
     if(instS) { [instS, playerS, oppS].forEach(s => { if(s) try{s.stop()}catch(e){} }); }
-    
-    instS = audioCtx.createBufferSource(); instS.buffer = instBuf;
-    instS.connect(audioCtx.destination);
-    
-    if (playerBuf) {
-        playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf;
-        playerG = audioCtx.createGain();
-        playerS.connect(playerG); playerG.connect(audioCtx.destination);
-    }
-    
-    if (oppBuf && audioModeSel.value === "3") {
-        oppS = audioCtx.createBufferSource(); oppS.buffer = oppBuf;
-        oppS.connect(audioCtx.destination);
-    }
-
-    activeNotes.forEach(n => { n.hit = false; n.botHeld = 0; });
-    health = 1; startTime = audioCtx.currentTime;
-    [instS, playerS, oppS].forEach(s => { if(s) s.start(0); });
-    
+    instS = audioCtx.createBufferSource(); instS.buffer = instBuf; instS.connect(audioCtx.destination);
+    if (playerBuf) { playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf; playerG = audioCtx.createGain(); playerS.connect(playerG); playerG.connect(audioCtx.destination); }
+    activeNotes.forEach(n => n.hit = false);
+    health = 1; combo = 0; misses = 0; totalPlayed = 0; notesHit = 0;
+    startTime = audioCtx.currentTime;
+    [instS, playerS].forEach(s => { if(s) s.start(0); });
     isPlaying = true; document.getElementById('start-screen').classList.add('hidden');
     requestAnimationFrame(loop);
 }
@@ -215,19 +150,28 @@ function startSong() {
 window.onkeydown = (e) => {
     const k = e.key.toLowerCase();
     if (listeningForLane !== -1) {
-        binds[listeningForLane] = k;
-        document.getElementById(`bind-${listeningForLane}`).innerText = k.toUpperCase();
-        document.getElementById(`bind-${listeningForLane}`).classList.remove('waiting');
-        listeningForLane = -1; return;
+        binds[listeningForLane] = k; document.getElementById(`bind-${listeningForLane}`).innerText = k.toUpperCase();
+        document.getElementById(`bind-${listeningForLane}`).classList.remove('waiting'); listeningForLane = -1; return;
     }
     if(!isPlaying || isBotplay) return;
     const lane = binds.indexOf(k);
     if(lane === -1 || held[lane]) return;
     held[lane] = true;
     const songTime = (audioCtx.currentTime - startTime) * 1000;
-    const note = activeNotes.find(n => !n.hit && n.isPlayer && n.lane === lane && Math.abs(n.time - songTime) < 160);
-    if(note) { note.hit = true; health = Math.min(2, health + 0.05); playHS(); } 
-    else if (!ghostTapping) { health -= 0.12; if(playerG) { playerG.gain.value = 0; setTimeout(()=>playerG.gain.value=1, 200); } }
+    
+    // FORCED HIT CHECK: If ANY note is in lane and within window, kill it immediately.
+    const note = activeNotes.find(n => !n.hit && n.isPlayer && n.lane === lane && Math.abs(n.time - songTime) < 180);
+    
+    if(note) { 
+        note.hit = true;
+        combo++; notesHit++; totalPlayed++;
+        comboBounce = 15;
+        health = Math.min(2, health + 0.045); 
+        playHS(); 
+    } 
+    else if (!ghostTapping) { 
+        health -= 0.06; combo = 0; misses++; totalPlayed++;
+    }
 };
 window.onkeyup = (e) => { const l = binds.indexOf(e.key.toLowerCase()); if(l !== -1) held[l] = false; };
 
@@ -235,47 +179,77 @@ function loop() {
     if(!isPlaying) return;
     ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
     const songTime = (audioCtx.currentTime - startTime) * 1000;
-    const centerX = canvas.width / 2;
+    const sY = isDownscroll ? 600 : 100;
+    const speed = parseFloat(speedSlider.value);
 
     if(isBotplay) {
-        activeNotes.forEach(n => { if(!n.hit && n.isPlayer && n.time <= songTime) { n.hit = true; n.botHeld = 8; playHS(); } });
+        activeNotes.forEach(n => { if(!n.hit && n.isPlayer && n.time <= songTime) { n.hit = true; n.botHeld = 8; combo++; notesHit++; totalPlayed++; comboBounce = 15; playHS(); } });
     }
 
-    // Draw Receptors
+    // Drawing Receptors
     for(let i=0; i<8; i++) {
         const isP = i >= 4; const lIdx = i%4;
         const hld = isP ? (isBotplay ? activeNotes.some(n=>n.lane===lIdx && n.botHeld>0) : held[lIdx]) : false;
-        const x = centerX + (isP ? 100 : -520) + (lIdx * 110);
-        ctx.strokeStyle = isP ? (hld ? '#38EF7D' : '#444') : '#222';
-        ctx.lineWidth = 5; ctx.strokeRect(x, 100, 80, 80);
+        const x = (canvas.width/2) + (isP ? 100 : -520) + (lIdx * 110);
+        ctx.strokeStyle = isP ? (hld ? colors[lIdx] : '#444') : '#222';
+        ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x+40, sY+40, 35, 0, Math.PI*2); ctx.stroke();
     }
 
-    // Draw Notes
+    // Drawing Notes
     activeNotes.forEach(n => {
+        if(n.hit) return; // SKIP IMMEDIATELY
         if(n.botHeld > 0) n.botHeld--;
-        if(n.hit) return;
-        const x = centerX + (n.isPlayer ? 100 : -520) + (n.lane * 110);
-        const y = 100 + (n.time - songTime) * (chart.speed || 3);
-        if(n.isPlayer && n.time < songTime - 160) { n.hit = true; health -= 0.12; }
-        if(!n.isPlayer && n.time <= songTime) n.hit = true;
-        if(y > -100 && y < 800) {
-            ctx.fillStyle = n.isPlayer ? '#38EF7D' : '#333';
-            ctx.fillRect(x, y, 80, 80);
+
+        const x = (canvas.width/2) + (n.isPlayer ? 100 : -520) + (n.lane * 110);
+        const diff = n.time - songTime;
+        const y = isDownscroll ? sY - (diff * speed) : sY + (diff * speed);
+        
+        // Miss condition (Note passed the receptor)
+        if(n.isPlayer && diff < -180) { n.hit = true; health -= 0.1; combo = 0; misses++; totalPlayed++; return; }
+        if(!n.isPlayer && diff <= 0) { n.hit = true; return; } 
+        
+        // Final draw check
+        if(y > -100 && y < 820) {
+            ctx.fillStyle = n.isPlayer ? colors[n.lane] : '#333';
+            ctx.beginPath(); ctx.arc(x+40, y+40, 35, 0, Math.PI*2); ctx.fill();
         }
     });
 
-    // Fixed Health Bar Position
-    ctx.fillStyle = '#222'; ctx.fillRect(centerX - 300, 650, 600, 20);
+    // Combo Bounce
+    if(combo > 0) {
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${42 + comboBounce}px Inter`;
+        ctx.textAlign = 'center';
+        ctx.fillText(combo, canvas.width/2, canvas.height/2 - (comboBounce * 2));
+        if(comboBounce > 0) comboBounce *= 0.88;
+    }
+
+    // Info/Health Bar
+    const healthY = isDownscroll ? 55 : 665;
+    const barY = isDownscroll ? (healthY + 55) : (healthY - 35);
+    let comboRank = (misses === 0 && notesHit > 0) ? "FC" : (misses < 10 ? "SDCB" : "Clear");
+    const acc = totalPlayed === 0 ? "0.00" : ((notesHit / totalPlayed) * 100).toFixed(2);
+    const timeLeft = Math.max(0, (instBuf ? instBuf.duration : 0) - (audioCtx.currentTime - startTime));
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = Math.floor(timeLeft % 60).toString().padStart(2, '0');
+
+    ctx.fillStyle = '#222'; ctx.fillRect(canvas.width/2 - 300, healthY, 600, 16);
     ctx.fillStyle = health > 0.4 ? '#38EF7D' : '#ff4b2b';
-    ctx.fillRect(centerX - 300, 650, 600 * (health/2), 20);
+    ctx.fillRect(canvas.width/2 - 300, healthY, 600 * (health/2), 16);
+
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Time: ${minutes}:${seconds} | Misses: ${misses} | Acc: ${acc}% | [${comboRank}]`, canvas.width/2, barY);
     
-    if(health <= 0) startSong();
+    if(health <= 0 || (instBuf && timeLeft <= 0)) startSong();
     requestAnimationFrame(loop);
 }
 
 startBtn.onclick = startSong;
 document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOT: ${isBotplay?'ON':'OFF'}`; };
 document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST: ${ghostTapping?'ON':'OFF'}`; };
+document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.classList.toggle('active'); e.target.innerText = isDownscroll ? "DOWNSCROLL" : "UPSCROLL"; };
 </script>
 </body>
 </html>
