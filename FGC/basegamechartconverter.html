@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FNF V-Slice to Psych Converter</title>
+    <style>
+        body { font-family: sans-serif; background: #222; color: #fff; padding: 20px; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
+        input, select, button { margin: 10px 0; display: block; width: 100%; padding: 10px; border-radius: 4px; border: none; }
+        button { background: #ff5e00; color: white; font-weight: bold; cursor: pointer; }
+        button:hover { background: #ff8533; }
+        .status { color: #ffcc00; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>V-Slice to Psych Converter</h2>
+    <p>Upload your <code>-chart.json</code> and <code>-metadata.json</code> files to generate a classic Psych-compatible JSON.</p>
+    
+    <label>Metadata JSON:</label>
+    <input type="file" id="metadataInput" accept=".json">
+    
+    <label>Chart JSON:</label>
+    <input type="file" id="chartInput" accept=".json">
+
+    <label>Target Difficulty:</label>
+    <select id="difficultySelect">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+        <option value="erect">Erect</option>
+        <option value="nightmare">Nightmare</option>
+    </select>
+
+    <button onclick="convertChart()">Convert & Download</button>
+    <div id="status" class="status"></div>
+</div>
+
+<script>
+async function convertChart() {
+    const metaFile = document.getElementById('metadataInput').files[0];
+    const chartFile = document.getElementById('chartInput').files[0];
+    const difficulty = document.getElementById('difficultySelect').value;
+    const status = document.getElementById('status');
+
+    if (!metaFile || !chartFile) {
+        status.innerText = "Error: Please upload both files!";
+        return;
+    }
+
+    try {
+        const metaText = await metaFile.text();
+        const chartText = await chartFile.text();
+        
+        const meta = JSON.parse(metaText);
+        const chartData = JSON.parse(chartText);
+
+        // 1. Find the specific difficulty notes in the V-Slice format
+        const diffData = chartData.notes[difficulty];
+        if (!diffData) {
+            status.innerText = `Error: Difficulty "${difficulty}" not found in chart!`;
+            return;
+        }
+
+        // 2. Map V-Slice notes to Psych Engine format [time, direction, length]
+        // V-Slice uses {t, d, l}, Psych uses [t, d, l]
+        const psychNotes = diffData.map(n => [n.t, n.d, n.l || 0]);
+
+        // 3. Reconstruct into the "Song" object Psych expects
+        const psychJson = {
+            "song": {
+                "song": meta.songName || "Unknown",
+                "notes": [{
+                    "sectionNotes": psychNotes,
+                    "lengthInSteps": 16,
+                    "typeOfSection": 0,
+                    "mustHitSection": true
+                }],
+                "bpm": meta.timeChanges[0].bpm,
+                "needsVoices": true,
+                "player1": meta.playData.characters.player,
+                "player2": meta.playData.characters.opponent,
+                "gfVersion": meta.playData.characters.gf,
+                "speed": 2.5 // Default speed; you may need to adjust this manually
+            }
+        };
+
+        // 4. Download Trigger
+        const blob = new Blob([JSON.stringify(psychJson, null, "\t")], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${meta.songName.toLowerCase()}-${difficulty}.json`;
+        a.click();
+        
+        status.innerText = "Conversion successful!";
+    } catch (e) {
+        status.innerText = "Error parsing JSON. Check file formats.";
+        console.error(e);
+    }
+}
+</script>
+
+</body>
+</html>
