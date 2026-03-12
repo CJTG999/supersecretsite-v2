@@ -2,38 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FNF Web - Multi-Audio Build</title>
+    <title>FNF Web - Scaling & Keybinds Fix</title>
     <style>
         :root { --bg: #050505; --panel: #111; --text: #eee; --accent: #38EF7D; --error: #ff4b2b; --bot: #00D2FF; }
         body { 
             background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; 
             display: flex; flex-direction: column; align-items: center; 
-            margin: 0; overflow: hidden; height: 100vh;
+            margin: 0; padding: 0; overflow: hidden; height: 100vh;
         }
         #ui { 
-            background: var(--panel); padding: 10px; border-bottom: 1px solid #222; 
+            background: var(--panel); padding: 8px; border-bottom: 1px solid #222; 
             display: flex; gap: 10px; align-items: center; width: 100%; justify-content: center; 
-            font-size: 10px; z-index: 20; flex-wrap: wrap;
+            font-size: 10px; z-index: 20; flex-wrap: wrap; box-sizing: border-box;
         }
         .input-group { display: flex; flex-direction: column; gap: 2px; }
-        select, input[type="range"] { background: #222; color: #fff; border: 1px solid #444; font-size: 10px; padding: 2px; border-radius: 3px; }
+        select, input[type="range"] { background: #222; color: #fff; border: 1px solid #444; font-size: 10px; }
         input[type="file"] { width: 90px; color: #666; font-size: 8px; }
         
-        #game-container { position: relative; flex-grow: 1; width: 100%; display: flex; justify-content: center; }
-        #game { background: #000; display: block; }
+        /* SCALING FIX */
+        #game-container { 
+            position: relative; 
+            flex-grow: 1; 
+            width: 100%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden; 
+            background: #000;
+        }
+        #game { 
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; /* Keeps aspect ratio and fits everything on screen */
+            background: #000;
+        }
 
         .screen-overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); display: flex; flex-direction: column; 
+            background: rgba(0,0,0,0.9); display: flex; flex-direction: column; 
             justify-content: center; align-items: center; z-index: 10; 
-            backdrop-filter: blur(10px); 
+            backdrop-filter: blur(5px); 
         }
-        .btn-main { padding: 15px 40px; font-weight: bold; background: #fff; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
-        .btn-main:disabled { background: #222; color: #555; }
-        
+        .btn-main { padding: 15px 40px; font-weight: bold; background: #fff; color: #000; border: none; border-radius: 4px; cursor: pointer; }
         .toggle { background: #222; color: #fff; border: 1px solid #333; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 9px; }
         .toggle.active { background: var(--bot); color: #000; }
         
+        .key-setter { background: #222; border: 1px solid #444; color: var(--accent); padding: 4px 6px; border-radius: 3px; cursor: pointer; min-width: 20px; text-align: center; font-weight: bold; }
+        .key-setter.waiting { background: var(--accent); color: #000; animation: blink 0.5s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
         label { font-weight: bold; color: #555; text-transform: uppercase; font-size: 8px; }
         .hidden { display: none !important; }
     </style>
@@ -44,9 +61,9 @@
     <div class="input-group">
         <label>Audio Mode</label>
         <select id="audio-mode">
-            <option value="1">1 File (Merged Inst)</option>
-            <option value="2" selected>2 Files (Inst + Vocals)</option>
-            <option value="3">3 Files (Inst + Player + Opponent)</option>
+            <option value="1">1 File (Merged)</option>
+            <option value="2" selected>2 Files (Inst+Voc)</option>
+            <option value="3">3 Files (Inst+P1+P2)</option>
         </select>
     </div>
 
@@ -55,21 +72,28 @@
     <div class="input-group hidden" id="opp-group"><label>Opponent</label><input type="file" id="opp-up"></div>
     <div class="input-group"><label>Chart</label><input type="file" id="chart-up"></div>
     
+    <div style="width: 1px; height: 20px; background: #333;"></div>
+
+    <div class="input-group"><label>Keybinds</label>
+        <div style="display: flex; gap: 3px;">
+            <div class="key-setter" data-lane="0" id="bind-0">D</div>
+            <div class="key-setter" data-lane="1" id="bind-1">F</div>
+            <div class="key-setter" data-lane="2" id="bind-2">J</div>
+            <div class="key-setter" data-lane="3" id="bind-3">K</div>
+        </div>
+    </div>
+
+    <div style="width: 1px; height: 20px; background: #333;"></div>
+
     <button id="reset-defaults" class="toggle" style="background:var(--error)">LOAD GUNS</button>
     <button id="bot-toggle" class="toggle">BOT: OFF</button>
     <button id="ghost-toggle" class="toggle">GHOST: OFF</button>
-
     <div class="input-group"><label>Hit Vol</label><input type="range" id="vol-hit" min="0" max="2" step="0.1" value="1.0"></div>
 </div>
 
 <div id="game-container">
     <div id="start-screen" class="screen-overlay">
         <button id="start-btn" class="btn-main" disabled>WAITING FOR FILES</button>
-        <p id="status-text" style="color: #666; font-size: 11px; margin-top: 10px;">Select files according to Audio Mode</p>
-    </div>
-    <div id="pause-screen" class="screen-overlay hidden">
-        <h1>PAUSED</h1>
-        <button id="resume-btn" class="btn-main">RESUME</button>
     </div>
     <canvas id="game"></canvas>
 </div>
@@ -87,13 +111,26 @@ const ctx = canvas.getContext('2d');
 const startBtn = document.getElementById('start-btn');
 const audioModeSel = document.getElementById('audio-mode');
 
+// Fixed Resolution for Internal Logic
+canvas.width = 1280;
+canvas.height = 720;
+
 let audioCtx, instBuf, playerBuf, oppBuf, hsBuf, chart;
 let instS, playerS, oppS, playerG;
-let startTime = 0, pauseTimeOffset = 0, isPlaying = false, isPaused = false;
+let startTime = 0, isPlaying = false, isPaused = false;
 let isBotplay = false, ghostTapping = false, health = 1, activeNotes = [];
 let binds = ['d', 'f', 'j', 'k'], held = [false, false, false, false];
+let listeningForLane = -1;
 
-// Toggle visibility of upload slots based on mode
+// Keybind Logic
+document.querySelectorAll('.key-setter').forEach(btn => {
+    btn.onclick = () => {
+        listeningForLane = parseInt(btn.dataset.lane);
+        btn.innerText = "...";
+        btn.classList.add('waiting');
+    };
+});
+
 audioModeSel.onchange = () => {
     const val = audioModeSel.value;
     document.getElementById('voc-group').classList.toggle('hidden', val === "1");
@@ -102,10 +139,8 @@ audioModeSel.onchange = () => {
     checkReady();
 };
 
-function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); }
-
 async function getBuf(src) {
-    initAudio();
+    if (!audioCtx) audioCtx = new AudioContext();
     const r = await (src instanceof File ? src.arrayBuffer() : fetch(src).then(x => x.arrayBuffer()));
     return await audioCtx.decodeAudioData(r);
 }
@@ -117,9 +152,8 @@ function checkReady() {
     let ready = instBuf && chart;
     if (mode === "2") ready = ready && playerBuf;
     if (mode === "3") ready = ready && playerBuf && oppBuf;
-
     startBtn.disabled = !ready;
-    startBtn.innerText = ready ? "START SONG" : "WAITING FOR ASSETS";
+    startBtn.innerText = ready ? "START SONG" : "NEED ASSETS";
 }
 
 function parseChart(raw) {
@@ -135,8 +169,7 @@ function parseChart(raw) {
 }
 
 document.getElementById('reset-defaults').onclick = async () => {
-    audioModeSel.value = "2";
-    audioModeSel.onchange();
+    audioModeSel.value = "2"; audioModeSel.onchange();
     const [i, v, c] = await Promise.all([getBuf(ASSETS.inst), getBuf(ASSETS.voc), fetch(ASSETS.chart).then(r => r.json())]);
     instBuf = i; playerBuf = v; parseChart(c);
 };
@@ -154,7 +187,7 @@ function playHS() {
 }
 
 function startSong() {
-    initAudio();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
     if(instS) { [instS, playerS, oppS].forEach(s => { if(s) try{s.stop()}catch(e){} }); }
     
     instS = audioCtx.createBufferSource(); instS.buffer = instBuf;
@@ -175,67 +208,74 @@ function startSong() {
     health = 1; startTime = audioCtx.currentTime;
     [instS, playerS, oppS].forEach(s => { if(s) s.start(0); });
     
-    isPlaying = true; isPaused = false;
-    document.getElementById('start-screen').classList.add('hidden');
+    isPlaying = true; document.getElementById('start-screen').classList.add('hidden');
     requestAnimationFrame(loop);
 }
 
 window.onkeydown = (e) => {
     const k = e.key.toLowerCase();
-    if(!isPlaying || isPaused || isBotplay) return;
+    if (listeningForLane !== -1) {
+        binds[listeningForLane] = k;
+        document.getElementById(`bind-${listeningForLane}`).innerText = k.toUpperCase();
+        document.getElementById(`bind-${listeningForLane}`).classList.remove('waiting');
+        listeningForLane = -1; return;
+    }
+    if(!isPlaying || isBotplay) return;
     const lane = binds.indexOf(k);
     if(lane === -1 || held[lane]) return;
     held[lane] = true;
-
     const songTime = (audioCtx.currentTime - startTime) * 1000;
     const note = activeNotes.find(n => !n.hit && n.isPlayer && n.lane === lane && Math.abs(n.time - songTime) < 160);
-    
-    if(note) {
-        note.hit = true; health = Math.min(2, health + 0.05); playHS();
-    } else if (!ghostTapping) {
-        health -= 0.12;
-        if(playerG) {
-            playerG.gain.setValueAtTime(0, audioCtx.currentTime);
-            playerG.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.2);
-        }
-    }
+    if(note) { note.hit = true; health = Math.min(2, health + 0.05); playHS(); } 
+    else if (!ghostTapping) { health -= 0.12; if(playerG) { playerG.gain.value = 0; setTimeout(()=>playerG.gain.value=1, 200); } }
 };
 window.onkeyup = (e) => { const l = binds.indexOf(e.key.toLowerCase()); if(l !== -1) held[l] = false; };
 
 function loop() {
-    if(!isPlaying || isPaused) return;
+    if(!isPlaying) return;
     ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
     const songTime = (audioCtx.currentTime - startTime) * 1000;
-    const sY = 100, centerX = canvas.width / 2;
+    const centerX = canvas.width / 2;
 
     if(isBotplay) {
-        activeNotes.forEach(n => {
-            if(!n.hit && n.isPlayer && n.time <= songTime) { n.hit = true; n.botHeld = 8; playHS(); }
-        });
+        activeNotes.forEach(n => { if(!n.hit && n.isPlayer && n.time <= songTime) { n.hit = true; n.botHeld = 8; playHS(); } });
     }
 
+    // Draw Receptors
+    for(let i=0; i<8; i++) {
+        const isP = i >= 4; const lIdx = i%4;
+        const hld = isP ? (isBotplay ? activeNotes.some(n=>n.lane===lIdx && n.botHeld>0) : held[lIdx]) : false;
+        const x = centerX + (isP ? 100 : -520) + (lIdx * 110);
+        ctx.strokeStyle = isP ? (hld ? '#38EF7D' : '#444') : '#222';
+        ctx.lineWidth = 5; ctx.strokeRect(x, 100, 80, 80);
+    }
+
+    // Draw Notes
     activeNotes.forEach(n => {
         if(n.botHeld > 0) n.botHeld--;
         if(n.hit) return;
-        const x = centerX + (n.isPlayer ? 60 : -400) + (n.lane * 85) + 42;
-        const y = sY + (n.time - songTime) * 3;
+        const x = centerX + (n.isPlayer ? 100 : -520) + (n.lane * 110);
+        const y = 100 + (n.time - songTime) * (chart.speed || 3);
         if(n.isPlayer && n.time < songTime - 160) { n.hit = true; health -= 0.12; }
         if(!n.isPlayer && n.time <= songTime) n.hit = true;
-        if(y > -50 && y < canvas.height + 50) {
-            ctx.beginPath(); ctx.arc(x, y, 32, 0, 7);
-            ctx.fillStyle = n.isPlayer ? '#38EF7D' : '#333'; ctx.fill();
+        if(y > -100 && y < 800) {
+            ctx.fillStyle = n.isPlayer ? '#38EF7D' : '#333';
+            ctx.fillRect(x, y, 80, 80);
         }
     });
 
-    ctx.fillStyle = '#222'; ctx.fillRect(centerX - 200, canvas.height - 40, 400, 10);
-    ctx.fillStyle = '#38EF7D'; ctx.fillRect(centerX - 200, canvas.height - 40, 400 * (health/2), 10);
+    // Fixed Health Bar Position
+    ctx.fillStyle = '#222'; ctx.fillRect(centerX - 300, 650, 600, 20);
+    ctx.fillStyle = health > 0.4 ? '#38EF7D' : '#ff4b2b';
+    ctx.fillRect(centerX - 300, 650, 600 * (health/2), 20);
+    
     if(health <= 0) startSong();
     requestAnimationFrame(loop);
 }
 
 startBtn.onclick = startSong;
-document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); };
-document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); };
+document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOT: ${isBotplay?'ON':'OFF'}`; };
+document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST: ${ghostTapping?'ON':'OFF'}`; };
 </script>
 </body>
 </html>
