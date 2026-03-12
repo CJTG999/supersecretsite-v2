@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FNF Web - Debug Build</title>
+    <style>
+        :root { --bg: #050505; --panel: #111; --text: #eee; --accent: #38EF7D; --error: #ff4b2b; --bot: #00D2FF; }
+        body { 
+            background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; 
+            margin: 0; overflow: hidden; height: 100vh;
+        }
+        #ui { 
+            background: var(--panel); padding: 10px; border-bottom: 1px solid #222; 
+            display: flex; gap: 10px; align-items: center; width: 100%; justify-content: center; 
+            font-size: 10px; z-index: 20; flex-wrap: wrap;
+        }
+        .input-group { display: flex; flex-direction: column; gap: 2px; }
+        input[type="range"] { accent-color: var(--accent); width: 50px; }
+        input[type="file"] { width: 95px; color: #666; font-size: 8px; }
+        
+        #game-container { position: relative; flex-grow: 1; width: 100%; display: flex; justify-content: center; }
+        #game { background: #000; display: block; }
+
+        .screen-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 10; 
+            backdrop-filter: blur(10px); 
+        }
+        .btn-main { padding: 15px 40px; font-weight: bold; background: #fff; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 10px; transition: 0.2s; }
+        .btn-main:disabled { background: #222; color: #555; cursor: not-allowed; }
+        
+        .toggle { background: #222; color: #fff; border: 1px solid #333; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 9px; }
+        .toggle.active { background: var(--bot); color: #000; }
+        
+        .key-setter { background: #222; border: 1px solid #444; color: var(--accent); padding: 4px 6px; border-radius: 3px; cursor: pointer; min-width: 25px; text-align: center; }
+        .key-setter.waiting { background: var(--accent); color: #000; }
+
+        label { font-weight: bold; color: #555; text-transform: uppercase; font-size: 8px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="input-group"><label>Inst</label><input type="file" id="inst-up"></div>
+    <div class="input-group"><label>Voc</label><input type="file" id="voc-up"></div>
+    <div class="input-group"><label>Chart</label><input type="file" id="chart-up"></div>
+    
+    <button id="reset-defaults" class="toggle" style="background:var(--error)">LOAD GUNS</button>
+    
+    <div class="input-group"><label>Binds</label>
+        <div style="display: flex; gap: 3px;">
+            <div class="key-setter" data-lane="0" id="bind-0">D</div>
+            <div class="key-setter" data-lane="1" id="bind-1">F</div>
+            <div class="key-setter" data-lane="2" id="bind-2">J</div>
+            <div class="key-setter" data-lane="3" id="bind-3">K</div>
+        </div>
+    </div>
+
+    <button id="bot-toggle" class="toggle">BOT: OFF</button>
+    <button id="ghost-toggle" class="toggle">GHOST: OFF</button>
+    <button id="scroll-toggle" class="toggle">UPSCROLL</button>
+
+    <div class="input-group"><label>Hit Vol</label><input type="range" id="vol-hit" min="0" max="2" step="0.1" value="1.0"></div>
+</div>
+
+<div id="game-container">
+    <div id="start-screen" class="screen-overlay">
+        <button id="start-btn" class="btn-main" disabled>WAITING FOR FILES...</button>
+        <p id="status-text" style="color: #666; font-size: 11px; margin-top: 10px;">Select Inst, Vocals, and Chart</p>
+    </div>
+    <div id="pause-screen" class="screen-overlay hidden">
+        <h1 style="color: var(--accent);">PAUSED</h1>
+        <button id="resume-btn" class="btn-main">RESUME</button>
+        <button id="restart-btn-ui" class="btn-main" style="background: #222; color: #fff;">RESTART [R]</button>
+    </div>
+    <canvas id="game"></canvas>
+</div>
+
+<script>
+const ASSETS = {
+    inst: "https://codehs.com/uploads/6a1397376b9e9e043c3a06c363d43aa4",
+    voc: "https://codehs.com/uploads/036b51f0e018e8a9461289c5d1f948b3",
+    chart: "https://codehs.com/uploads/2a7c94ee757ab992ca21bef7dd1ff91d",
+    hitSound: "https://codehs.com/uploads/9a83a5f1ec0d6e55cab21c974f523a9a"
+};
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('start-btn');
+const statusText = document.getElementById('status-text');
+
+let audioCtx, instBuf, vocBuf, hsBuf, chart;
+let instSource, vocSource, instGain, vocGain;
+let startTime = 0, pauseTimeOffset = 0, isPlaying = false, isPaused = false;
+let isDownscroll = false, isBotplay = false, ghostTapping = false;
+
+let health = 1, combo = 0, misses = 0, totalHit = 0;
+let lastRating = "", ratingTimer = 0, activeNotes = [];
+let binds = ['d', 'f', 'j', 'k'];
+let listeningForLane = -1;
+
+function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); }
+
+async function getBuf(src) {
+    initAudio();
+    const r = await (src instanceof File ? src.arrayBuffer() : fetch(src).then(x => x.arrayBuffer()));
+    return await audioCtx.decodeAudioData(r);
+}
+
+// Global pre-loader for hit sound
+getBuf(ASSETS.hitSound).then(b => hsBuf = b);
+
+function checkReady() {
+    let missing = [];
+    if (!instBuf) missing.push("INST");
+    if (!vocBuf) missing.push("VOCALS");
+    if (!chart) missing.push("CHART");
+
+    if (missing.length === 0) {
+        startBtn.disabled = false;
+        startBtn.innerText = "START SONG";
+        statusText.innerText = "All assets loaded!";
+    } else {
+        startBtn.disabled = true;
+        startBtn.innerText = "NEED: " + missing.join(", ");
+    }
+}
+
+function parseChart(raw) {
+    try {
+        chart = raw.song || raw;
+        activeNotes = [];
+        chart.notes.forEach(s => {
+            if(!s.sectionNotes) return;
+            s.sectionNotes.forEach(n => {
+                const isP = (n[1] < 4) ? s.mustHitSection : !s.mustHitSection;
+                activeNotes.push({ time: n[0], lane: n[1] % 4, isPlayer: isP, hit: false, botHeld: 0 });
+            });
+        });
+        checkReady();
+    } catch(e) {
+        statusText.innerText = "Chart Error: Invalid JSON format";
+    }
+}
+
+// Reset/Load Default Assets
+document.getElementById('reset-defaults').onclick = async () => {
+    statusText.innerText = "Loading Guns assets...";
+    try {
+        const [i, v, c] = await Promise.all([
+            getBuf(ASSETS.inst),
+            getBuf(ASSETS.voc),
+            fetch(ASSETS.chart).then(r => r.json())
+        ]);
+        instBuf = i; vocBuf = v; parseChart(c);
+    } catch(e) { statusText.innerText = "Error fetching defaults."; }
+};
+
+// File Upload Listeners
+document.getElementById('inst-up').onchange = async (e) => { instBuf = await getBuf(e.target.files[0]); checkReady(); };
+document.getElementById('voc-up').onchange = async (e) => { vocBuf = await getBuf(e.target.files[0]); checkReady(); };
+document.getElementById('chart-up').onchange = async (e) => { 
+    const txt = await e.target.files[0].text();
+    parseChart(JSON.parse(txt));
+};
+
+function playHS() {
+    if(!hsBuf || !audioCtx) return;
+    const s = audioCtx.createBufferSource(); s.buffer = hsBuf;
+    const g = audioCtx.createGain(); g.gain.value = document.getElementById('vol-hit').value;
+    s.connect(g); g.connect(audioCtx.destination); s.start(0);
+}
+
+function startSong() {
+    initAudio();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    if(instSource) { try{instSource.stop(); vocSource.stop();}catch(e){} }
+    
+    instSource = audioCtx.createBufferSource(); vocSource = audioCtx.createBufferSource();
+    instGain = audioCtx.createGain(); vocGain = audioCtx.createGain();
+    instSource.buffer = instBuf; vocSource.buffer = vocBuf;
+    instSource.connect(instGain); instGain.connect(audioCtx.destination);
+    vocSource.connect(vocGain); vocGain.connect(audioCtx.destination);
+    
+    activeNotes.forEach(n => { n.hit = false; n.botHeld = 0; });
+    health = 1; combo = 0; misses = 0; totalHit = 0;
+    startTime = audioCtx.currentTime;
+    instSource.start(0); vocSource.start(0);
+    isPlaying = true; isPaused = false;
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('pause-screen').classList.add('hidden');
+    requestAnimationFrame(loop);
+}
+
+const held = [false, false, false, false];
+window.onkeydown = (e) => {
+    const k = e.key.toLowerCase();
+    if(listeningForLane !== -1) {
+        binds[listeningForLane] = k;
+        document.getElementById(`bind-${listeningForLane}`).innerText = k;
+        document.getElementById(`bind-${listeningForLane}`).classList.remove('waiting');
+        listeningForLane = -1; return;
+    }
+    if(k === 'p') { if(isPlaying) togglePause(); return; }
+    if(k === 'r') { if(isPlaying) startSong(); return; }
+    if(!isPlaying || isPaused || isBotplay) return;
+
+    const lane = binds.indexOf(k);
+    if(lane === -1 || held[lane]) return;
+    held[lane] = true;
+
+    const songTime = (audioCtx.currentTime - startTime) * 1000;
+    const note = activeNotes.find(n => !n.hit && n.isPlayer && n.lane === lane && Math.abs(n.time - songTime) < 160);
+    
+    if(note) {
+        note.hit = true; totalHit++; combo++; health = Math.min(2, health + 0.05);
+        lastRating = "SICK"; ratingTimer = 30; playHS();
+    } else if (!ghostTapping) {
+        combo = 0; misses++; health -= 0.12;
+        lastRating = "MISS"; ratingTimer = 30;
+    }
+};
+window.onkeyup = (e) => { const l = binds.indexOf(e.key.toLowerCase()); if(l !== -1) held[l] = false; };
+
+function togglePause() {
+    if(!isPaused) { pauseTimeOffset = audioCtx.currentTime - startTime; audioCtx.suspend(); isPaused = true; document.getElementById('pause-screen').classList.remove('hidden'); }
+    else { startTime = audioCtx.currentTime - pauseTimeOffset; audioCtx.resume(); isPaused = false; document.getElementById('pause-screen').classList.add('hidden'); requestAnimationFrame(loop); }
+}
+
+function loop() {
+    if(!isPlaying || isPaused) return;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    const songTime = (audioCtx.currentTime - startTime) * 1000;
+    const speed = (chart.speed || 3);
+    const sY = isDownscroll ? canvas.height - 120 : 100;
+    const centerX = canvas.width / 2;
+
+    if(isBotplay) {
+        activeNotes.forEach(n => {
+            if(!n.hit && n.isPlayer && n.time <= songTime) {
+                n.hit = true; n.botHeld = 8; totalHit++; combo++; playHS();
+                lastRating = "SICK"; ratingTimer = 30;
+            }
+        });
+    }
+
+    // Drawing Logic (simplified for speed)
+    for(let i=0; i<8; i++) {
+        const isP = i >= 4; const lIdx = i%4;
+        const hld = isP ? (isBotplay ? activeNotes.some(n=>n.lane===lIdx && n.botHeld>0) : held[lIdx]) : false;
+        const x = centerX + (isP ? 60 : -400) + (lIdx * 85) + 42;
+        ctx.beginPath(); ctx.arc(x, sY, 32, 0, 7);
+        ctx.strokeStyle = isP ? (hld ? '#38EF7D' : '#444') : '#222';
+        ctx.stroke();
+    }
+
+    activeNotes.forEach(n => {
+        if(n.botHeld > 0) n.botHeld--;
+        if(n.hit) return;
+        const x = centerX + (n.isPlayer ? 60 : -400) + (n.lane * 85) + 42;
+        const y = isDownscroll ? sY - (n.time - songTime) * speed : sY + (n.time - songTime) * speed;
+        if(n.isPlayer && n.time < songTime - 160) { n.hit = true; combo = 0; misses++; health -= 0.12; }
+        if(!n.isPlayer && n.time <= songTime) n.hit = true;
+        if(y > -50 && y < canvas.height + 50) {
+            ctx.beginPath(); ctx.arc(x, y, 32, 0, 7);
+            ctx.fillStyle = n.isPlayer ? '#38EF7D' : '#333'; ctx.fill();
+        }
+    });
+
+    // Health Bar
+    ctx.fillStyle = '#222'; ctx.fillRect(centerX - 200, canvas.height - 40, 400, 10);
+    ctx.fillStyle = health > 0.4 ? '#38EF7D' : '#ff4b2b';
+    ctx.fillRect(centerX - 200, canvas.height - 40, 400 * (health/2), 10);
+    
+    if(ratingTimer > 0) { ctx.fillStyle = 'white'; ctx.font = '24px monospace'; ctx.fillText(lastRating, centerX - 30, canvas.height/2); ratingTimer--; }
+    if(health <= 0) startSong();
+    requestAnimationFrame(loop);
+}
+
+startBtn.onclick = startSong;
+document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOT: ${isBotplay?'ON':'OFF'}`; };
+document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST: ${ghostTapping?'ON':'OFF'}`; };
+document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.innerText = isDownscroll ? "DOWNSCROLL" : "UPSCROLL"; };
+document.querySelectorAll('.key-setter').forEach(el => el.onclick = () => { listeningForLane = parseInt(el.dataset.lane); el.classList.add('waiting'); el.innerText = "..."; });
+document.getElementById('resume-btn').onclick = togglePause;
+document.getElementById('restart-btn-ui').onclick = startSong;
+window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight - 50; };
+</script>
+</body>
+</html>
