@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>FNFME</title>
+    <title>FNF Mobile</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -153,10 +153,9 @@
 
         #top-bar {
             position: absolute;
-            top: var(--safe-top);
-            left: 0;
-            right: 0;
-            padding: 10px;
+            top: calc(var(--safe-top) + 10px);
+            left: 10px;
+            right: 10px;
             display: flex;
             justify-content: space-between;
             z-index: 100;
@@ -177,7 +176,7 @@
 
         #toast {
             position: fixed;
-            bottom: 100px;
+            bottom: calc(100px + var(--safe-bottom));
             left: 50%;
             transform: translateX(-50%);
             background: var(--accent);
@@ -203,7 +202,7 @@
     <div id="start-menu">
         <div class="logo-area">
             <h1 class="title-text">FNF Mobile</h1>
-            <div style="color:#666; letter-spacing: 2px; font-size: 12px;">ENGINE v3.0</div>
+            <div style="color:#666; letter-spacing: 2px; font-size: 12px;">ENGINE v3.1</div>
         </div>
 
         <div class="menu-options">
@@ -272,8 +271,8 @@
 <div id="toast">Ready!</div>
 
 <script>
-/** * FNF Mobile Engine v3.0
- * Persistent Storage (IndexedDB), Exportable JSON Bundles (Base64), and Engine Optimization
+/** * FNF Mobile Engine v3.1
+ * Persistent Storage (IndexedDB), Exportable JSON Bundles, and Fixed UI Scale for Mobile
  */
 
 const canvas = document.getElementById('game');
@@ -293,7 +292,7 @@ let combo = 0, misses = 0, lastRating = "", popAlpha = 0;
 let touchHeld = [false, false, false, false];
 const colors = ['#FF4B2B', '#00D2FF', '#38EF7D', '#F9D423'];
 
-// Built-in Song (Not in DB)
+// Built-in Song
 const BUILT_IN_SONGS = {
     'guns': {
         name: "Guns (Week 7)",
@@ -306,7 +305,7 @@ const BUILT_IN_SONGS = {
 const HS_URL = "https://codehs.com/uploads/9a83a5f1ec0d6e55cab21c974f523a9a";
 const keyMap = { 'd': 0, 'ArrowLeft': 0, 'f': 1, 'ArrowDown': 1, 'j': 2, 'ArrowUp': 2, 'k': 3, 'ArrowRight': 3 };
 
-// --- Storage Logic (IndexedDB) ---
+// --- Storage Logic ---
 let db;
 const request = indexedDB.open("FNF_Library", 1);
 request.onupgradeneeded = (e) => {
@@ -321,39 +320,26 @@ request.onsuccess = (e) => {
 };
 
 async function saveSongToDB(songData) {
-    return new Promise((resolve) => {
-        const tx = db.transaction("songs", "readwrite");
-        const store = tx.objectStore("songs");
-        store.put(songData);
-        tx.oncomplete = () => {
-            refreshLibraryUI();
-            resolve();
-        };
-    });
+    const tx = db.transaction("songs", "readwrite");
+    tx.objectStore("songs").put(songData);
+    return new Promise(r => tx.oncomplete = () => { refreshLibraryUI(); r(); });
 }
 
 async function getAllSongsFromDB() {
     return new Promise((resolve) => {
         const tx = db.transaction("songs", "readonly");
-        const store = tx.objectStore("songs");
-        const request = store.getAll();
+        const request = tx.objectStore("songs").getAll();
         request.onsuccess = () => resolve(request.result);
     });
 }
 
 async function clearLibrary() {
-    return new Promise((resolve) => {
-        const tx = db.transaction("songs", "readwrite");
-        tx.objectStore("songs").clear();
-        tx.oncomplete = () => {
-            refreshLibraryUI();
-            resolve();
-        };
-    });
+    const tx = db.transaction("songs", "readwrite");
+    tx.objectStore("songs").clear();
+    return new Promise(r => tx.oncomplete = () => { refreshLibraryUI(); r(); });
 }
 
 async function refreshLibraryUI() {
-    // Keep Guns as first option
     librarySelect.innerHTML = `<option value="guns">Guns (Week 7) - Built-in</option>`;
     const savedSongs = await getAllSongsFromDB();
     savedSongs.forEach(s => {
@@ -385,7 +371,6 @@ async function base64ToBlob(base64) {
     return await r.blob();
 }
 
-// Audio Helpers
 async function getBuf(src) {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -409,6 +394,58 @@ function parseChart(raw) {
             });
         });
     });
+}
+
+// --- Layout & Scaling Logic (Fixes Zoom/Clips) ---
+function getLayout() {
+    const w = canvas.width, h = canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Convert safe area strings to numbers (pixels)
+    const style = getComputedStyle(document.documentElement);
+    const safeTop = parseInt(style.getPropertyValue('--safe-top')) || 0;
+    const safeBottom = parseInt(style.getPropertyValue('--safe-bottom')) || 0;
+    
+    // Scale safe areas for canvas
+    const cSafeTop = safeTop * dpr;
+    const cSafeBottom = safeBottom * dpr;
+
+    const isPortrait = h > w;
+    const laneWidth = isPortrait ? Math.min(115, w / 4.5) : 100;
+    const noteSize = laneWidth * 0.7;
+    const centerX = w / 2;
+
+    if (isPortrait) {
+        return {
+            isPortrait: true,
+            laneWidth: laneWidth,
+            noteSize: noteSize,
+            // Rating/Combo centered in the top quarter
+            ratingX: centerX, ratingY: h * 0.3,
+            comboX: centerX, comboY: h * 0.3 + 60,
+            // Opponent markers near the top (below pause icon/notch)
+            opponentY: cSafeTop + 140,
+            oppXStart: centerX - (laneWidth * 2),
+            // Player markers at the bottom (above safe area)
+            playerY: h - cSafeBottom - 180,
+            playXStart: centerX - (laneWidth * 2),
+            // Health bar at very bottom
+            hbX: centerX - 200, hbY: h - cSafeBottom - 50, hbW: 400
+        };
+    } else {
+        return {
+            isPortrait: false,
+            laneWidth: 100,
+            noteSize: 70,
+            ratingX: w - 200, ratingY: h / 2 - 50,
+            comboX: w - 200, comboY: h / 2 + 20,
+            opponentY: cSafeTop + 100,
+            oppXStart: 80,
+            playerY: h - cSafeBottom - 140,
+            playXStart: centerX - 200,
+            hbX: centerX - 200, hbY: cSafeTop + 40, hbW: 400
+        };
+    }
 }
 
 // --- Interaction Logic ---
@@ -438,8 +475,20 @@ const handleInput = (lane, isDown) => {
 
 window.addEventListener('keydown', e => { if(keyMap[e.key] !== undefined) handleInput(keyMap[e.key], true); });
 window.addEventListener('keyup', e => { if(keyMap[e.key] !== undefined) handleInput(keyMap[e.key], false); });
-canvas.addEventListener('touchstart', e => { e.preventDefault(); for(let t of e.changedTouches) handleInput(Math.floor((t.clientX / window.innerWidth) * 4), true); });
-canvas.addEventListener('touchend', e => { for(let t of e.changedTouches) handleInput(Math.floor((t.clientX / window.innerWidth) * 4), false); });
+canvas.addEventListener('touchstart', e => { 
+    e.preventDefault(); 
+    for(let t of e.changedTouches) {
+        // Calculate lane based on screen width
+        const lane = Math.floor((t.clientX / window.innerWidth) * 4);
+        handleInput(lane, true);
+    }
+}, {passive: false});
+canvas.addEventListener('touchend', e => { 
+    for(let t of e.changedTouches) {
+        const lane = Math.floor((t.clientX / window.innerWidth) * 4);
+        handleInput(lane, false);
+    }
+});
 
 // Settings / Navigation
 function pauseGame() {
@@ -475,122 +524,62 @@ document.getElementById('export-library-btn').onclick = async () => {
     const songs = await getAllSongsFromDB();
     if (songs.length === 0) { showToast("Library is empty!"); return; }
     showToast("Preparing Bundle...");
-    
-    // Convert blobs to base64 for the JSON export
-    const exportData = await Promise.all(songs.map(async s => {
-        return {
-            ...s,
-            inst: await blobToBase64(s.inst),
-            voc: await blobToBase64(s.voc)
-        };
-    }));
-
+    const exportData = await Promise.all(songs.map(async s => ({
+        ...s,
+        inst: await blobToBase64(s.inst),
+        voc: await blobToBase64(s.voc)
+    })));
     const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fnf_mobile_bundle_${Date.now()}.json`;
-    a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `fnf_bundle_${Date.now()}.json`; a.click();
     showToast("Exported!");
 };
 
-// --- File Handling (Main Logic) ---
 document.getElementById('file-uploader').onchange = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
+    const files = Array.from(e.target.files); if (!files.length) return;
     showToast("Reading Files...");
-
-    // Check if it's a JSON Bundle
     if (files.length === 1 && files[0].name.endsWith('.json')) {
         const text = await files[0].text();
         try {
             const data = JSON.parse(text);
             if (Array.isArray(data) && data[0].chart) {
-                showToast("Importing Bundle...");
                 for (const s of data) {
                     await saveSongToDB({
-                        id: s.id || 'imp-' + Math.random(),
-                        name: s.name,
-                        chart: s.chart,
-                        inst: await base64ToBlob(s.inst),
-                        voc: await base64ToBlob(s.voc)
+                        id: s.id || 'imp-' + Math.random(), name: s.name, chart: s.chart,
+                        inst: await base64ToBlob(s.inst), voc: await base64ToBlob(s.voc)
                     });
                 }
-                showToast("Bundle Imported!");
-                return;
+                showToast("Bundle Imported!"); return;
             }
         } catch(err) {}
     }
-
-    // Normal processing (Loose/ZIP)
+    // Handle manual upload
     let fInst, fVoc, fChart, songName = "Custom Song";
     for(const file of files) {
         const name = file.name.toLowerCase();
-        if (name.endsWith('.zip')) {
-            const zip = await JSZip.loadAsync(file);
-            const zipTasks = [];
-            zip.forEach((path, entry) => {
-                if(!entry.dir) {
-                    const eName = entry.name.toLowerCase();
-                    zipTasks.push(entry.async("blob").then(blob => {
-                        if (eName.includes("inst")) fInst = blob;
-                        else if (eName.includes("vocals") || eName.includes("voices")) fVoc = blob;
-                        else if (eName.endsWith(".json")) fChart = blob;
-                    }));
-                }
-            });
-            await Promise.all(zipTasks);
-            songName = file.name.replace('.zip', '');
-        } else if (name.endsWith('.json')) {
-            fChart = file;
-            songName = file.name.replace('.json', '');
-        } else if (name.includes('inst')) {
-            fInst = file;
-        } else if (name.includes('vocals') || name.includes('voices')) {
-            fVoc = file;
-        }
+        if (name.endsWith('.json')) { fChart = file; songName = file.name.replace('.json', ''); }
+        else if (name.includes('inst')) fInst = file;
+        else if (name.includes('vocals') || name.includes('voices')) fVoc = file;
     }
-
     if (fChart) {
         const chartObj = JSON.parse(await (new Response(fChart)).text());
         const id = 'song-' + Date.now();
-        await saveSongToDB({
-            id: id,
-            name: songName + " (Saved)",
-            inst: fInst || null,
-            voc: fVoc || null,
-            chart: chartObj
-        });
-        showToast("Saved to Memory!");
-        librarySelect.value = id;
-        selectFromLibrary(id);
-    } else {
-        showToast("Error: Missing .json chart");
+        await saveSongToDB({ id, name: songName, inst: fInst || null, voc: fVoc || null, chart: chartObj });
+        showToast("Saved!"); librarySelect.value = id; selectFromLibrary(id);
     }
 };
 
 async function selectFromLibrary(id) {
     if (id === 'guns') {
         const s = BUILT_IN_SONGS.guns;
-        showToast("Loading Built-in...");
         const chart = await fetch(s.chart).then(r => r.json());
-        parseChart(chart);
-        instBuf = await getBuf(s.inst);
-        playerBuf = await getBuf(s.voc);
-        showToast("Ready!");
-        return;
+        parseChart(chart); instBuf = await getBuf(s.inst); playerBuf = await getBuf(s.voc);
+        showToast("Ready!"); return;
     }
-
-    const tx = db.transaction("songs", "readonly");
-    const store = tx.objectStore("songs");
-    const s = await new Promise(r => {
-        const req = store.get(id);
-        req.onsuccess = () => r(req.result);
-    });
-
+    const songs = await getAllSongsFromDB();
+    const s = songs.find(x => x.id === id);
     if (!s) return;
-    showToast("Loading " + s.name + "...");
+    showToast("Loading...");
     parseChart(s.chart);
     if (s.inst) instBuf = await getBuf(s.inst);
     if (s.voc) playerBuf = await getBuf(s.voc);
@@ -599,19 +588,12 @@ async function selectFromLibrary(id) {
 librarySelect.onchange = e => selectFromLibrary(e.target.value);
 
 // --- Game Engine Core ---
-function resize() { canvas.width = window.innerWidth * window.devicePixelRatio; canvas.height = window.innerHeight * window.devicePixelRatio; }
+function resize() { 
+    canvas.width = window.innerWidth * window.devicePixelRatio; 
+    canvas.height = window.innerHeight * window.devicePixelRatio; 
+}
 window.addEventListener('resize', resize);
 resize();
-
-function getLayout() {
-    const w = canvas.width, h = canvas.height;
-    const isP = h > w;
-    return isP ? {
-        ratingX: w/2, ratingY: h*0.25, comboX: w/2, comboY: h*0.25+50, opponentY: 100, oppXStart: w/2-220, playerY: h-220, playXStart: w/2-220, laneWidth: 110, hbX: w/2-200, hbY: h-70, hbW: 400
-    } : {
-        ratingX: w-250, ratingY: 100, comboX: w-250, comboY: 150, opponentY: 80, oppXStart: 40, playerY: h-180, playXStart: w/2-220, laneWidth: 110, hbX: w/2-200, hbY: 40, hbW: 400
-    };
-}
 
 function startSong() {
     if(!instBuf || !chartData) { showToast("Select a song first!"); return; }
@@ -644,31 +626,31 @@ function loop() {
         if(n.isPlayer && !n.hit && (n.time - songTime) < -160) { n.hit = true; health -= 0.12; combo = 0; misses++; lastRating = "MISS"; popAlpha = 1; }
     });
 
-    ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,255,255,${popAlpha})`; ctx.font = 'bold 42px sans-serif'; ctx.fillText(lastRating, l.ratingX, l.ratingY);
-    ctx.font = 'bold 28px sans-serif'; ctx.fillText(`Combo: ${combo}`, l.comboX, l.comboY); if(popAlpha > 0) popAlpha -= 0.02;
+    ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,255,255,${popAlpha})`; ctx.font = 'bold 50px sans-serif'; ctx.fillText(lastRating, l.ratingX, l.ratingY);
+    ctx.font = 'bold 30px sans-serif'; ctx.fillText(`Combo: ${combo}`, l.comboX, l.comboY); if(popAlpha > 0) popAlpha -= 0.02;
 
-    ctx.fillStyle = '#222'; ctx.fillRect(l.hbX, l.hbY, l.hbW, 10);
+    ctx.fillStyle = '#222'; ctx.fillRect(l.hbX, l.hbY, l.hbW, 12);
     ctx.fillStyle = health > 0.4 ? getComputedStyle(document.documentElement).getPropertyValue('--accent') : getComputedStyle(document.documentElement).getPropertyValue('--error');
-    ctx.fillRect(l.hbX, l.hbY, l.hbW * (health / 2), 10);
-    ctx.fillStyle = '#888'; ctx.font = 'bold 14px sans-serif'; ctx.fillText(`Accuracy: ${Math.max(0, 100 - (misses*2)).toFixed(2)}% | Misses: ${misses}`, canvas.width/2, l.hbY + 35);
+    ctx.fillRect(l.hbX, l.hbY, l.hbW * (health / 2), 12);
+    ctx.fillStyle = '#888'; ctx.font = 'bold 16px sans-serif'; ctx.fillText(`Accuracy: ${Math.max(0, 100 - (misses*2)).toFixed(2)}% | Misses: ${misses}`, canvas.width/2, l.hbY + 40);
 
     const renderSide = (isPlayer) => {
         const yBase = isPlayer ? l.playerY : l.opponentY, xStart = isPlayer ? l.playXStart : l.oppXStart;
         for(let i=0; i<4; i++) {
             const isHeld = (isPlayer && (isBotplay ? activeNotes.some(n=>n.lane===i && n.held) : touchHeld[i]));
-            ctx.strokeStyle = isHeld ? colors[i] : '#333'; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(xStart + (i * l.laneWidth) + 40, yBase + 40, 35, 0, Math.PI*2); ctx.stroke();
+            ctx.strokeStyle = isHeld ? colors[i] : '#333'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(xStart + (i * l.laneWidth) + (l.laneWidth/2), yBase + (l.laneWidth/2), l.noteSize/2, 0, Math.PI*2); ctx.stroke();
         }
         activeNotes.forEach(n => {
             if(n.isPlayer !== isPlayer || n.fullyHit || (n.hit && n.len <= 0)) return;
-            const x = xStart + (n.lane * l.laneWidth), vY = yBase - ((n.time - songTime) * speed);
-            if(vY > -200 && vY < canvas.height + 200) {
+            const x = xStart + (n.lane * l.laneWidth) + (l.laneWidth/2), vY = yBase - ((n.time - songTime) * speed);
+            if(vY > -400 && vY < canvas.height + 400) {
                 if(n.len > 0) {
-                    const h = n.len * speed; let dTop = vY + 40, dH = -h;
-                    if(n.hit && n.held) { dTop = yBase + 40; dH = -((n.time + n.len - songTime) * speed); }
-                    ctx.fillStyle = isPlayer ? colors[n.lane] : '#444'; ctx.globalAlpha = 0.3; ctx.fillRect(x + 30, dTop, 20, dH); ctx.globalAlpha = 1;
+                    const h = n.len * speed; let dTop = vY + (l.laneWidth/2), dH = -h;
+                    if(n.hit && n.held) { dTop = yBase + (l.laneWidth/2); dH = -((n.time + n.len - songTime) * speed); }
+                    ctx.fillStyle = isPlayer ? colors[n.lane] : '#444'; ctx.globalAlpha = 0.4; ctx.fillRect(x - 10, dTop, 20, dH); ctx.globalAlpha = 1;
                 }
-                if(!n.hit) { ctx.fillStyle = isPlayer ? colors[n.lane] : '#444'; ctx.beginPath(); ctx.arc(x+40, vY+40, 35, 0, Math.PI*2); ctx.fill(); }
+                if(!n.hit) { ctx.fillStyle = isPlayer ? colors[n.lane] : '#444'; ctx.beginPath(); ctx.arc(x, vY + (l.laneWidth/2), l.noteSize/2, 0, Math.PI*2); ctx.fill(); }
             }
         });
     }
@@ -677,9 +659,8 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-// Init
 getBuf(HS_URL).then(b => hsBuf = b);
-setTimeout(() => selectFromLibrary('guns'), 500); // Small delay for DB check
+setTimeout(() => selectFromLibrary('guns'), 500);
 </script>
 </body>
 </html>
