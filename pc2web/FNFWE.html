@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FNF Web - Advanced Engine</title>
+    <!-- JSZip for Zip file support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #111;
+            --text: #eee;
+            --accent: #38EF7D;
+            --error: #ff4b2b;
+            --sidebar-width: 300px;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--panel);
+            border-right: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        h2 { font-size: 18px; margin-top: 0; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        .section-header {
+            font-size: 10px;
+            color: #555;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin: 20px 0 10px 0;
+            border-bottom: 1px solid #222;
+            padding-bottom: 4px;
+            display: block;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        label { font-size: 11px; font-weight: bold; color: #999; }
+        
+        select, input[type="range"], button.menu-btn {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button.menu-btn:hover { border-color: var(--accent); background: #222; }
+        button.menu-btn.active { border-color: var(--accent); color: var(--accent); }
+        
+        input[type="file"] { font-size: 10px; color: #777; }
+
+        /* Keybind Grid */
+        .bind-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .key-setter {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: var(--accent);
+            padding: 10px 0;
+            text-align: center;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .key-setter.waiting { border-color: #fff; color: #fff; animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* Game Area */
+        #main-stage {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas { width: 100%; height: 100%; object-fit: contain; }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .btn-start {
+            padding: 15px 50px;
+            font-size: 20px;
+            font-weight: bold;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            transform: translateY(100px);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+        #toast.show { transform: translateY(0); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>FNF Web Engine v2.0</h2>
+
+    <span class="section-header">Bulk Upload</span>
+    <div class="input-group">
+        <label>Upload Folder or ZIP</label>
+        <input type="file" id="bulk-folder" webkitdirectory directory multiple>
+        <input type="file" id="bulk-zip" accept=".zip" style="margin-top: 5px;">
+    </div>
+
+    <span class="section-header">Presets</span>
+    <div class="input-group">
+        <label>Select Song</label>
+        <select id="preset-select">
+            <option value="">Custom (Upload below)</option>
+            <option value="guns">Guns (Week 7)</option>
+        </select>
+        <button id="save-as-preset" class="menu-btn">SAVE AS PRESET</button>
+    </div>
+
+    <span class="section-header">Audio & Chart</span>
+    <div class="input-group">
+        <label>Song Mode</label>
+        <select id="audio-mode">
+            <option value="1">1 File (Mixed)</option>
+            <option value="2" selected>2 Files (Split)</option>
+            <option value="3">3 Files (Inst + P + O)</option>
+        </select>
+    </div>
+    
+    <div id="upload-inst" class="input-group"><label>Instrumental</label><input type="file" id="inst-up" accept="audio/*"></div>
+    <div id="upload-voc" class="input-group"><label id="voc-label">Vocals</label><input type="file" id="voc-up" accept="audio/*"></div>
+    <div id="upload-opp" class="input-group hidden"><label>Opponent Vocals</label><input type="file" id="opp-up" accept="audio/*"></div>
+    <div class="input-group"><label>Chart (.json)</label><input type="file" id="chart-up" accept=".json,.fnfc"></div>
+
+    <span class="section-header">Accessibility</span>
+    <div class="input-group">
+        <label>Play Mode</label>
+        <select id="play-mode">
+            <option value="bf">Play BF (Normal)</option>
+            <option value="opponent">Play Opponent</option>
+            <option value="both">Play Both (Middlescroll)</option>
+        </select>
+    </div>
+
+    <span class="section-header">Sound</span>
+    <div class="input-group">
+        <label>Master Volume</label>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+    </div>
+    <div class="input-group">
+        <label>Hit Sounds</label>
+        <select id="hitsound-mode">
+            <option value="both">Both</option>
+            <option value="player" selected>Player Only</option>
+            <option value="opponent">Opponent Only</option>
+            <option value="none">None</option>
+        </select>
+    </div>
+
+    <span class="section-header">Gameplay</span>
+    <div class="input-group">
+        <label>Scroll Speed</label>
+        <input type="range" id="speed-slider" min="1" max="6" step="0.1" value="3.2">
+    </div>
+    <div class="input-group">
+        <button id="scroll-toggle" class="menu-btn">UPSCROLL</button>
+        <button id="bot-toggle" class="menu-btn">BOTPLAY: OFF</button>
+        <button id="ghost-toggle" class="menu-btn">GHOST TAPPING: OFF</button>
+    </div>
+
+    <span class="section-header">Keybinds</span>
+    <div class="bind-grid">
+        <div class="key-setter" data-lane="0" id="bind-0">D</div>
+        <div class="key-setter" data-lane="1" id="bind-1">F</div>
+        <div class="key-setter" data-lane="2" id="bind-2">J</div>
+        <div class="key-setter" data-lane="3" id="bind-3">K</div>
+    </div>
+
+    <span class="section-header">Data Management</span>
+    <div class="input-group">
+        <button id="clear-data" class="menu-btn" style="color: var(--error);">CLEAR ALL SAVED SONGS</button>
+        <button id="export-presets" class="menu-btn">EXPORT PRESETS (JSON)</button>
+    </div>
+</div>
+
+<div id="main-stage">
+    <div id="start-screen" class="overlay">
+        <button id="start-btn" class="btn-start" disabled>AWAITING ASSETS</button>
+        <p style="color: #666; margin-top: 20px; font-size: 12px;">Controls: [R] Restart, [P] Exit to Menu</p>
+    </div>
+    <canvas id="game"></canvas>
+</div>
+
+<div id="toast">Preset Saved!</div>
+
+<script>
+/**
+ * FNF WEB ENGINE - REFINED CORE WITH HOTKEYS AND POPUP UI
+ */
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('start-btn');
+const speedSlider = document.getElementById('speed-slider');
+const volSlider = document.getElementById('volume-slider');
+const hitSoundSelect = document.getElementById('hitsound-mode');
+const audioModeSelect = document.getElementById('audio-mode');
+const playModeSelect = document.getElementById('play-mode');
+const toast = document.getElementById('toast');
+
+canvas.width = 1280; canvas.height = 720;
+
+const HS_URL = "https://codehs.com/uploads/9a83a5f1ec0d6e55cab21c974f523a9a";
+const PRESETS = {
+    guns: {
+        inst: "https://codehs.com/uploads/6a1397376b9e9e043c3a06c363d43aa4",
+        voc: "https://codehs.com/uploads/036b51f0e018e8a9461289c5d1f948b3",
+        chart: "https://codehs.com/uploads/2a7c94ee757ab992ca21bef7dd1ff91d"
+    }
+};
+
+let audioCtx, instBuf, playerBuf, opponentBuf, hsBuf, chartData;
+let instS, playerS, opponentS, masterGain;
+let startTime = 0, isPlaying = false, isDownscroll = false;
+let isBotplay = false, ghostTapping = false, health = 1, activeNotes = [];
+let combo = 0, misses = 0, notesHit = 0, totalPlayed = 0;
+let binds = ['d', 'f', 'j', 'k'], held = [false, false, false, false], listeningForLane = -1;
+const colors = ['#FF4B2B', '#00D2FF', '#38EF7D', '#F9D423'];
+
+// Visual effects state
+let popEffects = []; 
+let comboBounceScale = 1.0; // Scale for the combo number
+
+const dbRequest = indexedDB.open("FNFPresets", 4);
+let db;
+dbRequest.onupgradeneeded = e => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains("presets")) d.createObjectStore("presets");
+    if (!d.objectStoreNames.contains("userSongs")) d.createObjectStore("userSongs");
+};
+dbRequest.onsuccess = e => { db = e.target.result; loadUserSongList(); };
+
+function showToast(msg) { toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000); }
+
+audioModeSelect.onchange = () => {
+    const m = audioModeSelect.value;
+    document.getElementById('upload-voc').classList.toggle('hidden', m === "1");
+    document.getElementById('upload-opp').classList.toggle('hidden', m !== "3");
+    document.getElementById('voc-label').innerText = m === "3" ? "Player Vocals" : "Vocals";
+};
+
+async function getBuf(src) {
+    if (!audioCtx) {
+        audioCtx = new AudioContext();
+        masterGain = audioCtx.createGain();
+        masterGain.connect(audioCtx.destination);
+    }
+    const r = await (src instanceof File || src instanceof Blob ? src.arrayBuffer() : fetch(src).then(x => x.arrayBuffer()));
+    return await audioCtx.decodeAudioData(r);
+}
+
+getBuf(HS_URL).then(b => hsBuf = b);
+
+function parseChart(raw) {
+    const data = raw.song || raw;
+    chartData = raw;
+    if (data.speed) speedSlider.value = data.speed;
+    activeNotes = [];
+    data.notes.forEach(s => {
+        s.sectionNotes.forEach(n => {
+            const isP = (n[1] < 4) ? s.mustHitSection : !s.mustHitSection;
+            activeNotes.push({ 
+                time: n[0], 
+                lane: n[1] % 4, 
+                isPlayer: isP, 
+                len: n[2] || 0,
+                hit: false, 
+                held: false,
+                fullyHit: false
+            });
+        });
+    });
+    startBtn.disabled = false; startBtn.innerText = "START SONG";
+}
+
+async function handleBulkFiles(files) {
+    const mode = audioModeSelect.value;
+    let foundInst, foundVocals, foundOpp, foundChart;
+    const isAudio = f => f.name.match(/\.(mp3|ogg|wav)$/i);
+    const isChart = f => f.name.match(/\.(json|fnfc)$/i);
+    for (const file of files) {
+        const name = file.name.toLowerCase();
+        if (mode === "1") {
+            if (isAudio(file)) foundInst = file;
+            if (isChart(file)) foundChart = file;
+        } else if (mode === "2") {
+            if (name.includes("inst")) foundInst = file;
+            if (name.includes("vocals") || name.includes("voices")) foundVocals = file;
+            if (isChart(file)) foundChart = file;
+        } else if (mode === "3") {
+            if (name.includes("inst")) foundInst = file;
+            if (name.includes("vocals-bf") || name.includes("voices-bf")) foundVocals = file;
+            if (name.includes("vocals-opponent") || name.includes("voices-opponent") || name.includes("voices-opp")) foundOpp = file;
+            if (isChart(file)) foundChart = file;
+        }
+    }
+    if (foundInst) instBuf = await getBuf(foundInst);
+    if (foundVocals) playerBuf = await getBuf(foundVocals);
+    if (foundOpp) opponentBuf = await getBuf(foundOpp);
+    if (foundChart) {
+        const text = await (foundChart.text ? foundChart.text() : new Response(foundChart).text());
+        parseChart(JSON.parse(text));
+    }
+    if (foundInst && foundChart) showToast("Bulk Upload Successful!");
+    else showToast("Files partial. Ensure names match mode.");
+}
+
+document.getElementById('bulk-folder').onchange = (e) => handleBulkFiles(e.target.files);
+document.getElementById('bulk-zip').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    showToast("Processing ZIP...");
+    const zip = await JSZip.loadAsync(file);
+    const files = [];
+    const promises = [];
+    zip.forEach((path, entry) => {
+        if (!entry.dir) {
+            const p = entry.async("blob").then(blob => {
+                blob.name = entry.name.split('/').pop();
+                files.push(blob);
+            });
+            promises.push(p);
+        }
+    });
+    await Promise.all(promises);
+    handleBulkFiles(files);
+};
+
+async function loadUserSongList() {
+    const tx = db.transaction("userSongs", "readonly");
+    const store = tx.objectStore("userSongs");
+    store.openKeyCursor().onsuccess = e => {
+        const c = e.target.result;
+        if (c) {
+            const opt = document.createElement('option');
+            opt.value = `user_${c.key}`; opt.innerText = c.key;
+            document.getElementById('preset-select').appendChild(opt);
+            c.continue();
+        }
+    };
+}
+
+document.getElementById('save-as-preset').onclick = async () => {
+    if (!instBuf || !chartData) return showToast("Need Inst + Chart!");
+    const name = prompt("Enter preset name:");
+    if (!name) return;
+    const tx = db.transaction("userSongs", "readwrite");
+    tx.objectStore("userSongs").put({
+        inst: instBuf, voc: playerBuf, opp: opponentBuf, chart: chartData, mode: audioModeSelect.value
+    }, name);
+    showToast("Preset Saved!");
+    setTimeout(() => location.reload(), 500);
+};
+
+document.getElementById('clear-data').onclick = () => {
+    if(confirm("Delete all saved songs?")) {
+        const tx = db.transaction("userSongs", "readwrite");
+        tx.objectStore("userSongs").clear().onsuccess = () => location.reload();
+    }
+};
+
+document.getElementById('preset-select').onchange = async (e) => {
+    const val = e.target.value;
+    if (!val) return;
+    startBtn.disabled = true; startBtn.innerText = "LOADING...";
+    if (val === "guns") {
+        instBuf = await getBuf(PRESETS.guns.inst);
+        playerBuf = await getBuf(PRESETS.guns.voc);
+        parseChart(await fetch(PRESETS.guns.chart).then(r => r.json()));
+    } else if (val.startsWith("user_")) {
+        const name = val.replace("user_", "");
+        db.transaction("userSongs").objectStore("userSongs").get(name).onsuccess = ev => {
+            const d = ev.target.result;
+            instBuf = d.inst; playerBuf = d.voc; opponentBuf = d.opp;
+            audioModeSelect.value = d.mode; audioModeSelect.onchange();
+            parseChart(d.chart);
+        };
+    }
+};
+
+document.getElementById('inst-up').onchange = async (e) => { instBuf = await getBuf(e.target.files[0]); showToast("Inst Loaded"); if(chartData) startBtn.disabled = false; };
+document.getElementById('chart-up').onchange = async (e) => { parseChart(JSON.parse(await e.target.files[0].text())); showToast("Chart Loaded"); };
+
+function playHS(isPlayerHit) {
+    if(!hsBuf) return;
+    const m = hitSoundSelect.value;
+    if (m === 'none' || (m === 'player' && !isPlayerHit) || (m === 'opponent' && isPlayerHit)) return;
+    const s = audioCtx.createBufferSource(); s.buffer = hsBuf;
+    const g = audioCtx.createGain(); g.gain.value = 0.3;
+    s.connect(g); g.connect(masterGain); s.start(0);
+}
+
+function addPopEffect(text, color = 'white') {
+    popEffects.push({
+        text: text,
+        x: canvas.width / 2,
+        y: (canvas.height / 2) - 40,
+        size: 32,
+        alpha: 1.0,
+        color: color,
+        life: 1.0
+    });
+    // Trigger combo bounce
+    comboBounceScale = 1.3;
+}
+
+function createRatingEffect(ms) {
+    const diff = Math.abs(ms);
+    let rating = "Shit";
+    let color = "#ff4b2b";
+    
+    if (diff < 45) { rating = "Sick!"; color = "#00D2FF"; }
+    else if (diff < 90) { rating = "Good"; color = "#38EF7D"; }
+    else if (diff < 135) { rating = "Bad"; color = "#F9D423"; }
+    
+    addPopEffect(rating, color);
+}
+
+function stopSong() {
+    isPlaying = false;
+    [instS, playerS, opponentS].forEach(s => { if(s) try{s.stop()}catch(e){} });
+}
+
+function exitToMenu() {
+    stopSong();
+    document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function startSong() {
+    if(!instBuf) return;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    stopSong();
+    instS = audioCtx.createBufferSource(); instS.buffer = instBuf; instS.connect(masterGain);
+    if (playerBuf) { playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf; playerS.connect(masterGain); }
+    if (opponentBuf) { opponentS = audioCtx.createBufferSource(); opponentS.buffer = opponentBuf; opponentS.connect(masterGain); }
+    activeNotes.forEach(n => { n.hit = false; n.held = false; n.fullyHit = false; });
+    health = 1; combo = 0; misses = 0; notesHit = 0; totalPlayed = 0; popEffects = [];
+    startTime = audioCtx.currentTime;
+    [instS, playerS, opponentS].forEach(s => { if(s) s.start(0); });
+    isPlaying = true; document.getElementById('start-screen').classList.add('hidden');
+    requestAnimationFrame(loop);
+}
+
+window.onkeydown = (e) => {
+    const k = e.key.toLowerCase();
+    
+    if (listeningForLane !== -1) {
+        binds[listeningForLane] = k; document.getElementById(`bind-${listeningForLane}`).innerText = k.toUpperCase();
+        document.getElementById(`bind-${listeningForLane}`).classList.remove('waiting'); listeningForLane = -1; return;
+    }
+
+    if (k === 'r' && (isPlaying || !document.getElementById('start-screen').classList.contains('hidden'))) {
+        if(chartData && instBuf) startSong();
+        return;
+    }
+    if (k === 'p' && isPlaying) {
+        exitToMenu();
+        return;
+    }
+
+    if(!isPlaying) return;
+    const lane = binds.indexOf(k);
+    if(lane === -1 || held[lane]) return;
+    held[lane] = true;
+    const songTime = (audioCtx.currentTime - startTime) * 1000;
+    const pMode = playModeSelect.value;
+    
+    const note = activeNotes.find(n => {
+        if(n.hit) return false;
+        const isTarget = (pMode === 'both') ? true : (pMode === 'opponent' ? !n.isPlayer : n.isPlayer);
+        return isTarget && n.lane === lane && Math.abs(n.time - songTime) < 160;
+    });
+
+    if(note) { 
+        note.hit = true; note.held = true; combo++; notesHit++; totalPlayed++; 
+        health = Math.min(2, health + 0.04); 
+        playHS(note.isPlayer);
+        createRatingEffect(note.time - songTime);
+    } 
+    else if (!ghostTapping) { 
+        health -= 0.05; combo = 0; misses++; totalPlayed++; 
+        addPopEffect("Miss", "#ff4b2b");
+    }
+};
+
+window.onkeyup = (e) => {
+    const l = binds.indexOf(e.key.toLowerCase());
+    if(l !== -1) {
+        held[l] = false;
+        activeNotes.forEach(n => { if(n.lane === l && n.held) n.held = false; });
+    }
+};
+
+document.querySelectorAll('.key-setter').forEach(btn => {
+    btn.onclick = () => { listeningForLane = parseInt(btn.dataset.lane); btn.innerText = "..."; btn.classList.add('waiting'); };
+});
+
+function getRank(acc, misses) {
+    if (misses === 0) {
+        if (acc >= 100) return "SFC";
+        if (acc >= 99) return "GFC";
+        return "FC";
+    }
+    if (misses < 10) return "SDBC";
+    return "Clear";
+}
+
+function loop() {
+    if(!isPlaying) return;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    const songTime = (audioCtx.currentTime - startTime) * 1000;
+    const sY = isDownscroll ? 600 : 100;
+    const speed = parseFloat(speedSlider.value);
+    const pMode = playModeSelect.value;
+
+    masterGain.gain.value = parseFloat(volSlider.value);
+
+    activeNotes.forEach(n => {
+        if(n.hit) {
+            if(n.held && n.len > 0) {
+                if(n.time + n.len < songTime) { n.held = false; n.fullyHit = true; }
+                else health = Math.min(2, health + 0.005);
+            }
+            return;
+        }
+        const isHumanSide = (pMode === 'bf' && n.isPlayer) || (pMode === 'opponent' && !n.isPlayer) || (pMode === 'both');
+        if((!isHumanSide || isBotplay) && n.time <= songTime) {
+            n.hit = true; if(n.len > 0) n.held = true;
+            if(n.isPlayer || pMode === 'both') { 
+                combo++; notesHit++; totalPlayed++; health = Math.min(2, health + 0.04); 
+                if(isBotplay) createRatingEffect(0);
+            }
+            playHS(n.isPlayer);
+        }
+    });
+
+    // Draw Hitboxes
+    const lanes = pMode === 'both' ? 4 : 8;
+    for(let i=0; i<lanes; i++) {
+        const isP = pMode === 'both' ? true : i >= 4;
+        const lIdx = i % 4;
+        const isHeld = (isP && (isBotplay ? activeNotes.some(n=>n.lane===lIdx && n.held) : held[lIdx]));
+        const x = (canvas.width/2) + (pMode === 'both' ? -210 : (isP ? 100 : -520)) + (lIdx * 110);
+        ctx.strokeStyle = isHeld ? colors[lIdx] : '#333';
+        ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x+40, sY+40, 35, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // Draw Notes and Holds
+    activeNotes.forEach(n => {
+        if(n.fullyHit || (n.hit && n.len <= 0)) return;
+        const x = (canvas.width/2) + (pMode === 'both' ? -210 : (n.isPlayer ? 100 : -520)) + (n.lane * 110);
+        const diff = n.time - songTime;
+        const visualY = isDownscroll ? sY - (diff * speed) : sY + (diff * speed);
+
+        if(n.len > 0) {
+            const holdHeight = n.len * speed;
+            const startY = visualY + 40;
+            let drawTop = startY;
+            let drawHeight = isDownscroll ? -holdHeight : holdHeight;
+            if (n.hit && n.held) {
+                drawTop = sY + 40;
+                const remainingLen = (n.time + n.len) - songTime;
+                drawHeight = isDownscroll ? -(remainingLen * speed) : (remainingLen * speed);
+            }
+            if (Math.abs(drawHeight) > 0) {
+                ctx.fillStyle = (n.isPlayer || pMode === 'both') ? colors[n.lane] : '#222';
+                ctx.globalAlpha = 0.4;
+                ctx.fillRect(x + 30, drawTop, 20, drawHeight);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        if(!n.hit) {
+            if(n.isPlayer && diff < -160) { 
+                n.hit = true; health -= 0.1; combo = 0; misses++; totalPlayed++; 
+                addPopEffect("Miss", "#ff4b2b");
+                return; 
+            }
+            if(visualY > -50 && visualY < 770) {
+                ctx.fillStyle = (n.isPlayer || pMode === 'both') ? colors[n.lane] : '#444';
+                ctx.beginPath(); ctx.arc(x+40, visualY+40, 35, 0, Math.PI*2); ctx.fill();
+            }
+        }
+    });
+
+    // Draw Pop Effects (Ratings)
+    popEffects = popEffects.filter(p => p.life > 0);
+    popEffects.forEach(p => {
+        const bounce = Math.sin((1 - p.life) * Math.PI) * 20;
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.font = `bold ${p.size}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(p.text, canvas.width / 2, (canvas.height / 2) - 40 - bounce);
+        p.life -= 0.05;
+        p.alpha -= 0.04;
+    });
+
+    // UI Rendering
+    const hY = isDownscroll ? 60 : 660;
+    const acc = totalPlayed === 0 ? "0.00" : ((notesHit / totalPlayed) * 100).toFixed(2);
+    const rank = getRank(parseFloat(acc), misses);
+
+    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = '#111'; ctx.fillRect(canvas.width/2 - 250, hY, 500, 12);
+    ctx.fillStyle = health > 0.4 ? '#38EF7D' : '#ff4b2b';
+    ctx.fillRect(canvas.width/2 - 250, hY, 500 * (health/2), 12);
+    
+    // Middle Combo Text with Bouncing Scale
+    ctx.fillStyle = 'white'; 
+    const currentSize = 48 * comboBounceScale;
+    ctx.font = `bold ${currentSize}px Inter, sans-serif`; 
+    ctx.textAlign = 'center';
+    ctx.fillText(combo, canvas.width/2, canvas.height/2 + 30);
+    
+    // Ease the combo bounce scale back to 1.0
+    if (comboBounceScale > 1.0) {
+        comboBounceScale -= 0.05;
+        if (comboBounceScale < 1.0) comboBounceScale = 1.0;
+    }
+    
+    ctx.font = 'bold 16px Inter, sans-serif';
+    ctx.fillText(`Combo: ${combo} | Misses: ${misses} | Acc: ${acc}% (${rank})`, canvas.width/2, hY + (isDownscroll ? 35 : -15));
+
+    if(health <= 0 || (instBuf && (audioCtx.currentTime - startTime) >= instBuf.duration)) startSong();
+    requestAnimationFrame(loop);
+}
+
+startBtn.onclick = startSong;
+document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOTPLAY: ${isBotplay?'ON':'OFF'}`; };
+document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST TAPPING: ${ghostTapping?'ON':'OFF'}`; };
+document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.classList.toggle('active'); e.target.innerText = isDownscroll ? "DOWNSCROLL" : "UPSCROLL"; };
+</script>
+</body>
+</html>
