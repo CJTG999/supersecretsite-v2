@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FNF Mobile</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg: #000;
+            --panel: #111;
+            --accent: #38EF7D;
+            --error: #ff4b2b;
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Start Menu Screen */
+        #start-menu {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #111 0%, #000 100%);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #start-menu.hidden { display: none; }
+
+        .logo-area {
+            margin-bottom: 40px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .title-text {
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: -2px;
+            margin: 0;
+        }
+
+        .subtitle-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+            letter-spacing: 2px;
+        }
+
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 280px;
+        }
+
+        /* Full Screen Modal UI (Settings) */
+        #menu-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.98);
+            z-index: 1500;
+            display: flex;
+            flex-direction: column;
+            padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom)) 20px;
+            overflow-y: auto;
+            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        #menu-modal.hidden { transform: translateX(100%); }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h2 { margin: 0; color: var(--accent); text-transform: uppercase; font-size: 24px; }
+
+        .close-btn {
+            background: #222;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .section { margin-bottom: 30px; }
+        .section-label { 
+            display: block; 
+            font-size: 11px; 
+            color: #555; 
+            text-transform: uppercase; 
+            margin-bottom: 12px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 4px;
+        }
+
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .btn:active { transform: scale(0.95); background: #222; }
+        .btn.active { border-color: var(--accent); color: var(--accent); background: rgba(56, 239, 125, 0.05); }
+        .btn.primary { background: var(--accent); color: #000; border: none; font-size: 18px; }
+        .btn.outline { background: transparent; border: 2px solid #333; }
+
+        select, input[type="range"] {
+            width: 100%;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        /* Mobile Touch Controls */
+        #touch-zones {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            z-index: 10;
+        }
+
+        .touch-zone { opacity: 0; }
+
+        /* HUD */
+        #top-bar {
+            position: absolute;
+            top: var(--safe-top);
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .icon-btn {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            border: 1px solid #333;
+            font-size: 20px;
+        }
+
+        #toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: var(--accent);
+            color: #000;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 3000;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+        #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Start Menu Screen -->
+    <div id="start-menu">
+        <div class="logo-area">
+            <h1 class="title-text">FNF Mobile</h1>
+            <div class="subtitle-text">WEB ENGINE v2.0</div>
+        </div>
+        <div class="menu-options">
+            <button id="play-now-btn" class="btn primary">PLAY SONG</button>
+            <button class="btn outline" onclick="toggleSettings()">SETTINGS</button>
+            <p style="color: #444; font-size: 10px; margin-top: 20px;">Touch or Keyboard (D-F-J-K / Arrows)</p>
+        </div>
+    </div>
+
+    <div id="top-bar">
+        <div class="icon-btn" onclick="openMenuFromGame()">⚙️</div>
+        <div class="icon-btn" onclick="resetGame()">🔄</div>
+    </div>
+
+    <div id="touch-zones">
+        <div class="touch-zone" data-lane="0"></div>
+        <div class="touch-zone" data-lane="1"></div>
+        <div class="touch-zone" data-lane="2"></div>
+        <div class="touch-zone" data-lane="3"></div>
+    </div>
+
+    <canvas id="game"></canvas>
+
+    <!-- Settings Modal -->
+    <div id="menu-modal" class="hidden">
+        <div class="modal-header">
+            <h2>Settings</h2>
+            <button class="close-btn" onclick="toggleSettings()">BACK</button>
+        </div>
+
+        <div class="section">
+            <span class="section-label">Song Selection</span>
+            <select id="preset-select">
+                <option value="guns">Guns (Week 7)</option>
+                <option value="">Custom (Upload ZIP below)</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <span class="section-label">External Assets</span>
+            <input type="file" id="bulk-zip" accept=".zip">
+            <p style="font-size: 10px; color: #555; margin-top: 8px;">Upload a .zip containing Instrumental, Voices, and Chart.</p>
+        </div>
+
+        <div class="section">
+            <span class="section-label">Gameplay Modifiers</span>
+            <div class="control-row">
+                <button id="bot-toggle" class="btn">BOTPLAY: OFF</button>
+                <button id="ghost-toggle" class="btn">GHOST TAP: OFF</button>
+            </div>
+            <label style="font-size: 11px; color: #999;">Scroll Speed</label>
+            <input type="range" id="speed-slider" min="1" max="6" step="0.1" value="3.2">
+        </div>
+
+        <div class="section">
+            <span class="section-label">Audio</span>
+            <label style="font-size: 11px; color: #999;">Master Volume</label>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+        </div>
+
+        <div class="section" style="padding-bottom: 100px;">
+            <button id="clear-data" class="btn" style="color: var(--error); border-color: #311;">EXIT TO START MENU</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Ready!</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const startMenu = document.getElementById('start-menu');
+const settingsModal = document.getElementById('menu-modal');
+const playBtn = document.getElementById('play-now-btn');
+const speedSlider = document.getElementById('speed-slider');
+const volSlider = document.getElementById('volume-slider');
+const presetSelect = document.getElementById('preset-select');
+const toast = document.getElementById('toast');
+
+canvas.width = 1280; canvas.height = 720;
+
+const HS_URL = "https://codehs.com/uploads/9a83a5f1ec0d6e55cab21c974f523a9a";
+const PRESETS = {
+    guns: {
+        inst: "https://codehs.com/uploads/6a1397376b9e9e043c3a06c363d43aa4",
+        voc: "https://codehs.com/uploads/036b51f0e018e8a9461289c5d1f948b3",
+        chart: "https://codehs.com/uploads/2a7c94ee757ab992ca21bef7dd1ff91d"
+    }
+};
+
+let audioCtx, instBuf, playerBuf, hsBuf, chartData;
+let instS, playerS, masterGain;
+let startTime = 0, isPlaying = false;
+let isBotplay = false, ghostTapping = false, health = 1, activeNotes = [];
+let combo = 0, misses = 0, notesHit = 0, totalPlayed = 0;
+let touchHeld = [false, false, false, false];
+const colors = ['#FF4B2B', '#00D2FF', '#38EF7D', '#F9D423'];
+
+let popEffects = [];
+let comboBounceScale = 1.0;
+
+// Keyboard mapping
+const keyMap = {
+    'd': 0, 'ArrowLeft': 0,
+    'f': 1, 'ArrowDown': 1,
+    'j': 2, 'ArrowUp': 2,
+    'k': 3, 'ArrowRight': 3
+};
+
+function showToast(msg) { 
+    toast.innerText = msg; 
+    toast.classList.add('show'); 
+    setTimeout(() => toast.classList.remove('show'), 2000); 
+}
+
+function toggleSettings() {
+    settingsModal.classList.toggle('hidden');
+}
+
+function openMenuFromGame() {
+    isPlaying = false;
+    if(instS) { try { instS.stop(); playerS.stop(); } catch(e){} }
+    toggleSettings();
+}
+
+async function getBuf(src) {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.connect(audioCtx.destination);
+    }
+    const r = await (src instanceof File || src instanceof Blob ? src.arrayBuffer() : fetch(src).then(x => x.arrayBuffer()));
+    return await audioCtx.decodeAudioData(r);
+}
+
+function parseChart(raw) {
+    const data = raw.song || raw;
+    chartData = raw;
+    if (data.speed) speedSlider.value = data.speed;
+    activeNotes = [];
+    data.notes.forEach(s => {
+        s.sectionNotes.forEach(n => {
+            const isP = (n[1] < 4) ? s.mustHitSection : !s.mustHitSection;
+            activeNotes.push({ 
+                time: n[0], lane: n[1] % 4, isPlayer: isP, len: n[2] || 0,
+                hit: false, held: false, fullyHit: false
+            });
+        });
+    });
+    playBtn.innerText = "PLAY SONG";
+    showToast("Chart Ready");
+}
+
+document.getElementById('bulk-zip').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    showToast("Loading ZIP...");
+    const zip = await JSZip.loadAsync(file);
+    let fInst, fVoc, fChart;
+    const promises = [];
+    zip.forEach((path, entry) => {
+        if (!entry.dir) {
+            const name = entry.name.toLowerCase();
+            const p = entry.async("blob").then(blob => {
+                if (name.includes("inst")) fInst = blob;
+                else if (name.includes("vocals") || name.includes("voices")) fVoc = blob;
+                else if (name.endsWith(".json")) fChart = blob;
+            });
+            promises.push(p);
+        }
+    });
+    await Promise.all(promises);
+    if (fInst) instBuf = await getBuf(fInst);
+    if (fVoc) playerBuf = await getBuf(fVoc);
+    if (fChart) parseChart(JSON.parse(await fChart.text()));
+};
+
+async function loadPreset(val) {
+    if(!val) return;
+    playBtn.innerText = "LOADING...";
+    instBuf = await getBuf(PRESETS[val].inst);
+    playerBuf = await getBuf(PRESETS[val].voc);
+    parseChart(await fetch(PRESETS[val].chart).then(r => r.json()));
+}
+
+presetSelect.onchange = (e) => loadPreset(e.target.value);
+
+function addPop(txt, color) {
+    popEffects.push({ text: txt, color, alpha: 1, life: 1, y: 320 });
+    comboBounceScale = 1.4;
+}
+
+function startSong() {
+    if(!instBuf || !chartData) {
+        showToast("Select a song first!");
+        toggleSettings();
+        return;
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    if(instS) try { instS.stop(); playerS.stop(); } catch(e){}
+    
+    instS = audioCtx.createBufferSource(); instS.buffer = instBuf; instS.connect(masterGain);
+    if(playerBuf) { playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf; playerS.connect(masterGain); }
+    
+    activeNotes.forEach(n => { n.hit = false; n.held = false; n.fullyHit = false; });
+    health = 1; combo = 0; misses = 0; notesHit = 0; totalPlayed = 0; popEffects = [];
+    startTime = audioCtx.currentTime;
+    
+    instS.start(0); if(playerS) playerS.start(0);
+    isPlaying = true;
+    startMenu.classList.add('hidden');
+    settingsModal.classList.add('hidden');
+    requestAnimationFrame(loop);
+}
+
+function resetGame() {
+    if (chartData && instBuf) startSong();
+}
+
+const handleAction = (lane, isDown) => {
+    if (!isPlaying || isBotplay) return;
+    if (isDown) {
+        if (touchHeld[lane]) return;
+        touchHeld[lane] = true;
+        const songTime = (audioCtx.currentTime - startTime) * 1000;
+        const note = activeNotes.find(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < 160);
+        if (note) {
+            note.hit = true; note.held = true; combo++; notesHit++; totalPlayed++;
+            health = Math.min(2, health + 0.04);
+            const s = audioCtx.createBufferSource(); s.buffer = hsBuf; s.connect(masterGain); s.start(0);
+            const diff = Math.abs(note.time - songTime);
+            if(diff < 45) addPop("Sick!", "#00D2FF");
+            else if(diff < 90) addPop("Good", "#38EF7D");
+            else addPop("Bad", "#F9D423");
+        } else if (!ghostTapping) {
+            health -= 0.05; combo = 0; misses++; totalPlayed++;
+            addPop("Miss", "#ff4b2b");
+        }
+    } else {
+        touchHeld[lane] = false;
+        activeNotes.forEach(n => { if(n.lane === lane && n.held) n.held = false; });
+    }
+};
+
+// Touch Listeners
+document.querySelectorAll('.touch-zone').forEach(z => {
+    const lane = parseInt(z.dataset.lane);
+    z.addEventListener('touchstart', (e) => { e.preventDefault(); handleAction(lane, true); });
+    z.addEventListener('touchend', (e) => { e.preventDefault(); handleAction(lane, false); });
+});
+
+// Keyboard Listeners
+window.addEventListener('keydown', (e) => {
+    if (keyMap[e.key] !== undefined) {
+        handleAction(keyMap[e.key], true);
+    }
+    // Quick escape/reset keys
+    if (e.key === 'Escape') openMenuFromGame();
+    if (e.key === 'r') resetGame();
+});
+
+window.addEventListener('keyup', (e) => {
+    if (keyMap[e.key] !== undefined) {
+        handleAction(keyMap[e.key], false);
+    }
+});
+
+function loop() {
+    if(!isPlaying) return;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,1280,720);
+    const songTime = (audioCtx.currentTime - startTime) * 1000;
+    const sY = 600;
+    const speed = parseFloat(speedSlider.value);
+    masterGain.gain.value = parseFloat(volSlider.value);
+
+    activeNotes.forEach(n => {
+        if(n.hit) {
+            if(n.held && n.len > 0) {
+                if(n.time + n.len < songTime) { n.held = false; n.fullyHit = true; }
+                else health = Math.min(2, health + 0.005);
+            }
+            return;
+        }
+        if(!n.isPlayer && n.time <= songTime) { n.hit = true; if(n.len > 0) n.held = true; }
+        if(isBotplay && n.isPlayer && n.time <= songTime) {
+            n.hit = true; if(n.len > 0) n.held = true;
+            combo++; notesHit++; totalPlayed++; health = Math.min(2, health + 0.04);
+            addPop("Sick!", "#00D2FF");
+        }
+        if(n.isPlayer && !n.hit && (n.time - songTime) < -160) {
+            n.hit = true; health -= 0.1; combo = 0; misses++; totalPlayed++;
+            addPop("Miss", "#ff4b2b");
+        }
+    });
+
+    const hY = 60;
+    ctx.fillStyle = '#111'; ctx.fillRect(1280/2 - 250, hY, 500, 12);
+    ctx.fillStyle = health > 0.4 ? '#38EF7D' : '#ff4b2b';
+    ctx.fillRect(1280/2 - 250, hY, 500 * (Math.min(2, health)/2), 12);
+
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${52 * comboBounceScale}px sans-serif`;
+    ctx.fillText(combo, 640, 360);
+    if(comboBounceScale > 1) comboBounceScale -= 0.06;
+
+    popEffects.forEach((p, i) => {
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillText(p.text, 640, p.y);
+        p.alpha -= 0.035; p.y -= 1.2;
+        if(p.alpha <= 0) popEffects.splice(i, 1);
+    });
+    ctx.globalAlpha = 1;
+
+    for(let i=0; i<8; i++) {
+        const x = (i >= 4 ? 740 : 100) + ((i % 4) * 110);
+        const isHeld = (i >= 4 && (isBotplay ? activeNotes.some(n=>n.lane===(i%4) && n.held) : touchHeld[i%4]));
+        ctx.strokeStyle = isHeld ? colors[i%4] : '#333';
+        ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x+40, sY+40, 35, 0, Math.PI*2); ctx.stroke();
+    }
+
+    activeNotes.forEach(n => {
+        if(n.fullyHit || (n.hit && n.len <= 0)) return;
+        const x = (n.isPlayer ? 740 : 100) + (n.lane * 110);
+        const diff = n.time - songTime;
+        const vY = sY - (diff * speed);
+        if(n.len > 0) {
+            const h = n.len * speed;
+            let dTop = vY + 40, dH = -h;
+            if(n.hit && n.held) { dTop = sY + 40; dH = -((n.time + n.len - songTime) * speed); }
+            if(Math.abs(dH) > 0) {
+                ctx.fillStyle = n.isPlayer ? colors[n.lane] : '#222'; ctx.globalAlpha = 0.3;
+                ctx.fillRect(x + 30, dTop, 20, dH); ctx.globalAlpha = 1;
+            }
+        }
+        if(!n.hit && vY > -50 && vY < 800) {
+            ctx.fillStyle = n.isPlayer ? colors[n.lane] : '#444';
+            ctx.beginPath(); ctx.arc(x+40, vY+40, 35, 0, Math.PI*2); ctx.fill();
+        }
+    });
+
+    if(health <= 0) startSong();
+    requestAnimationFrame(loop);
+}
+
+playBtn.onclick = startSong;
+document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOTPLAY: ${isBotplay?'ON':'OFF'}`; };
+document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST TAP: ${ghostTapping?'ON':'OFF'}`; };
+document.getElementById('clear-data').onclick = () => { stopSong(); startMenu.classList.remove('hidden'); settingsModal.classList.add('hidden'); };
+
+function stopSong() {
+    isPlaying = false;
+    if(instS) { try { instS.stop(); playerS.stop(); } catch(e){} }
+}
+
+// Initial state
+getBuf(HS_URL).then(b => hsBuf = b);
+loadPreset('guns');
+</script>
+</body>
+</html>
