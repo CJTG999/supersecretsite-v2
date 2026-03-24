@@ -2,907 +2,764 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>FNF Mobile</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FNF Web Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        :root {
-            --bg: #000;
-            --panel: #111;
-            --accent: #38EF7D;
-            --error: #ff4b2b;
-            --safe-top: env(safe-area-inset-top);
-            --safe-bottom: env(safe-area-inset-bottom);
-        }
-
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none; }
-
-        body {
-            background: var(--bg);
-            color: #eee;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            touch-action: none;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: #000;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        #start-menu {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, #111 0%, #000 100%);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        #start-menu.hidden { display: none; }
-
-        .logo-area {
-            margin-bottom: 20px;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .title-text { font-size: 38px; font-weight: 900; color: var(--accent); margin: 0; }
-
-        .menu-options {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: 100%;
-            max-width: 340px;
-        }
-
-        .upload-card {
-            background: #1a1a1a;
-            border: 1px dashed #444;
-            padding: 12px;
-            border-radius: 12px;
-            text-align: left;
-        }
-
-        .upload-card span { font-size: 11px; color: #888; display: block; margin-bottom: 6px; font-weight: bold; }
-
-        #menu-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.98);
-            z-index: 2500;
-            display: flex;
-            flex-direction: column;
-            padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom)) 20px;
-            overflow-y: auto;
-            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-        }
-
-        #menu-modal.hidden { transform: translateY(100%); }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .section { margin-bottom: 25px; }
-        .section-label { 
-            display: block; 
-            font-size: 11px; 
-            color: #555; 
-            text-transform: uppercase; 
-            margin-bottom: 10px;
-            border-bottom: 1px solid #222;
-        }
-
-        .btn {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            color: #fff;
-            padding: 14px;
-            border-radius: 12px;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .btn:active { transform: scale(0.98); background: #222; }
-        .btn.active { border-color: var(--accent); color: var(--accent); }
-        .btn.primary { background: var(--accent); color: #000; border: none; font-size: 18px; }
-        .btn.outline { background: transparent; border: 2px solid #333; }
-        .btn.danger { border-color: var(--error); color: var(--error); }
-
-        .setting-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: #888;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        input[type="range"], select {
-            width: 100%;
-            background: #1a1a1a;
-            color: #fff;
-            border: 1px solid #333;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-
-        .keybind-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        .keybind-btn {
-            padding: 10px 0;
-            font-size: 16px;
-            text-transform: uppercase;
-        }
-
-        .keybind-btn.waiting {
-            background: var(--accent);
-            color: #000;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        #top-bar {
-            position: absolute;
-            top: calc(var(--safe-top) + 10px);
-            left: 10px;
-            right: 10px;
-            display: flex;
-            justify-content: space-between;
-            z-index: 100;
-            pointer-events: none;
-        }
-
-        .game-icon {
-            background: rgba(0,0,0,0.5);
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: auto;
-            font-size: 20px;
-        }
-
-        #toast {
-            position: fixed;
-            bottom: calc(100px + var(--safe-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--accent);
-            color: #000;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 3000;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-        #toast.show { opacity: 1; }
-
-        .hidden-input { display: none; }
+        body { margin: 0; overflow: hidden; background-color: #111; color: white; touch-action: none; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; }
+        .interactive { pointer-events: auto; }
+        .hidden { display: none !important; }
+        
+        /* Toast Notifications */
+        #toast-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; pointer-events: none; }
+        .toast { background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; margin-top: 10px; transition: opacity 0.5s; }
+        
+        /* Custom Scrollbar for the menu */
+        #menu::-webkit-scrollbar { width: 8px; }
+        #menu::-webkit-scrollbar-track { background: transparent; }
+        #menu::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <!-- Start Menu -->
-    <div id="start-menu">
-        <div class="logo-area">
-            <h1 class="title-text">FNF Mobile</h1>
-            <div style="color:#666; letter-spacing: 2px; font-size: 12px;">ENGINE v3.2</div>
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui-layer">
+    <!-- Main Menu / Overlay -->
+    <div id="menu" class="interactive flex flex-col items-center justify-center h-full bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+        <h1 class="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 mt-8">FNF Mobile Enhanced</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 w-full max-w-4xl">
+            <!-- Library Management Panel -->
+            <div class="bg-gray-900 border border-gray-700 p-6 rounded-xl flex flex-col">
+                <h2 class="text-xl font-bold mb-4 text-emerald-400">Library Management</h2>
+                <div class="flex flex-col gap-3 flex-1 justify-center">
+                    <label class="bg-emerald-600 hover:bg-emerald-500 text-center cursor-pointer text-white font-bold py-3 px-4 rounded transition-colors shadow-lg shadow-emerald-900/50">
+                        Upload Song (.zip, .json)
+                        <input type="file" id="file-uploader" class="hidden" accept=".zip,.json,audio/*" multiple>
+                    </label>
+                    <button id="btn-export" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 px-4 rounded transition-colors shadow-lg shadow-teal-900/50">
+                        Export Library to Bundle
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2 text-center">Zip your chart (.json), Inst (.ogg), and Voices (.ogg) together to upload a full track!</p>
+                </div>
+            </div>
+
+            <!-- Song Settings Panel -->
+            <div class="bg-gray-900 border border-gray-700 p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-4 text-emerald-400">Song Settings</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Audio Offset (ms)</label>
+                        <input type="number" id="setting-offset" value="0" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Scroll Speed (Mult)</label>
+                        <input type="number" id="setting-speed" value="1.0" step="0.1" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="checkbox" id="setting-ghost" checked class="w-5 h-5 accent-emerald-500 rounded bg-gray-800 border-gray-600">
+                        <label class="text-sm text-gray-300">Ghost Tapping</label>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="checkbox" id="setting-botplay" class="w-5 h-5 accent-emerald-500 rounded bg-gray-800 border-gray-600">
+                        <label class="text-sm text-gray-300">Botplay</label>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="menu-options">
-            <button id="play-btn" class="btn primary">START GAME</button>
-            
-            <div class="section" style="margin: 0; text-align: left;">
-                <span class="section-label">SONG LIBRARY (PERSISTENT)</span>
-                <select id="library-select">
-                    <option value="guns">Guns (Week 7) - Built-in</option>
-                </select>
-            </div>
-
-            <div class="upload-card">
-                <span>ADD SONGS (ZIP / LOOSE / JSON BUNDLE)</span>
-                <input type="file" id="file-uploader" accept=".zip,.json,.mp3,.ogg" multiple style="font-size: 10px; width: 100%;">
-                <div style="font-size: 9px; color: #555; margin-top: 5px;">Charts and Audio stay saved on your device!</div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <button class="btn outline" id="export-library-btn" style="padding: 10px; font-size: 11px;">EXPORT BUNDLE</button>
-                <button class="btn outline" id="clear-library-btn" style="padding: 10px; font-size: 11px; color: var(--error);">CLEAR ALL</button>
-            </div>
-
-            <button class="btn outline" id="open-settings-btn">SETTINGS</button>
+        <!-- Play Area -->
+        <div class="flex gap-4 w-full max-w-4xl bg-gray-900 border border-gray-700 p-4 rounded-xl shadow-2xl">
+            <select id="song-select" class="flex-1 bg-gray-800 border border-gray-600 rounded p-3 text-white focus:outline-none focus:border-emerald-500 font-bold">
+                <option value="none">-- Select a Song --</option>
+                <!-- Dynamically populated from DB -->
+            </select>
+            <button id="btn-play" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-10 rounded transition-colors disabled:opacity-50 text-xl shadow-lg shadow-green-900/50">PLAY</button>
         </div>
     </div>
 
-    <!-- HUD Icons -->
-    <div id="top-bar">
-        <div class="game-icon" id="pause-game-btn">⚙️</div>
-        <div class="game-icon" onclick="resetGame()">🔄</div>
-    </div>
-
-    <canvas id="game"></canvas>
-
-    <!-- Settings/Pause Modal -->
-    <div id="menu-modal" class="hidden">
-        <div class="modal-header">
-            <h2 style="margin:0; color:var(--accent);">Settings</h2>
-        </div>
-
-        <button class="btn primary" id="resume-game-btn" style="width: 100%; margin-bottom: 20px;">RESUME GAME</button>
-
-        <div class="section">
-            <span class="section-label">Gameplay & Controls</span>
-            
-            <div class="setting-label"><span>KEYBINDS (CLICK TO CHANGE)</span></div>
-            <div class="keybind-grid">
-                <button class="btn keybind-btn" data-lane="0">D</button>
-                <button class="btn keybind-btn" data-lane="1">F</button>
-                <button class="btn keybind-btn" data-lane="2">J</button>
-                <button class="btn keybind-btn" data-lane="3">K</button>
+    <!-- In-Game HUD -->
+    <div id="hud" class="hidden flex-col h-full justify-between p-4">
+        <div class="flex justify-between items-start">
+            <button id="btn-quit" class="interactive bg-red-600/80 hover:bg-red-500 text-white px-4 py-2 rounded-full font-bold backdrop-blur-md">Quit</button>
+            <div class="text-right font-mono text-xl text-white drop-shadow-md">
+                <div id="score-display">Score: 0</div>
+                <div id="combo-display">Combo: 0</div>
             </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                <button id="bot-toggle" class="btn">BOT: OFF</button>
-                <button id="ghost-toggle" class="btn">GHOST: OFF</button>
+        </div>
+        
+        <!-- Health Bar -->
+        <div class="w-full max-w-2xl mx-auto mb-8">
+            <div class="h-4 w-full bg-red-600 rounded-full overflow-hidden border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                <div id="health-fill" class="h-full bg-green-500 transition-all duration-100" style="width: 50%;"></div>
             </div>
-            
-            <div class="setting-label"><span>SCROLL SPEED</span><span id="speed-val">3.2</span></div>
-            <input type="range" id="speed-slider" min="1" max="6" step="0.1" value="3.2">
-        </div>
-
-        <div class="section">
-            <span class="section-label">Audio Settings</span>
-            
-            <div class="setting-label"><span>MASTER VOLUME</span><span id="vol-val">80%</span></div>
-            <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
-            
-            <div class="setting-label"><span>INSTRUMENTAL VOLUME</span><span id="inst-vol-val">100%</span></div>
-            <input type="range" id="inst-volume-slider" min="0" max="1" step="0.01" value="1.0">
-
-            <div class="setting-label"><span>VOCALS VOLUME</span><span id="voc-vol-val">100%</span></div>
-            <input type="range" id="voc-volume-slider" min="0" max="1" step="0.01" value="1.0">
-
-            <div class="setting-label"><span>AUDIO OFFSET (MS)</span><span id="offset-val">0ms</span></div>
-            <input type="range" id="offset-slider" min="-500" max="500" step="5" value="0">
-        </div>
-
-        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;">
-            <button id="exit-to-menu-btn" class="btn danger" style="width: 100%;">QUIT TO MENU</button>
         </div>
     </div>
 </div>
 
-<div id="toast">Ready!</div>
+<div id="toast-container"></div>
 
 <script>
-/** * FNF Mobile Engine v3.2
- * Persistent Storage (IndexedDB), Exportable JSON Bundles, Fixed UI Scale, Settings Expansion
+/**
+ * FNF WEB ENGINE - SINGLE FILE
+ * Features: DB Storage, ZIP Uploads, Settings Restored, Wide Hitboxes, Sliding
  */
 
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const startMenu = document.getElementById('start-menu');
-const settingsModal = document.getElementById('menu-modal');
-const toast = document.getElementById('toast');
-const librarySelect = document.getElementById('library-select');
+// --- Audio & Game State ---
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+let instSource, vocSource;
+let isPlaying = false;
+let songTime = 0, startTime = 0;
+let health = 1.0; 
+let score = 0, combo = 0;
 
-// Global Game State
-let audioCtx, instBuf, playerBuf, hsBuf, chartData;
-let instS, playerS, masterGain, instGain, vocGain;
-let startTime = 0, pauseTimeOffset = 0, isPlaying = false;
-let isBotplay = false, ghostTapping = false, health = 1;
-let activeNotes = [];
-let combo = 0, misses = 0, lastRating = "", popAlpha = 0;
-let touchHeld = [false, false, false, false];
-const activeTouches = {};
-const colors = ['#FF4B2B', '#00D2FF', '#38EF7D', '#F9D423'];
-
-// Built-in Song
-const BUILT_IN_SONGS = {
-    'guns': {
-        name: "Guns (Week 7)",
-        inst: "https://codehs.com/uploads/6a1397376b9e9e043c3a06c363d43aa4",
-        voc: "https://codehs.com/uploads/036b51f0e018e8a9461289c5d1f948b3",
-        chart: "https://codehs.com/uploads/2a7c94ee757ab992ca21bef7dd1ff91d"
-    }
-};
-const HS_URL = "https://codehs.com/uploads/9a83a5f1ec0d6e55cab21c974f523a9a";
-
-// --- Settings & Persistence ---
+// User Settings
 let userSettings = {
-    speed: 3.2,
-    masterVol: 0.8,
-    instVol: 1.0,
-    vocVol: 1.0,
-    offset: 0, // ms
-    keys: ['d', 'f', 'j', 'k']
-};
-const defaultArrows = ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'];
-
-// Load settings from local storage
-try {
-    const saved = localStorage.getItem('fnfSettings');
-    if (saved) {
-        userSettings = { ...userSettings, ...JSON.parse(saved) };
-    }
-} catch (e) { console.error("Could not load settings"); }
-
-function saveSettings() {
-    localStorage.setItem('fnfSettings', JSON.stringify(userSettings));
-    applyAudioSettings();
-}
-
-function applyAudioSettings() {
-    if (masterGain) masterGain.gain.value = userSettings.masterVol;
-    if (instGain) instGain.gain.value = userSettings.instVol;
-    if (vocGain) vocGain.gain.value = userSettings.vocVol;
-}
-
-// Map UI sliders to settings
-const mapSlider = (id, labelId, settingKey, formatFn) => {
-    const el = document.getElementById(id);
-    const lbl = document.getElementById(labelId);
-    el.value = userSettings[settingKey];
-    lbl.innerText = formatFn(el.value);
-    el.addEventListener('input', (e) => {
-        userSettings[settingKey] = parseFloat(e.target.value);
-        lbl.innerText = formatFn(e.target.value);
-        saveSettings();
-    });
+    offset: 0,
+    speedMult: 1.0,
+    ghostTapping: true,
+    botplay: false
 };
 
-mapSlider('speed-slider', 'speed-val', 'speed', v => v);
-mapSlider('volume-slider', 'vol-val', 'masterVol', v => Math.round(v * 100) + '%');
-mapSlider('inst-volume-slider', 'inst-vol-val', 'instVol', v => Math.round(v * 100) + '%');
-mapSlider('voc-volume-slider', 'voc-vol-val', 'vocVol', v => Math.round(v * 100) + '%');
-mapSlider('offset-slider', 'offset-val', 'offset', v => v + 'ms');
+// Hit tracking & Visuals
+let activeNotes = [];
+let scrollSpeed = 2.0;
+const colors = ['#c24b99', '#00ffff', '#12fa05', '#f9393f']; 
+let playerHeld = [false, false, false, false];
+let oppHeld = [false, false, false, false];
 
-// Keybind UI Setup
-let waitingForKeyLane = -1;
-const keyBtns = document.querySelectorAll('.keybind-btn');
-keyBtns.forEach((btn, i) => {
-    btn.innerText = userSettings.keys[i].toUpperCase();
-    btn.onclick = (e) => {
-        waitingForKeyLane = parseInt(e.target.dataset.lane);
-        keyBtns.forEach(b => b.classList.remove('waiting'));
-        e.target.classList.add('waiting');
-        e.target.innerText = "...";
-    };
-});
+// Judgments
+let lastJudgment = "";
+let judgmentAlpha = 0;
+let judgmentTimer = 0;
 
-// Input handling mapping function
-function getLaneFromKey(key) {
-    const k = key.toLowerCase();
-    for (let i = 0; i < 4; i++) {
-        if (k === userSettings.keys[i].toLowerCase() || key === defaultArrows[i]) return i;
-    }
-    return -1;
+// UI Elements
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const menuUI = document.getElementById('menu');
+const hudUI = document.getElementById('hud');
+const healthFill = document.getElementById('health-fill');
+const scoreDisp = document.getElementById('score-display');
+const comboDisp = document.getElementById('combo-display');
+const songSelect = document.getElementById('song-select');
+
+// Resize Canvas
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-// --- Storage Logic (IndexedDB) ---
+// --- Database (IndexedDB for storing songs) ---
+const DB_NAME = "FNF_Engine_DB";
 let db;
-const request = indexedDB.open("FNF_Library", 1);
-request.onupgradeneeded = (e) => {
-    db = e.target.result;
-    if (!db.objectStoreNames.contains("songs")) {
-        db.createObjectStore("songs", { keyPath: "id" });
-    }
-};
-request.onsuccess = (e) => {
-    db = e.target.result;
-    refreshLibraryUI();
-};
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+            const database = e.target.result;
+            if (!database.objectStoreNames.contains("songs")) {
+                database.createObjectStore("songs", { keyPath: "id" });
+            }
+        };
+        req.onsuccess = (e) => { db = e.target.result; resolve(); };
+        req.onerror = (e) => reject(e);
+    });
+}
 
 async function saveSongToDB(songData) {
-    const tx = db.transaction("songs", "readwrite");
-    tx.objectStore("songs").put(songData);
-    return new Promise(r => tx.oncomplete = () => { refreshLibraryUI(); r(); });
-}
-
-async function getAllSongsFromDB() {
-    return new Promise((resolve) => {
-        const tx = db.transaction("songs", "readonly");
-        const request = tx.objectStore("songs").getAll();
-        request.onsuccess = () => resolve(request.result);
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("songs", "readwrite");
+        tx.objectStore("songs").put(songData);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
     });
 }
 
-async function clearLibrary() {
-    const tx = db.transaction("songs", "readwrite");
-    tx.objectStore("songs").clear();
-    return new Promise(r => tx.oncomplete = () => { refreshLibraryUI(); r(); });
+async function getAllSongs() {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("songs", "readonly");
+        const req = tx.objectStore("songs").getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
 }
 
-async function refreshLibraryUI() {
-    librarySelect.innerHTML = `<option value="guns">Guns (Week 7) - Built-in</option>`;
-    const savedSongs = await getAllSongsFromDB();
-    savedSongs.forEach(s => {
+async function getSong(id) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("songs", "readonly");
+        const req = tx.objectStore("songs").get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Ensure the "Guns" default track exists
+async function addDefaultGunsSong() {
+    const existing = await getSong('guns');
+    if (!existing) {
+        // Generate a simple demo chart for "Guns" if missing
+        const dummyChart = { song: { song: 'Guns', speed: 2.2, notes: [] } };
+        let t = 0;
+        for(let i=0; i<64; i++) {
+            dummyChart.song.notes.push({
+                mustHitSection: true,
+                sectionNotes: [ [t, i % 4, 0] ]
+            });
+            t += 250; // Simple beat sequence
+        }
+        await saveSongToDB({
+            id: 'guns',
+            name: 'Guns (Default Demo)',
+            inst: null,
+            voc: null,
+            chart: dummyChart
+        });
+    }
+}
+
+// --- File Handling & ZIP Processing ---
+function showToast(msg) {
+    const container = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast'; t.innerText = msg;
+    container.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 500); }, 3000);
+}
+
+async function refreshLibrary() {
+    const songs = await getAllSongs();
+    songSelect.innerHTML = '<option value="none">-- Select a Song --</option>';
+    songs.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id;
-        opt.textContent = s.name;
-        librarySelect.appendChild(opt);
+        opt.innerText = s.name;
+        songSelect.appendChild(opt);
     });
 }
 
-// --- Utility Helpers ---
-function showToast(msg) { 
-    toast.innerText = msg; toast.classList.add('show'); 
-    setTimeout(() => toast.classList.remove('show'), 2000); 
-}
-
-async function blobToBase64(blob) {
-    if (!blob) return null;
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-    });
-}
-
-async function base64ToBlob(base64) {
-    if (!base64) return null;
-    const r = await fetch(base64);
-    return await r.blob();
-}
-
-async function getBuf(src) {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioCtx.createGain();
-        instGain = audioCtx.createGain();
-        vocGain = audioCtx.createGain();
-        
-        instGain.connect(masterGain);
-        vocGain.connect(masterGain);
-        masterGain.connect(audioCtx.destination);
-        
-        applyAudioSettings();
-    }
-    const r = await (src instanceof Blob ? src.arrayBuffer() : fetch(src).then(x => x.arrayBuffer()));
-    return await audioCtx.decodeAudioData(r);
-}
-
-function parseChart(raw) {
-    const data = raw.song || raw;
-    chartData = raw;
-    activeNotes = [];
-    data.notes.forEach(s => {
-        s.sectionNotes.forEach(n => {
-            const isP = (n[1] < 4) ? s.mustHitSection : !s.mustHitSection;
-            activeNotes.push({ 
-                time: n[0], lane: n[1] % 4, isPlayer: isP, len: n[2] || 0,
-                hit: false, held: false, fullyHit: false
-            });
-        });
-    });
-}
-
-// --- Layout & Scaling Logic ---
-function getLayout() {
-    const w = canvas.width, h = canvas.height;
+document.getElementById('file-uploader').addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     
-    const style = getComputedStyle(document.documentElement);
-    const safeTop = parseInt(style.getPropertyValue('--safe-top')) || 0;
-    const safeBottom = parseInt(style.getPropertyValue('--safe-bottom')) || 0;
+    showToast("Processing files...");
 
-    const isPortrait = h > w;
-    const laneWidth = isPortrait ? Math.min(115, w / 4.5) : 100;
-    const noteSize = laneWidth * 0.7;
-    const centerX = w / 2;
-
-    if (isPortrait) {
-        return {
-            isPortrait: true,
-            laneWidth: laneWidth,
-            noteSize: noteSize,
-            ratingX: centerX, ratingY: h * 0.3,
-            comboX: centerX, comboY: h * 0.3 + 60,
-            opponentY: safeTop + 140,
-            oppXStart: centerX - (laneWidth * 2),
-            playerY: h - safeBottom - 180,
-            playXStart: centerX - (laneWidth * 2),
-            hbX: centerX - 200, hbY: h - safeBottom - 50, hbW: 400
-        };
-    } else {
-        return {
-            isPortrait: false,
-            laneWidth: 100,
-            noteSize: 70,
-            ratingX: w - 200, ratingY: h / 2 - 50,
-            comboX: w - 200, comboY: h / 2 + 20,
-            opponentY: safeTop + 100,
-            oppXStart: 80,
-            playerY: h - safeBottom - 140,
-            playXStart: centerX - 200,
-            hbX: centerX - 200, hbY: safeTop + 40, hbW: 400
-        };
-    }
-}
-
-// --- Interaction Logic ---
-const handleInput = (lane, isDown) => {
-    if (!isPlaying || isBotplay) return;
-    if (isDown) {
-        touchHeld[lane] = true;
-        // Apply audio offset calibration to hit detection
-        const songTime = (audioCtx.currentTime - startTime + pauseTimeOffset) * 1000 - userSettings.offset;
-        
-        // FIX: Get ALL valid notes in a slightly larger window, sort to hit the Earliest Unhit
-        const validNotes = activeNotes.filter(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < 180);
-        
-        if (validNotes.length > 0) {
-            validNotes.sort((a, b) => a.time - b.time);
-            const note = validNotes[0];
-            note.hit = true; note.held = true; combo++;
-            health = Math.min(2, health + 0.04);
-            const s = audioCtx.createBufferSource(); s.buffer = hsBuf; s.connect(masterGain); s.start(0);
-            const diff = Math.abs(note.time - songTime);
-            if(diff < 60) { lastRating = "SICK!"; popAlpha = 1; }
-            else if(diff < 110) { lastRating = "GOOD"; popAlpha = 1; }
-            else { lastRating = "BAD"; popAlpha = 1; }
-        } else if (!ghostTapping) {
-            health -= 0.06; combo = 0; misses++; lastRating = "MISS"; popAlpha = 1;
-        }
-    } else {
-        touchHeld[lane] = false;
-        activeNotes.forEach(n => { if(n.lane === lane && n.held) n.held = false; });
-    }
-};
-
-window.addEventListener('keydown', e => { 
-    if (e.repeat) return; // FIX: Prevent hold-spam from making jack spam impossible
-    if (waitingForKeyLane !== -1) {
-        // Rebind Key logic
-        e.preventDefault();
-        userSettings.keys[waitingForKeyLane] = e.key.toLowerCase();
-        saveSettings();
-        
-        const btn = document.querySelector(`.keybind-btn[data-lane="${waitingForKeyLane}"]`);
-        btn.innerText = e.key.toUpperCase();
-        btn.classList.remove('waiting');
-        
-        waitingForKeyLane = -1;
-        return;
-    }
-    const lane = getLaneFromKey(e.key);
-    if(lane !== -1) handleInput(lane, true); 
-});
-
-window.addEventListener('keyup', e => { 
-    if (waitingForKeyLane !== -1) return;
-    const lane = getLaneFromKey(e.key);
-    if(lane !== -1) handleInput(lane, false); 
-});
-
-// Function to calculate exact distance to hitboxes
-function getLaneFromTouch(x, y) {
-    const l = getLayout();
-    const yBase = l.playerY;
-    const xStart = l.playXStart;
-
-    for (let i = 0; i < 4; i++) {
-        // FIX: Use column-based rectangular hitboxes for MUCH easier mobile tapping
-        const colStart = xStart + (i * l.laneWidth);
-        const colEnd = colStart + l.laneWidth;
-
-        // Check if touch is horizontally in the lane bounds and vertically in the bottom half of screen
-        if (x >= colStart - 10 && x <= colEnd + 10 && y > canvas.height * 0.4) {
-            return i;
-        }
-    }
-    return -1; 
-}
-
-canvas.addEventListener('touchstart', e => { 
-    e.preventDefault(); 
-    for(let t of e.changedTouches) {
-        const lane = getLaneFromTouch(t.clientX, t.clientY);
-        if (lane !== -1) {
-            activeTouches[t.identifier] = lane;
-            handleInput(lane, true);
-        }
-    }
-}, {passive: false});
-
-canvas.addEventListener('touchend', e => { 
-    for(let t of e.changedTouches) {
-        const lane = activeTouches[t.identifier];
-        if (lane !== undefined) {
-            handleInput(lane, false);
-            delete activeTouches[t.identifier];
-        }
-    }
-});
-
-canvas.addEventListener('touchcancel', e => {
-    for(let t of e.changedTouches) {
-        const lane = activeTouches[t.identifier];
-        if (lane !== undefined) {
-            handleInput(lane, false);
-            delete activeTouches[t.identifier];
-        }
-    }
-});
-
-// Settings / Navigation
-function pauseGame() {
-    if (!isPlaying) return;
-    isPlaying = false;
-    pauseTimeOffset += (audioCtx.currentTime - startTime);
-    if(instS) { try { instS.stop(); playerS.stop(); } catch(e){} }
-    settingsModal.classList.remove('hidden');
-    waitingForKeyLane = -1; // reset keybind state if open
-    keyBtns.forEach((btn, i) => { btn.classList.remove('waiting'); btn.innerText = userSettings.keys[i].toUpperCase(); });
-}
-
-function resumeGame() {
-    if (isPlaying) return;
-    settingsModal.classList.add('hidden');
-    instS = audioCtx.createBufferSource(); instS.buffer = instBuf; instS.connect(instGain);
-    if(playerBuf) { playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf; playerS.connect(vocGain); }
-    startTime = audioCtx.currentTime;
-    instS.start(0, pauseTimeOffset);
-    if(playerS) playerS.start(0, pauseTimeOffset);
-    isPlaying = true;
-    requestAnimationFrame(loop);
-}
-
-document.getElementById('pause-game-btn').onclick = pauseGame;
-document.getElementById('resume-game-btn').onclick = resumeGame;
-document.getElementById('open-settings-btn').onclick = () => { 
-    settingsModal.classList.remove('hidden'); 
-    document.getElementById('resume-game-btn').style.display = 'none'; 
-};
-document.getElementById('exit-to-menu-btn').onclick = () => { 
-    isPlaying = false; pauseTimeOffset = 0; 
-    if(instS) { try { instS.stop(); playerS.stop(); } catch(e){} } 
-    settingsModal.classList.add('hidden'); 
-    startMenu.classList.remove('hidden'); 
-};
-document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOT: ${isBotplay?'ON':'OFF'}`; };
-document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST: ${ghostTapping?'ON':'OFF'}`; };
-document.getElementById('clear-library-btn').onclick = () => { if(confirm("Delete all saved songs?")) clearLibrary(); };
-
-// --- Advanced Bundle Export/Import ---
-document.getElementById('export-library-btn').onclick = async () => {
-    const songs = await getAllSongsFromDB();
-    if (songs.length === 0) { showToast("Library is empty!"); return; }
-    showToast("Preparing Bundle...");
-    const exportData = await Promise.all(songs.map(async s => ({
-        ...s,
-        inst: await blobToBase64(s.inst),
-        voc: await blobToBase64(s.voc)
-    })));
-    const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `fnf_bundle_${Date.now()}.json`; a.click();
-    showToast("Exported!");
-};
-
-document.getElementById('file-uploader').onchange = async (e) => {
-    const files = Array.from(e.target.files); if (!files.length) return;
-    showToast("Reading Files...");
-    
-    // 1. JSON Bundle Import
-    if (files.length === 1 && files[0].name.endsWith('.json')) {
-        const text = await files[0].text();
-        try {
-            const data = JSON.parse(text);
-            if (Array.isArray(data) && data[0].chart) {
-                for (const s of data) {
-                    await saveSongToDB({
-                        id: s.id || 'imp-' + Math.random(), name: s.name, chart: s.chart,
-                        inst: await base64ToBlob(s.inst), voc: await base64ToBlob(s.voc)
-                    });
-                }
-                showToast("Bundle Imported!"); return;
-            }
-        } catch(err) {}
-    }
-    
-    // 2. ZIP File Import (Full Song Pack)
     if (files.length === 1 && files[0].name.endsWith('.zip')) {
-        showToast("Extracting ZIP...");
         try {
             const zip = await JSZip.loadAsync(files[0]);
             let zInst, zVoc, zChart, zName = files[0].name.replace('.zip', '');
+            
             for (const [path, file] of Object.entries(zip.files)) {
                 if (file.dir) continue;
                 const name = path.toLowerCase();
-                if (name.endsWith('.json')) {
-                    try { zChart = JSON.parse(await file.async("string")); } catch(e){}
-                } else if (name.includes('inst') && (name.endsWith('.mp3') || name.endsWith('.ogg'))) {
+                
+                if (name.endsWith('.json') && !name.includes('metadata')) {
+                    zChart = JSON.parse(await file.async("string"));
+                } else if ((name.includes('inst') || name === 'audio.ogg' || name === 'audio.mp3') && (name.endsWith('.mp3') || name.endsWith('.ogg'))) {
                     zInst = new Blob([await file.async("arraybuffer")]);
                 } else if ((name.includes('voc') || name.includes('voice')) && (name.endsWith('.mp3') || name.endsWith('.ogg'))) {
                     zVoc = new Blob([await file.async("arraybuffer")]);
                 }
             }
+            
             if (zChart) {
                 const id = 'song-' + Date.now();
-                await saveSongToDB({ id, name: zName, inst: zInst || null, voc: zVoc || null, chart: zChart });
-                showToast("ZIP Saved!");
-                setTimeout(() => { librarySelect.value = id; selectFromLibrary(id); }, 100);
-                return;
+                await saveSongToDB({ id, name: zName, inst: zInst, voc: zVoc, chart: zChart });
+                showToast("ZIP Successfully Installed!");
+                await refreshLibrary();
+                songSelect.value = id;
+            } else {
+                showToast("Error: No .json chart found in ZIP.");
             }
-        } catch(err) { showToast("Failed to read ZIP"); }
+        } catch(err) {
+            console.error(err);
+            showToast("Failed to read ZIP file.");
+        }
+        return;
     }
 
-    // 3. Loose File Import
     let fInst, fVoc, fChart, songName = "Custom Song";
     for(const file of files) {
         const name = file.name.toLowerCase();
         if (name.endsWith('.json')) { fChart = file; songName = file.name.replace('.json', ''); }
         else if (name.includes('inst')) fInst = file;
-        else if (name.includes('vocals') || name.includes('voices')) fVoc = file;
+        else if (name.includes('voc') || name.includes('voice')) fVoc = file;
     }
-    
+
     if (fChart) {
         try {
-            const chartObj = JSON.parse(await fChart.text());
+            const chartData = JSON.parse(await fChart.text());
             const id = 'song-' + Date.now();
-            await saveSongToDB({ id, name: songName, inst: fInst || null, voc: fVoc || null, chart: chartObj });
-            showToast("Saved!"); 
-            setTimeout(() => { librarySelect.value = id; selectFromLibrary(id); }, 100);
-        } catch (err) { showToast("Error saving chart"); }
-    } else if (!files[0].name.endsWith('.zip') && !files[0].name.endsWith('.json')) {
-        showToast("No Chart (.json) found!");
+            await saveSongToDB({ id, name: songName, inst: fInst, voc: fVoc, chart: chartData });
+            showToast("Song saved to library!");
+            await refreshLibrary();
+            songSelect.value = id;
+        } catch(e) {
+            showToast("Invalid JSON chart.");
+        }
+    } else {
+        showToast("Please include a .json chart file.");
+    }
+});
+
+// Generic Hitsound function 
+function playHitSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+    
+    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.05);
+}
+
+// --- Game Logic ---
+function getLayout() {
+    const isPortrait = canvas.width < canvas.height;
+    const laneW = isPortrait ? canvas.width / 4 : Math.min(canvas.width / 10, 110);
+    const playXStart = isPortrait ? 0 : canvas.width - (laneW * 4.5) - 40;
+    const oppXStart = isPortrait ? 0 : 40;
+    const strumY = Math.min(canvas.height * 0.15, 120);
+    return { isPortrait, laneW, playXStart, oppXStart, strumY };
+}
+
+function parseChart(chartData) {
+    activeNotes = [];
+    if (!chartData || !chartData.song || !chartData.song.notes) return;
+    
+    // Apply user settings multiplier to speed
+    scrollSpeed = (chartData.song.speed || 2.0) * userSettings.speedMult;
+
+    chartData.song.notes.forEach(section => {
+        const mustHit = section.mustHitSection;
+        section.sectionNotes.forEach(note => {
+            const time = note[0];
+            let rawLane = note[1];
+            const len = note[2] || 0;
+            
+            let isPlayer = mustHit;
+            if (rawLane > 3) {
+                isPlayer = !mustHit;
+                rawLane %= 4;
+            }
+
+            activeNotes.push({
+                time: time,
+                lane: rawLane,
+                len: len,
+                isPlayer: isPlayer,
+                hit: false,
+                held: false,
+                missed: false,
+                wasGoodHit: false
+            });
+        });
+    });
+    
+    activeNotes.sort((a, b) => a.time - b.time);
+}
+
+// Input Handling
+const keysMap = {
+    'ArrowLeft': 0, 'a': 0, 'A': 0,
+    'ArrowDown': 1, 's': 1, 'S': 1,
+    'ArrowUp': 2, 'w': 2, 'W': 2,
+    'ArrowRight': 3, 'd': 3, 'D': 3
+};
+
+function hitNote(lane, isBot = false) {
+    if (!isPlaying) return;
+    if (!isBot && userSettings.botplay) return; // Prevent manual input during botplay
+
+    playerHeld[lane] = true;
+    const hitWindow = 200;
+    // Apply user audio offset
+    const currentMs = (songTime * 1000) - userSettings.offset;
+    
+    const validNotes = activeNotes.filter(n => 
+        n.isPlayer && !n.hit && !n.missed && n.lane === lane && Math.abs(n.time - currentMs) <= hitWindow
+    );
+
+    if (validNotes.length > 0) {
+        const noteToHit = validNotes[0]; 
+        noteToHit.hit = true;
+        noteToHit.held = true;
+        noteToHit.wasGoodHit = true;
+        
+        playHitSound();
+
+        const diff = Math.abs(noteToHit.time - currentMs);
+        
+        // Botplay forces perfect SICK hits
+        if (isBot || diff < 60) { lastJudgment = "SICK!!"; score += 350; health += 0.04; }
+        else if (diff < 120) { lastJudgment = "GOOD!"; score += 200; health += 0.02; }
+        else { lastJudgment = "BAD"; score += 50; }
+        
+        combo++;
+        judgmentAlpha = 1.0;
+        judgmentTimer = 0;
+    } else if (!isBot && !userSettings.ghostTapping) {
+        // Penalty for Ghost Tapping if setting is turned off
+        health -= 0.05;
+        combo = 0;
+        lastJudgment = "MISS";
+        judgmentAlpha = 1.0;
+        judgmentTimer = 0;
+    }
+}
+
+function releaseNote(lane, isBot = false) {
+    if (!isBot && userSettings.botplay) return;
+    playerHeld[lane] = false;
+    activeNotes.forEach(n => {
+        if (n.isPlayer && n.lane === lane && n.held) {
+            n.held = false;
+        }
+    });
+}
+
+window.addEventListener('keydown', e => {
+    if (e.repeat) return; 
+    const lane = keysMap[e.key];
+    if (lane !== undefined) hitNote(lane);
+});
+window.addEventListener('keyup', e => {
+    const lane = keysMap[e.key];
+    if (lane !== undefined) releaseNote(lane);
+});
+
+// Touch Listeners (Sliding + Massive Hitboxes)
+const activeTouches = {}; 
+
+function getLaneFromTouch(x, y) {
+    if (y < canvas.height * 0.4) return -1;
+    const colWidth = canvas.width / 4;
+    for(let i=0; i<4; i++) {
+        if (x >= i * colWidth && x < (i+1) * colWidth) return i;
+    }
+    return -1;
+}
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if(userSettings.botplay) return;
+    for (let i=0; i<e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const lane = getLaneFromTouch(t.clientX, t.clientY);
+        activeTouches[t.identifier] = lane; 
+        if (lane !== -1) hitNote(lane);
+    }
+}, {passive: false});
+
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if(userSettings.botplay) return;
+    for (let i=0; i<e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const currentLane = getLaneFromTouch(t.clientX, t.clientY);
+        const prevLane = activeTouches[t.identifier];
+        
+        if (currentLane !== prevLane) {
+            if (prevLane !== -1 && prevLane !== undefined) releaseNote(prevLane);
+            if (currentLane !== -1) hitNote(currentLane);
+            activeTouches[t.identifier] = currentLane;
+        }
+    }
+}, {passive: false});
+
+const handleTouchEnd = e => {
+    e.preventDefault();
+    if(userSettings.botplay) return;
+    for (let i=0; i<e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const prevLane = activeTouches[t.identifier];
+        if (prevLane !== -1 && prevLane !== undefined) releaseNote(prevLane);
+        delete activeTouches[t.identifier];
     }
 };
 
-async function selectFromLibrary(id) {
-    if (id === 'guns') {
-        const s = BUILT_IN_SONGS.guns;
-        const chart = await fetch(s.chart).then(r => r.json());
-        parseChart(chart); instBuf = await getBuf(s.inst); playerBuf = await getBuf(s.voc);
-        showToast("Ready!"); return;
+canvas.addEventListener('touchend', handleTouchEnd, {passive: false});
+canvas.addEventListener('touchcancel', handleTouchEnd, {passive: false});
+
+// --- Rendering Loop ---
+function drawReceptor(cx, cy, size, color, isHeld) {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = isHeld ? '#fff' : color;
+    ctx.fillStyle = isHeld ? color : 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    const s2 = size / 2;
+    ctx.roundRect(cx - s2, cy - s2, size, size, size * 0.2);
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawNote(cx, cy, size, color) {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size/2 * 0.95, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+}
+
+function updateGame() {
+    if (!isPlaying) return;
+
+    if (audioCtx) {
+        songTime = audioCtx.currentTime - startTime;
     }
-    const songs = await getAllSongsFromDB();
-    const s = songs.find(x => x.id === id);
-    if (!s) return;
-    showToast("Loading...");
-    parseChart(s.chart);
-    if (s.inst) instBuf = await getBuf(s.inst);
-    if (s.voc) playerBuf = await getBuf(s.voc);
-    showToast("Ready!");
-}
-librarySelect.onchange = e => selectFromLibrary(e.target.value);
 
-// --- Game Engine Core ---
-function resize() { 
-    canvas.width = window.innerWidth; 
-    canvas.height = window.innerHeight; 
-}
-window.addEventListener('resize', resize);
-resize();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-function startSong() {
-    if(!instBuf || !chartData) { showToast("Select a song first!"); return; }
-    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    if(instS) { try { instS.stop(); playerS.stop(); } catch(e){} }
+    const l = getLayout();
+    // Use Offset logic for visual rendering sync too
+    const currentMs = (songTime * 1000) - userSettings.offset; 
+    const size = l.laneW * 0.95; 
+    const strumCenterY = l.strumY + (size / 2);
+
+    // --- Autoplay Logic ---
+    oppHeld = [false, false, false, false];
     
-    // Create and connect audio nodes using the audio settings
-    instS = audioCtx.createBufferSource(); instS.buffer = instBuf; instS.connect(instGain);
-    if(playerBuf) { playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf; playerS.connect(vocGain); }
-    
-    activeNotes.forEach(n => { n.hit = false; n.held = false; n.fullyHit = false; });
-    health = 1; combo = 0; misses = 0; popAlpha = 0; pauseTimeOffset = 0;
-    startTime = audioCtx.currentTime;
-    instS.start(0); if(playerS) playerS.start(0);
-    isPlaying = true; startMenu.classList.add('hidden');
-    document.getElementById('resume-game-btn').style.display = 'block';
-    requestAnimationFrame(loop);
-}
-
-function resetGame() { if(chartData) startSong(); }
-document.getElementById('play-btn').onclick = startSong;
-
-function loop() {
-    if(!isPlaying) return;
-    const l = getLayout(), speed = userSettings.speed;
-    
-    // Calculate songtime including the custom offset
-    const songTime = (audioCtx.currentTime - startTime + pauseTimeOffset) * 1000 - userSettings.offset;
-    
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width, canvas.height);
-
     activeNotes.forEach(n => {
-        if(n.hit) { if(n.held && n.len > 0) { if(n.time + n.len < songTime) { n.held = false; n.fullyHit = true; } else health = Math.min(2, health + 0.005); } return; }
-        if(!n.isPlayer && n.time <= songTime) { n.hit = true; if(n.len > 0) n.held = true; }
-        if(isBotplay && n.isPlayer && n.time <= songTime) { n.hit = true; if(n.len > 0) n.held = true; combo++; health = Math.min(2, health + 0.04); lastRating = "SICK!"; popAlpha = 1; }
-        if(n.isPlayer && !n.hit && (n.time - songTime) < -160) { n.hit = true; health -= 0.12; combo = 0; misses++; lastRating = "MISS"; popAlpha = 1; }
+        // Opponent Autoplay
+        if (!n.isPlayer && !n.hit && currentMs >= n.time) { n.hit = true; n.held = true; }
+        if (!n.isPlayer && n.held) {
+            oppHeld[n.lane] = true;
+            if (currentMs >= n.time + n.len) n.held = false;
+        }
+
+        // Botplay Logic (Player Side)
+        if (userSettings.botplay) {
+            if (n.isPlayer && !n.hit && currentMs >= n.time) {
+                hitNote(n.lane, true);
+            }
+            if (n.isPlayer && n.held && currentMs >= n.time + n.len) {
+                releaseNote(n.lane, true);
+            }
+        }
     });
 
-    ctx.textAlign = 'center'; ctx.fillStyle = `rgba(255,255,255,${popAlpha})`; ctx.font = 'bold 50px sans-serif'; ctx.fillText(lastRating, l.ratingX, l.ratingY);
-    ctx.font = 'bold 30px sans-serif'; ctx.fillText(`Combo: ${combo}`, l.comboX, l.comboY); if(popAlpha > 0) popAlpha -= 0.02;
-
-    ctx.fillStyle = '#222'; ctx.fillRect(l.hbX, l.hbY, l.hbW, 12);
-    ctx.fillStyle = health > 0.4 ? getComputedStyle(document.documentElement).getPropertyValue('--accent') : getComputedStyle(document.documentElement).getPropertyValue('--error');
-    ctx.fillRect(l.hbX, l.hbY, l.hbW * (health / 2), 12);
-    ctx.fillStyle = '#888'; ctx.font = 'bold 16px sans-serif'; ctx.fillText(`Accuracy: ${Math.max(0, 100 - (misses*2)).toFixed(2)}% | Misses: ${misses}`, canvas.width/2, l.hbY + 40);
-
-    const renderSide = (isPlayer) => {
-        const yBase = isPlayer ? l.playerY : l.opponentY, xStart = isPlayer ? l.playXStart : l.oppXStart;
-        for(let i=0; i<4; i++) {
-            const isHeld = (isPlayer && (isBotplay ? activeNotes.some(n=>n.lane===i && n.held) : touchHeld[i]));
-            ctx.strokeStyle = isHeld ? colors[i] : '#333'; ctx.lineWidth = 6;
-            ctx.beginPath(); ctx.arc(xStart + (i * l.laneWidth) + (l.laneWidth/2), yBase + (l.laneWidth/2), l.noteSize/2, 0, Math.PI*2); ctx.stroke();
-        }
+    // --- Miss Detection for Player ---
+    if (!userSettings.botplay) {
         activeNotes.forEach(n => {
-            if(n.isPlayer !== isPlayer || n.fullyHit || (n.hit && n.len <= 0)) return;
-            const x = xStart + (n.lane * l.laneWidth) + (l.laneWidth/2), vY = yBase - ((n.time - songTime) * speed);
-            if(vY > -400 && vY < canvas.height + 400) {
-                if(n.len > 0) {
-                    const h = n.len * speed; let dTop = vY + (l.laneWidth/2), dH = -h;
-                    if(n.hit && n.held) { dTop = yBase + (l.laneWidth/2); dH = -((n.time + n.len - songTime) * speed); }
-                    ctx.fillStyle = isPlayer ? colors[n.lane] : '#444'; ctx.globalAlpha = 0.4; ctx.fillRect(x - 10, dTop, 20, dH); ctx.globalAlpha = 1;
-                }
-                if(!n.hit) { ctx.fillStyle = isPlayer ? colors[n.lane] : '#444'; ctx.beginPath(); ctx.arc(x, vY + (l.laneWidth/2), l.noteSize/2, 0, Math.PI*2); ctx.fill(); }
+            if (n.isPlayer && !n.hit && !n.missed && currentMs > n.time + 200) {
+                n.missed = true;
+                combo = 0;
+                health -= 0.08;
+                lastJudgment = "MISS";
+                judgmentAlpha = 1.0;
+                judgmentTimer = 0;
+            }
+            if (n.isPlayer && n.held && currentMs >= n.time + n.len) {
+                n.held = false;
             }
         });
     }
-    
-    // FIX: Hide opponent notes in portrait mode
+
+    health = Math.max(0, Math.min(2.0, health));
+    healthFill.style.width = (health / 2.0 * 100) + '%';
+    healthFill.style.backgroundColor = health < 0.4 ? '#ef4444' : '#10b981';
+
+    // Hide Opponent in Portrait mode
     if (!l.isPortrait) {
-        renderSide(false); 
+        for (let i = 0; i < 4; i++) {
+            const cx = l.oppXStart + (i * l.laneW) + (l.laneW / 2);
+            drawReceptor(cx, strumCenterY, size, colors[i], oppHeld[i]);
+        }
     }
-    renderSide(true);
-    
-    if(health <= 0) resetGame();
-    requestAnimationFrame(loop);
+
+    // Always draw Player Receptors
+    for (let i = 0; i < 4; i++) {
+        const cx = l.playXStart + (i * l.laneW) + (l.laneW / 2);
+        drawReceptor(cx, strumCenterY, size, colors[i], playerHeld[i]);
+    }
+
+    // Render Notes
+    activeNotes.forEach(n => {
+        if (!n.isPlayer && l.isPortrait) return; 
+        if (n.hit && !n.held && n.len === 0) return; 
+
+        const xBase = n.isPlayer ? l.playXStart : l.oppXStart;
+        const cx = xBase + (n.lane * l.laneW) + (l.laneW / 2);
+        const cy = strumCenterY + ((n.time - currentMs) * (scrollSpeed * 0.45));
+
+        if (cy > canvas.height + 200 || cy < -1000) return;
+
+        if (n.len > 0) {
+            const holdHeight = n.len * (scrollSpeed * 0.45);
+            let drawY = cy;
+            let drawH = holdHeight;
+            
+            if (n.held) {
+                drawY = strumCenterY;
+                drawH = holdHeight - (currentMs - n.time) * (scrollSpeed * 0.45);
+            }
+
+            if (drawH > 0) {
+                ctx.globalAlpha = 0.6;
+                ctx.fillStyle = colors[n.lane];
+                const tailW = l.laneW * 0.35;
+                ctx.fillRect(cx - (tailW/2), drawY, tailW, drawH);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        if (!n.hit) {
+            drawNote(cx, cy, size, colors[n.lane]);
+        }
+    });
+
+    // Render Judgment
+    if (judgmentAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = judgmentAlpha;
+        ctx.fillStyle = lastJudgment === "MISS" ? '#ef4444' : '#ffffff';
+        ctx.font = 'bold 48px sans-serif';
+        ctx.textAlign = 'center';
+        
+        const scale = 1.0 + (judgmentAlpha * 0.2);
+        ctx.translate(canvas.width / 2, canvas.height * 0.4);
+        ctx.scale(scale, scale);
+        
+        ctx.lineWidth = 4; ctx.strokeStyle = '#000';
+        ctx.strokeText(lastJudgment, 0, 0);
+        ctx.fillText(lastJudgment, 0, 0);
+        ctx.restore();
+        
+        judgmentTimer += 0.016;
+        if (judgmentTimer > 0.5) judgmentAlpha -= 0.05;
+    }
+
+    scoreDisp.innerText = `Score: ${score}`;
+    comboDisp.innerText = `Combo: ${combo}`;
+
+    if (health <= 0) {
+        stopGame();
+        showToast("GAME OVER");
+    }
+
+    requestAnimationFrame(updateGame);
 }
 
-getBuf(HS_URL).then(b => hsBuf = b);
-setTimeout(() => selectFromLibrary('guns'), 500);
+// --- Audio Loading & Control ---
+async function decodeAudio(blob) {
+    if (!blob) return null;
+    const arrayBuffer = await blob.arrayBuffer();
+    return await audioCtx.decodeAudioData(arrayBuffer);
+}
+
+function stopGame() {
+    isPlaying = false;
+    if (instSource) { instSource.stop(); instSource.disconnect(); instSource = null; }
+    if (vocSource) { vocSource.stop(); vocSource.disconnect(); vocSource = null; }
+    hudUI.classList.add('hidden');
+    menuUI.classList.remove('hidden');
+}
+
+document.getElementById('btn-play').addEventListener('click', async () => {
+    const songId = songSelect.value;
+    if (songId === 'none') { showToast("Select a song first!"); return; }
+
+    // Grab settings from DOM
+    userSettings.offset = parseInt(document.getElementById('setting-offset').value) || 0;
+    userSettings.speedMult = parseFloat(document.getElementById('setting-speed').value) || 1.0;
+    userSettings.ghostTapping = document.getElementById('setting-ghost').checked;
+    userSettings.botplay = document.getElementById('setting-botplay').checked;
+
+    const song = await getSong(songId);
+    if (!song) { showToast("Error loading song."); return; }
+
+    menuUI.classList.add('hidden');
+    hudUI.classList.remove('hidden');
+    showToast("Loading Audio...");
+
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    try {
+        parseChart(song.chart);
+        score = 0; combo = 0; health = 1.0;
+        
+        const [instBuffer, vocBuffer] = await Promise.all([
+            decodeAudio(song.inst),
+            decodeAudio(song.voc)
+        ]);
+
+        if (instBuffer) {
+            instSource = audioCtx.createBufferSource();
+            instSource.buffer = instBuffer;
+            instSource.connect(audioCtx.destination);
+            
+            if (vocBuffer) {
+                vocSource = audioCtx.createBufferSource();
+                vocSource.buffer = vocBuffer;
+                vocSource.connect(audioCtx.destination);
+            }
+
+            isPlaying = true;
+            startTime = audioCtx.currentTime + 0.5;
+            instSource.start(startTime);
+            if (vocSource) vocSource.start(startTime);
+            
+            instSource.onended = () => {
+                if(isPlaying) { stopGame(); showToast("Song Cleared!"); }
+            };
+            
+            updateGame();
+        } else {
+            // No Audio Fallback (For Default "Guns" Demo or broken files)
+            isPlaying = true;
+            startTime = audioCtx.currentTime + 0.5;
+            updateGame();
+            
+            let lastNoteTime = 5000;
+            if (activeNotes.length > 0) lastNoteTime = activeNotes[activeNotes.length - 1].time;
+            
+            setTimeout(() => {
+                if (isPlaying) { stopGame(); showToast("Song Cleared!"); }
+            }, lastNoteTime + 2000);
+        }
+    } catch (err) {
+        console.error(err);
+        stopGame();
+        showToast("Playback error.");
+    }
+});
+
+document.getElementById('btn-quit').addEventListener('click', stopGame);
+
+// Boot
+window.onload = async () => {
+    try {
+        await initDB();
+        await addDefaultGunsSong();
+        await refreshLibrary();
+        
+        // Auto select guns
+        if (songSelect.querySelector('option[value="guns"]')) {
+            songSelect.value = "guns";
+        }
+    } catch(e) {
+        showToast("Database init failed. Incognito mode?");
+    }
+};
+
 </script>
 </body>
 </html>
