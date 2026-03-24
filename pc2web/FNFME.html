@@ -573,18 +573,22 @@ function getLayout() {
 const handleInput = (lane, isDown) => {
     if (!isPlaying || isBotplay) return;
     if (isDown) {
-        if (touchHeld[lane]) return;
         touchHeld[lane] = true;
         // Apply audio offset calibration to hit detection
         const songTime = (audioCtx.currentTime - startTime + pauseTimeOffset) * 1000 - userSettings.offset;
-        const note = activeNotes.find(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < 160);
-        if (note) {
+        
+        // FIX: Get ALL valid notes in a slightly larger window, sort to hit the Earliest Unhit
+        const validNotes = activeNotes.filter(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < 180);
+        
+        if (validNotes.length > 0) {
+            validNotes.sort((a, b) => a.time - b.time);
+            const note = validNotes[0];
             note.hit = true; note.held = true; combo++;
             health = Math.min(2, health + 0.04);
             const s = audioCtx.createBufferSource(); s.buffer = hsBuf; s.connect(masterGain); s.start(0);
             const diff = Math.abs(note.time - songTime);
-            if(diff < 45) { lastRating = "SICK!"; popAlpha = 1; }
-            else if(diff < 90) { lastRating = "GOOD"; popAlpha = 1; }
+            if(diff < 60) { lastRating = "SICK!"; popAlpha = 1; }
+            else if(diff < 110) { lastRating = "GOOD"; popAlpha = 1; }
             else { lastRating = "BAD"; popAlpha = 1; }
         } else if (!ghostTapping) {
             health -= 0.06; combo = 0; misses++; lastRating = "MISS"; popAlpha = 1;
@@ -596,6 +600,7 @@ const handleInput = (lane, isDown) => {
 };
 
 window.addEventListener('keydown', e => { 
+    if (e.repeat) return; // FIX: Prevent hold-spam from making jack spam impossible
     if (waitingForKeyLane !== -1) {
         // Rebind Key logic
         e.preventDefault();
@@ -624,14 +629,14 @@ function getLaneFromTouch(x, y) {
     const l = getLayout();
     const yBase = l.playerY;
     const xStart = l.playXStart;
-    const hitRadius = l.laneWidth * 0.8; 
 
     for (let i = 0; i < 4; i++) {
-        const cx = xStart + (i * l.laneWidth) + (l.laneWidth / 2);
-        const cy = yBase + (l.laneWidth / 2);
+        // FIX: Use column-based rectangular hitboxes for MUCH easier mobile tapping
+        const colStart = xStart + (i * l.laneWidth);
+        const colEnd = colStart + l.laneWidth;
 
-        const dist = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
-        if (dist <= hitRadius) {
+        // Check if touch is horizontally in the lane bounds and vertically in the bottom half of screen
+        if (x >= colStart - 10 && x <= colEnd + 10 && y > canvas.height * 0.4) {
             return i;
         }
     }
@@ -727,6 +732,8 @@ document.getElementById('export-library-btn').onclick = async () => {
 document.getElementById('file-uploader').onchange = async (e) => {
     const files = Array.from(e.target.files); if (!files.length) return;
     showToast("Reading Files...");
+    
+    // 1. JSON Bundle Import
     if (files.length === 1 && files[0].name.endsWith('.json')) {
         const text = await files[0].text();
         try {
@@ -742,7 +749,35 @@ document.getElementById('file-uploader').onchange = async (e) => {
             }
         } catch(err) {}
     }
-    // Handle manual upload
+    
+    // 2. ZIP File Import (Full Song Pack)
+    if (files.length === 1 && files[0].name.endsWith('.zip')) {
+        showToast("Extracting ZIP...");
+        try {
+            const zip = await JSZip.loadAsync(files[0]);
+            let zInst, zVoc, zChart, zName = files[0].name.replace('.zip', '');
+            for (const [path, file] of Object.entries(zip.files)) {
+                if (file.dir) continue;
+                const name = path.toLowerCase();
+                if (name.endsWith('.json')) {
+                    try { zChart = JSON.parse(await file.async("string")); } catch(e){}
+                } else if (name.includes('inst') && (name.endsWith('.mp3') || name.endsWith('.ogg'))) {
+                    zInst = new Blob([await file.async("arraybuffer")]);
+                } else if ((name.includes('voc') || name.includes('voice')) && (name.endsWith('.mp3') || name.endsWith('.ogg'))) {
+                    zVoc = new Blob([await file.async("arraybuffer")]);
+                }
+            }
+            if (zChart) {
+                const id = 'song-' + Date.now();
+                await saveSongToDB({ id, name: zName, inst: zInst || null, voc: zVoc || null, chart: zChart });
+                showToast("ZIP Saved!");
+                setTimeout(() => { librarySelect.value = id; selectFromLibrary(id); }, 100);
+                return;
+            }
+        } catch(err) { showToast("Failed to read ZIP"); }
+    }
+
+    // 3. Loose File Import
     let fInst, fVoc, fChart, songName = "Custom Song";
     for(const file of files) {
         const name = file.name.toLowerCase();
@@ -750,11 +785,17 @@ document.getElementById('file-uploader').onchange = async (e) => {
         else if (name.includes('inst')) fInst = file;
         else if (name.includes('vocals') || name.includes('voices')) fVoc = file;
     }
+    
     if (fChart) {
-        const chartObj = JSON.parse(await (new Response(fChart)).text());
-        const id = 'song-' + Date.now();
-        await saveSongToDB({ id, name: songName, inst: fInst || null, voc: fVoc || null, chart: chartObj });
-        showToast("Saved!"); librarySelect.value = id; selectFromLibrary(id);
+        try {
+            const chartObj = JSON.parse(await fChart.text());
+            const id = 'song-' + Date.now();
+            await saveSongToDB({ id, name: songName, inst: fInst || null, voc: fVoc || null, chart: chartObj });
+            showToast("Saved!"); 
+            setTimeout(() => { librarySelect.value = id; selectFromLibrary(id); }, 100);
+        } catch (err) { showToast("Error saving chart"); }
+    } else if (!files[0].name.endsWith('.zip') && !files[0].name.endsWith('.json')) {
+        showToast("No Chart (.json) found!");
     }
 };
 
@@ -849,7 +890,13 @@ function loop() {
             }
         });
     }
-    renderSide(false); renderSide(true);
+    
+    // FIX: Hide opponent notes in portrait mode
+    if (!l.isPortrait) {
+        renderSide(false); 
+    }
+    renderSide(true);
+    
     if(health <= 0) resetGame();
     requestAnimationFrame(loop);
 }
