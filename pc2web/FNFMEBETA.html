@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FNF Web">
+    <title>FNF Web - Full Engine</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #111;
+            --text: #eee;
+            --accent: #38EF7D;
+            --secondary: #00D2FF;
+            --error: #ff4b2b;
+            --sidebar-width: 320px;
+        }
+
+        * { -webkit-tap-highlight-color: transparent; user-select: none; outline: none; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            /* Support for iPhone Notch/Home Indicator */
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--panel);
+            border-right: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (max-width: 900px) {
+            #sidebar {
+                position: absolute;
+                left: 0; top: 0; bottom: 0;
+                transform: translateX(-100%);
+                box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+            }
+            #sidebar.open { transform: translateX(0); }
+        }
+
+        .section-header {
+            font-size: 10px; color: #555; text-transform: uppercase;
+            font-weight: 800; margin: 20px 0 10px 0;
+            border-bottom: 1px solid #222; padding-bottom: 4px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        label { font-size: 11px; font-weight: bold; color: #999; display: flex; justify-content: space-between; }
+        
+        select, input, button.menu-btn {
+            background: #1a1a1a; color: #fff; border: 1px solid #333;
+            padding: 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
+            width: 100%; box-sizing: border-box; transition: all 0.2s;
+        }
+
+        button.menu-btn:hover { border-color: var(--accent); background: #222; }
+        .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+
+        #main-stage {
+            flex-grow: 1; position: relative; background: #000;
+            display: flex; flex-direction: column;
+        }
+
+        canvas { width: 100%; height: 100%; object-fit: contain; }
+
+        .overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.95);
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; z-index: 500; padding: 20px; text-align: center;
+            overflow-y: auto;
+        }
+        .hidden { display: none !important; }
+
+        .btn-large {
+            padding: 18px 40px; font-size: 20px; font-weight: 800;
+            background: var(--accent); color: #000; border: none;
+            border-radius: 12px; cursor: pointer; margin: 10px; min-width: 220px;
+            transition: transform 0.1s;
+        }
+        .btn-large:active { transform: scale(0.95); }
+        .btn-large:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .btn-large.secondary { background: #222; color: #fff; border: 1px solid #444; }
+
+        .upload-card {
+            background: #111; padding: 20px; border-radius: 16px; border: 1px dashed #444;
+            width: 100%; max-width: 400px; margin: 20px 0;
+        }
+        .file-status { font-size: 12px; margin-top: 5px; color: #777; }
+        .file-status.ready { color: var(--accent); }
+
+        #touch-controls {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 35%;
+            display: none; grid-template-columns: repeat(4, 1fr); z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .touch-zone {
+            height: 100%; border-top: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.01); display: flex;
+            align-items: flex-end; justify-content: center; padding-bottom: 30px;
+            font-weight: bold; color: rgba(255,255,255,0.15); font-size: 14px;
+        }
+        .touch-zone.active { background: rgba(255,255,255,0.1); color: #fff; }
+
+        #pause-trigger {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.1); color: white;
+            width: 50px; height: 50px; border-radius: 50%;
+            font-weight: bold; z-index: 200; border: none; font-size: 18px;
+            cursor: pointer;
+            padding: 0; display: flex; align-items: center; justify-content: center;
+        }
+
+        @media (max-width: 600px) { #touch-controls { display: grid; } }
+
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: var(--accent); color: #000; padding: 12px 24px;
+            border-radius: 30px; font-weight: bold; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 2000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="color: var(--accent); margin: 0; letter-spacing: -1px;">SETTINGS</h2>
+        <button id="close-sidebar" class="menu-btn" style="width: auto; padding: 5px 12px;">✕</button>
+    </div>
+
+    <span class="section-header">Volumes</span>
+    <div class="input-group">
+        <label>Instrumental <span id="vol-inst-val">80%</span></label>
+        <input type="range" id="vol-inst" min="0" max="1" step="0.05" value="0.8">
+        <label>Vocals <span id="vol-voc-val">100%</span></label>
+        <input type="range" id="vol-voc" min="0" max="1" step="0.05" value="1.0">
+        <label>Hit Sounds <span id="vol-hit-val">60%</span></label>
+        <input type="range" id="vol-hit" min="0" max="1" step="0.05" value="0.6">
+    </div>
+
+    <span class="section-header">Gameplay</span>
+    <div class="input-group">
+        <button id="scroll-toggle" class="menu-btn">DOWNSCROLL: ON</button>
+        <button id="bot-toggle" class="menu-btn">BOTPLAY: OFF</button>
+        <button id="hitsound-toggle" class="menu-btn">HIT SOUNDS: ON</button>
+    </div>
+
+    <span class="section-header">Visual Customization</span>
+    <div class="input-group">
+        <label>Note Style</label>
+        <select id="note-style-select">
+            <option value="arrows">Official Arrows</option>
+            <option value="circle">Minimal Circles</option>
+        </select>
+        <label>Lane Colors</label>
+        <div class="color-grid">
+            <input type="color" id="color-0" value="#c24b99">
+            <input type="color" id="color-1" value="#00ffff">
+            <input type="color" id="color-2" value="#12fa05">
+            <input type="color" id="color-3" value="#f9393f">
+        </div>
+    </div>
+    
+    <button id="reset-settings" class="menu-btn" style="margin-top: 20px; border-color: var(--error); color: var(--error);">RESET TO DEFAULT</button>
+</div>
+
+<div id="main-stage">
+    <button id="pause-trigger" class="hidden">II</button>
+    
+    <div id="touch-controls">
+        <div class="touch-zone" data-lane="0">LEFT</div>
+        <div class="touch-zone" data-lane="1">DOWN</div>
+        <div class="touch-zone" data-lane="2">UP</div>
+        <div class="touch-zone" data-lane="3">RIGHT</div>
+    </div>
+
+    <div id="start-screen" class="overlay">
+        <h1 style="color:var(--accent); font-size: 3rem; margin: 0;">FNF WEB</h1>
+        <p style="color: #666; letter-spacing: 2px;">V2 MOBILE READY</p>
+
+        <div class="upload-card">
+            <h3 style="margin-top:0; font-size: 14px; color: var(--secondary);">LOAD CUSTOM SONG</h3>
+            
+            <div class="input-group">
+                <label>Audio (Inst) <span id="inst-status" class="file-status">None</span></label>
+                <input type="file" id="upload-inst" accept="audio/*">
+            </div>
+
+            <div class="input-group">
+                <label>Audio (Voices - Opt) <span id="voc-status" class="file-status">None</span></label>
+                <input type="file" id="upload-voc" accept="audio/*">
+            </div>
+
+            <div class="input-group">
+                <label>Chart (JSON) <span id="chart-status" class="file-status">None</span></label>
+                <input type="file" id="upload-chart" accept=".json">
+            </div>
+        </div>
+
+        <div style="display:flex; flex-wrap: wrap; justify-content: center;">
+            <button id="start-btn" class="btn-large" disabled>LOAD FILES FIRST</button>
+            <button id="open-opts" class="btn-large secondary">SETTINGS</button>
+        </div>
+        
+        <p style="font-size: 11px; color: #444; margin-top: 20px;">Settings are saved automatically</p>
+    </div>
+
+    <div id="pause-screen" class="overlay hidden">
+        <h1 style="color: var(--accent); font-size: 2.5rem;">PAUSED</h1>
+        <button id="resume-btn" class="btn-large">RESUME</button>
+        <button id="restart-btn" class="btn-large secondary">RESTART</button>
+        <button id="mobile-opts-btn" class="btn-large secondary">SETTINGS</button>
+        <button id="quit-btn" class="btn-large secondary" style="color: var(--error);">QUIT</button>
+    </div>
+
+    <canvas id="game"></canvas>
+</div>
+
+<div id="toast">Ready!</div>
+
+<script>
+/**
+ * FNF WEB ENGINE - PRESET SAVING & IOS SUPPORT UPDATE
+ */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+const instGain = audioCtx.createGain();
+const vocGain = audioCtx.createGain();
+const hitGain = audioCtx.createGain();
+instGain.connect(audioCtx.destination);
+vocGain.connect(audioCtx.destination);
+hitGain.connect(audioCtx.destination);
+
+// Assets
+const HITSOUND_URL = "https://codehs.com/uploads/09743623372843dc76af5b7736be6680";
+const ARROW_PNG_URL = "https://codehs.com/uploads/18203ab3287b8e13f9dbfa755b53691e";
+
+// Global State
+let instBuf, vocBuf, hitSoundBuf, instSource, vocSource;
+let isPlaying = false, isPaused = false, startTime = 0, pauseOffset = 0, songTime = 0;
+let notes = [], activeNotes = [];
+let scrollSpeed = 2.5, isDownscroll = true, isBotplay = false, useHitSounds = true;
+let health = 0.5, combo = 0, score = 0;
+let keys = ['d', 'f', 'j', 'k'];
+let colors = ['#c24b99', '#00ffff', '#12fa05', '#f9393f'];
+let keyPressedState = [false, false, false, false];
+let opponentPressedState = [false, false, false, false];
+let arrowSheet = new Image();
+let tintCache = [], receptorCache = [];
+let noteStyle = 'arrows';
+let visualEffects = [];
+
+// PERSISTENCE LOGIC
+const STORAGE_KEY = "FNF_WEB_ENGINE_PRESETS";
+const defaultSettings = {
+    volInst: 0.8,
+    volVoc: 1.0,
+    volHit: 0.6,
+    isDownscroll: true,
+    isBotplay: false,
+    useHitSounds: true,
+    noteStyle: 'arrows',
+    colors: ['#c24b99', '#00ffff', '#12fa05', '#f9393f']
+};
+
+function saveSettings() {
+    const settings = {
+        volInst: instGain.gain.value,
+        volVoc: vocGain.gain.value,
+        volHit: hitGain.gain.value,
+        isDownscroll,
+        isBotplay,
+        useHitSounds,
+        noteStyle,
+        colors: [...colors]
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+function loadSettings() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    try {
+        const s = JSON.parse(saved);
+        instGain.gain.value = s.volInst ?? 0.8;
+        vocGain.gain.value = s.volVoc ?? 1.0;
+        hitGain.gain.value = s.volHit ?? 0.6;
+        isDownscroll = s.isDownscroll ?? true;
+        isBotplay = s.isBotplay ?? false;
+        useHitSounds = s.useHitSounds ?? true;
+        noteStyle = s.noteStyle ?? 'arrows';
+        colors = s.colors ?? [...defaultSettings.colors];
+
+        // Update UI elements
+        document.getElementById('vol-inst').value = instGain.gain.value;
+        document.getElementById('vol-voc').value = vocGain.gain.value;
+        document.getElementById('vol-hit').value = hitGain.gain.value;
+        document.getElementById('vol-inst-val').innerText = `${Math.round(instGain.gain.value * 100)}%`;
+        document.getElementById('vol-voc-val').innerText = `${Math.round(vocGain.gain.value * 100)}%`;
+        document.getElementById('vol-hit-val').innerText = `${Math.round(hitGain.gain.value * 100)}%`;
+        
+        document.getElementById('scroll-toggle').innerText = `DOWNSCROLL: ${isDownscroll ? 'ON' : 'OFF'}`;
+        document.getElementById('bot-toggle').innerText = `BOTPLAY: ${isBotplay ? 'OFF' : 'ON'}`; // Logic flip check
+        document.getElementById('bot-toggle').innerText = `BOTPLAY: ${isBotplay ? 'ON' : 'OFF'}`;
+        document.getElementById('hitsound-toggle').innerText = `HIT SOUNDS: ${useHitSounds ? 'ON' : 'OFF'}`;
+        document.getElementById('note-style-select').value = noteStyle;
+        
+        colors.forEach((c, i) => {
+            document.getElementById(`color-${i}`).value = c;
+        });
+    } catch(e) { console.error("Load Settings Error:", e); }
+}
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    updateTintCache();
+}
+window.onresize = resize;
+resize();
+
+function showToast(m) {
+    const t = document.getElementById('toast');
+    t.innerText = m; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+async function decodeAudio(arrayBuffer) {
+    return await audioCtx.decodeAudioData(arrayBuffer);
+}
+
+async function init() {
+    loadSettings();
+    try {
+        const res = await fetch(HITSOUND_URL);
+        const buf = await res.arrayBuffer();
+        hitSoundBuf = await decodeAudio(buf);
+        arrowSheet.src = ARROW_PNG_URL;
+        await new Promise(r => arrowSheet.onload = r);
+        updateTintCache();
+    } catch(e) { console.error("Init Error:", e); }
+}
+
+function updateTintCache() {
+    const atlas = [
+        { x: 156, y: 237, w: 154, h: 157 },
+        { x: 479, y: 234, w: 157, h: 154 },
+        { x: 637, y: 234, w: 157, h: 154 },
+        { x: 311, y: 237, w: 154, h: 157 }
+    ];
+    tintCache = []; receptorCache = [];
+    atlas.forEach((data, i) => {
+        const createC = (isTint) => {
+            const c = document.createElement('canvas');
+            c.width = data.w; c.height = data.h;
+            const t = c.getContext('2d');
+            t.drawImage(arrowSheet, data.x, data.y, data.w, data.h, 0, 0, data.w, data.h);
+            if (isTint) {
+                t.globalCompositeOperation = 'multiply';
+                t.fillStyle = colors[i];
+                t.fillRect(0, 0, data.w, data.h);
+                t.globalCompositeOperation = 'destination-in';
+                t.drawImage(arrowSheet, data.x, data.y, data.w, data.h, 0, 0, data.w, data.h);
+            }
+            return c;
+        };
+        tintCache.push(createC(true));
+        receptorCache.push(createC(false));
+    });
+}
+
+function parseChart(json) {
+    const data = json.song || json;
+    notes = [];
+    scrollSpeed = data.speed || 2.5;
+    (data.notes || []).forEach(sec => {
+        if (!sec.sectionNotes) return;
+        sec.sectionNotes.forEach(n => {
+            notes.push({
+                time: n[0],
+                lane: n[1] % 4,
+                sustain: n[2] || 0,
+                isPlayer: n[1] < 4 ? sec.mustHitSection : !sec.mustHitSection,
+                hit: false, missed: false, susHit: 0
+            });
+        });
+    });
+    notes.sort((a,b) => a.time - b.time);
+    checkReady();
+}
+
+function checkReady() {
+    const startBtn = document.getElementById('start-btn');
+    if (instBuf && notes.length > 0) {
+        startBtn.disabled = false;
+        startBtn.innerText = "START SESSION";
+        startBtn.style.background = 'var(--accent)';
+    }
+}
+
+// File Upload Logic
+document.getElementById('upload-inst').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const status = document.getElementById('inst-status');
+    status.innerText = "DECODING...";
+    try {
+        const buf = await file.arrayBuffer();
+        instBuf = await decodeAudio(buf);
+        status.innerText = "READY";
+        status.className = "file-status ready";
+        checkReady();
+    } catch(err) { status.innerText = "ERROR"; }
+};
+
+document.getElementById('upload-voc').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const status = document.getElementById('voc-status');
+    status.innerText = "DECODING...";
+    try {
+        const buf = await file.arrayBuffer();
+        vocBuf = await decodeAudio(buf);
+        status.innerText = "READY";
+        status.className = "file-status ready";
+    } catch(err) { status.innerText = "ERROR"; }
+};
+
+document.getElementById('upload-chart').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const status = document.getElementById('chart-status');
+    try {
+        const text = await file.text();
+        parseChart(JSON.parse(text));
+        status.innerText = "READY";
+        status.className = "file-status ready";
+    } catch(err) { status.innerText = "ERROR"; }
+};
+
+function spawnRating(diff) {
+    const abs = Math.abs(diff);
+    let r = "Sick!", c = "#38EF7D";
+    if (abs > 40) { r = "Good"; c = "#00D2FF"; }
+    if (abs > 90) { r = "Bad"; c = "#FFB000"; }
+    if (abs > 135) { r = "Shit"; c = "#FF4B2B"; }
+
+    visualEffects = visualEffects.filter(e => e.type !== 'rating');
+    visualEffects.push({ type: 'rating', text: r, color: c, x: canvas.width/2, y: canvas.height * 0.4, life: 60, max: 60, vy: -3, scale: 1.5 });
+    visualEffects.push({ type: 'combo', text: combo.toString(), color: "#fff", x: canvas.width/2, y: canvas.height * 0.52, life: 60, max: 60, vy: -1.5, scale: 1.2 });
+}
+
+function handleHit(note) {
+    if (note.hit) return;
+    const diff = note.time - songTime;
+    note.hit = true;
+    health = Math.min(1, health + 0.035);
+    score += 100;
+    combo++;
+    spawnRating(diff);
+    if (useHitSounds) {
+        const s = audioCtx.createBufferSource();
+        s.buffer = hitSoundBuf; s.connect(hitGain); s.start(0);
+    }
+}
+
+function loop() {
+    if (!isPlaying || isPaused) return;
+    songTime = (audioCtx.currentTime - startTime) * 1000;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const isPortrait = canvas.height > canvas.width;
+    const laneSize = Math.min(canvas.width / 9, 100);
+    const spacing = laneSize + 10;
+    
+    let pX, oX, sY;
+    if (isPortrait) {
+        pX = (canvas.width - (spacing * 4)) / 2;
+        oX = pX;
+        sY = isDownscroll ? canvas.height * 0.55 : canvas.height * 0.12;
+    } else {
+        pX = canvas.width * 0.6;
+        oX = canvas.width * 0.15;
+        sY = isDownscroll ? canvas.height * 0.8 : canvas.height * 0.15;
+    }
+
+    opponentPressedState = [false, false, false, false];
+
+    activeNotes.forEach(n => {
+        if (n.missed) return;
+        const diff = n.time - songTime;
+        const y = isDownscroll ? sY - (diff * scrollSpeed) : sY + (diff * scrollSpeed);
+
+        if (!n.hit && diff < -160) { 
+            n.missed = true; 
+            if (n.isPlayer) { health -= 0.12; combo = 0; } 
+        }
+
+        if (!n.hit) {
+            if (isBotplay && n.isPlayer && diff <= 0) handleHit(n);
+            if (!n.isPlayer && diff <= 0) { n.hit = true; opponentPressedState[n.lane] = true; }
+        }
+
+        if (n.hit && n.sustain > 20) {
+            if (n.isPlayer) {
+                if (keyPressedState[n.lane] || isBotplay) {
+                    n.susHit = Math.max(n.susHit, songTime - n.time);
+                    health = Math.min(1, health + 0.001);
+                }
+            } else {
+                n.susHit = Math.max(n.susHit, songTime - n.time);
+                opponentPressedState[n.lane] = true;
+            }
+        }
+
+        if (!n.isPlayer && isPortrait) return;
+        if (y < -500 || y > canvas.height + 500) return;
+
+        const x = (n.isPlayer ? pX : oX) + (n.lane * spacing);
+        
+        if (n.sustain > 20 && n.susHit < n.sustain) {
+            const susRemaining = n.sustain - Math.max(0, n.susHit);
+            const susHeight = susRemaining * scrollSpeed;
+            const susY = isDownscroll ? y + (n.susHit * scrollSpeed) : y - (n.susHit * scrollSpeed);
+            
+            ctx.fillStyle = colors[n.lane];
+            ctx.globalAlpha = 0.6;
+            if (isDownscroll) {
+                ctx.fillRect(x + laneSize/2 - 10, susY, 20, susHeight);
+            } else {
+                ctx.fillRect(x + laneSize/2 - 10, susY - susHeight, 20, susHeight);
+            }
+            ctx.globalAlpha = 1.0;
+        }
+
+        if (!n.hit) drawNote(ctx, x, y, laneSize, n.lane, n.isPlayer);
+    });
+
+    for (let i = 0; i < 8; i++) {
+        const lane = i % 4;
+        const isPlayer = i >= 4;
+        if (!isPlayer && isPortrait) continue;
+        const x = (isPlayer ? pX : oX) + (lane * spacing);
+        const pressed = isPlayer ? keyPressedState[lane] : opponentPressedState[lane];
+        drawReceptor(ctx, x, sY, laneSize, lane, pressed);
+    }
+
+    renderEffects();
+    drawHealthBar(isPortrait);
+
+    if (health <= 0) { showToast("MISSION FAILED"); quit(); }
+    requestAnimationFrame(loop);
+}
+
+function drawNote(ctx, x, y, size, lane, isPlayer) {
+    if (noteStyle === 'arrows') {
+        const img = tintCache[lane];
+        if (!isPlayer) ctx.filter = 'grayscale(100%) brightness(50%)';
+        ctx.drawImage(img, x, y, size, size);
+        ctx.filter = 'none';
+    } else {
+        ctx.fillStyle = isPlayer ? colors[lane] : '#333';
+        ctx.beginPath(); ctx.arc(x + size/2, y + size/2, size/2.2, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+function drawReceptor(ctx, x, y, size, lane, pressed) {
+    if (noteStyle === 'arrows') {
+        ctx.globalAlpha = pressed ? 1.0 : 0.3;
+        if (!pressed) ctx.filter = 'grayscale(100%)';
+        ctx.drawImage(receptorCache[lane], x, y, size, size);
+        ctx.filter = 'none'; ctx.globalAlpha = 1.0;
+    } else {
+        ctx.strokeStyle = pressed ? colors[lane] : '#222';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(x + size/2, y + size/2, size/2.2, 0, Math.PI*2); ctx.stroke();
+        if (pressed) { ctx.fillStyle = colors[lane] + '44'; ctx.fill(); }
+    }
+}
+
+function renderEffects() {
+    ctx.textAlign = 'center';
+    visualEffects = visualEffects.filter(eff => {
+        eff.life--;
+        eff.y += eff.vy;
+        eff.vy += 0.12; 
+        const alpha = Math.min(1, eff.life / 20);
+        const s = eff.scale + Math.sin((1 - (eff.life/eff.max)) * Math.PI) * 0.15;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = eff.color;
+        if (eff.type === 'combo') {
+            ctx.font = `900 ${Math.floor(48 * s)}px 'Courier New'`;
+            ctx.fillText(eff.text, eff.x, eff.y);
+            ctx.font = `800 ${Math.floor(14 * s)}px 'Inter'`;
+            ctx.fillText("COMBO", eff.x, eff.y + 25);
+        } else {
+            ctx.font = `italic 900 ${Math.floor(38 * s)}px 'Inter'`;
+            ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.fillText(eff.text, eff.x, eff.y);
+        }
+        ctx.restore();
+        return eff.life > 0;
+    });
+}
+
+function drawHealthBar(isPortrait) {
+    const hbW = Math.min(canvas.width * 0.8, 500);
+    const hbX = (canvas.width - hbW) / 2;
+    const hbY = isPortrait ? 60 : canvas.height - 40;
+    ctx.fillStyle = '#222'; 
+    ctx.fillRect(hbX, hbY, hbW, 14);
+    
+    ctx.fillStyle = colors[2]; 
+    const fill = hbW * health;
+    ctx.fillRect(hbX + (hbW - fill), hbY, fill, 14);
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = "12px monospace";
+    ctx.fillText(`SCORE: ${score} | COMBO: ${combo}`, canvas.width/2, hbY + 35);
+}
+
+// Input
+window.onkeydown = (e) => {
+    if (document.activeElement.tagName === 'INPUT') return;
+    const lane = keys.indexOf(e.key.toLowerCase());
+    if (lane !== -1 && !keyPressedState[lane]) {
+        keyPressedState[lane] = true;
+        processInput(lane);
+    }
+    if (e.key === 'Escape') togglePause();
+};
+window.onkeyup = (e) => {
+    const lane = keys.indexOf(e.key.toLowerCase());
+    if (lane !== -1) keyPressedState[lane] = false;
+};
+
+document.querySelectorAll('.touch-zone').forEach(z => {
+    const lane = parseInt(z.dataset.lane);
+    z.addEventListener('touchstart', (e) => {
+        e.preventDefault(); z.classList.add('active');
+        keyPressedState[lane] = true; processInput(lane);
+    });
+    z.addEventListener('touchend', () => {
+        z.classList.remove('active'); keyPressedState[lane] = false;
+    });
+});
+
+function processInput(lane) {
+    if (!isPlaying || isPaused || isBotplay) return;
+    const hitWindow = 160;
+    const note = activeNotes.find(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < hitWindow);
+    if (note) handleHit(note);
+}
+
+// Control
+function start() {
+    if (!instBuf || notes.length === 0) return;
+    audioCtx.resume();
+    isPlaying = true; isPaused = false;
+    health = 0.5; combo = 0; score = 0;
+    visualEffects = [];
+    activeNotes = notes.map(n => ({...n}));
+    startTime = audioCtx.currentTime;
+    pauseOffset = 0;
+    
+    instSource = audioCtx.createBufferSource();
+    instSource.buffer = instBuf; instSource.connect(instGain); instSource.start(0);
+    if (vocBuf) {
+        vocSource = audioCtx.createBufferSource();
+        vocSource.buffer = vocBuf; vocSource.connect(vocGain); vocSource.start(0);
+    }
+    
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('pause-screen').classList.add('hidden');
+    document.getElementById('pause-trigger').classList.remove('hidden');
+    requestAnimationFrame(loop);
+}
+
+function togglePause() {
+    if (!isPlaying) return;
+    if (!isPaused) {
+        isPaused = true;
+        pauseOffset = audioCtx.currentTime - startTime;
+        instSource.stop(); if (vocSource) vocSource.stop();
+        document.getElementById('pause-screen').classList.remove('hidden');
+    } else {
+        isPaused = false;
+        startTime = audioCtx.currentTime - pauseOffset;
+        instSource = audioCtx.createBufferSource();
+        instSource.buffer = instBuf; instSource.connect(instGain); instSource.start(0, pauseOffset);
+        if (vocBuf) {
+            vocSource = audioCtx.createBufferSource();
+            vocSource.buffer = vocBuf; vocSource.connect(vocGain); vocSource.start(0, pauseOffset);
+        }
+        document.getElementById('pause-screen').classList.add('hidden');
+        requestAnimationFrame(loop);
+    }
+}
+
+function quit() {
+    isPlaying = false;
+    if (instSource) try { instSource.stop(); } catch(e){}
+    if (vocSource) try { vocSource.stop(); } catch(e){}
+    document.getElementById('pause-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+    document.getElementById('pause-trigger').classList.add('hidden');
+}
+
+// Setup Bindings
+document.getElementById('open-opts').onclick = () => document.getElementById('sidebar').classList.add('open');
+document.getElementById('close-sidebar').onclick = () => document.getElementById('sidebar').classList.remove('open');
+document.getElementById('mobile-opts-btn').onclick = () => document.getElementById('sidebar').classList.add('open');
+document.getElementById('pause-trigger').onclick = togglePause;
+document.getElementById('resume-btn').onclick = togglePause;
+document.getElementById('restart-btn').onclick = () => { quit(); start(); };
+document.getElementById('quit-btn').onclick = quit;
+document.getElementById('start-btn').onclick = start;
+
+document.getElementById('scroll-toggle').onclick = (e) => {
+    isDownscroll = !isDownscroll;
+    e.target.innerText = `DOWNSCROLL: ${isDownscroll ? 'ON' : 'OFF'}`;
+    saveSettings();
+};
+document.getElementById('bot-toggle').onclick = (e) => {
+    isBotplay = !isBotplay;
+    e.target.innerText = `BOTPLAY: ${isBotplay ? 'ON' : 'OFF'}`;
+    saveSettings();
+};
+document.getElementById('hitsound-toggle').onclick = (e) => {
+    useHitSounds = !useHitSounds;
+    e.target.innerText = `HIT SOUNDS: ${useHitSounds ? 'ON' : 'OFF'}`;
+    saveSettings();
+};
+document.getElementById('note-style-select').onchange = (e) => {
+    noteStyle = e.target.value;
+    saveSettings();
+};
+document.getElementById('reset-settings').onclick = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+};
+
+['inst', 'voc', 'hit'].forEach(id => {
+    const el = document.getElementById(`vol-${id}`);
+    el.oninput = () => {
+        const val = parseFloat(el.value);
+        if (id === 'inst') instGain.gain.value = val;
+        if (id === 'voc') vocGain.gain.value = val;
+        if (id === 'hit') hitGain.gain.value = val;
+        document.getElementById(`vol-${id}-val`).innerText = `${Math.round(val * 100)}%`;
+        saveSettings();
+    };
+});
+
+for(let i=0; i<4; i++) {
+    const el = document.getElementById(`color-${i}`);
+    el.oninput = () => {
+        colors[i] = el.value;
+        updateTintCache();
+        saveSettings();
+    };
+}
+
+init();
+</script>
+</body>
+</html>
