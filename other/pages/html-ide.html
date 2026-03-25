@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple HTML Runner</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 800px; margin: auto; }
+        textarea { 
+            width: 100%; 
+            height: 300px; 
+            font-family: monospace; 
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        p { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>HTML Code Runner</h2>
+    <p>Enter your HTML/CSS/JS below and click "Run in New Tab".</p>
+    
+    <textarea id="code-input" placeholder="<html>
+<body>
+  <h1>Hello World!</h1>
+  <script>console.log('Running from a Blob!');</script>
+</body>
+</html>"></textarea>
+
+    <button onclick="runCode()">Run in New Tab</button>
+</div>
+
+<script>
+    function runCode() {
+        // 1. Get the content from the textarea
+        const code = document.getElementById('code-input').value;
+
+        // 2. Create a Blob object with the HTML content
+        const blob = new Blob([code], { type: 'text/html' });
+
+        // 3. Create a unique URL representing that blob
+        const blobUrl = URL.createObjectURL(blob);
+
+        // 4. Open that URL in a new browser tab
+        window.open(blobUrl, '_blank');
+
+        // Optional: Clean up the URL after a delay to free memory
+        // setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    }
+</script>
+
+</body>
+</html>
