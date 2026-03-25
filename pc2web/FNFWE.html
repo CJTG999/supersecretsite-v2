@@ -250,7 +250,7 @@
 
 <script>
 /**
- * FNF WEB ENGINE - UPDATED WITH INDIVIDUAL VOCAL UPLOADS
+ * FNF WEB ENGINE - UPDATED HUD & ANIMATIONS
  */
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -286,12 +286,12 @@ let scrollSpeed = 2.5, isDownscroll = true, isBotplay = false, useHitSounds = tr
 let health = 0.5, score = 0, combo = 0, totalMisses = 0;
 let noteStyle = 'arrows';
 
-// Rating UI Animation state
+// --- NEW HUD ANIMATION STATE ---
 let comboUI = {
     rating: "",
-    combo: 0,
     alpha: 0,
     scale: 1,
+    yOffset: 0,
     isFC: true
 };
 
@@ -374,6 +374,7 @@ function playHitSound() {
     source.start(0);
 }
 
+// --- UPDATED RATING LOGIC ---
 function triggerRating(diff) {
     let r = "SH!T";
     const absDiff = Math.abs(diff);
@@ -382,9 +383,9 @@ function triggerRating(diff) {
     else if (absDiff < 135) r = "Bad";
     
     comboUI.rating = r;
-    comboUI.combo = combo;
     comboUI.alpha = 1.0;
-    comboUI.scale = 1.3;
+    comboUI.scale = 1.4; // Initial pop size
+    comboUI.yOffset = 0; // Reset bounce
     comboUI.isFC = (totalMisses === 0);
 }
 
@@ -411,7 +412,6 @@ function parseChart(json) {
     updateStartBtn();
 }
 
-// Rendering Logic
 function drawReceptor(ctx, x, y, size, lane, style, isPressed) {
     const cx = x + size/2;
     const cy = y + size/2;
@@ -511,7 +511,7 @@ function drawNote(ctx, x, y, size, lane, style, isPlayer) {
     input.dispatchEvent(new Event('input'));
 });
 
-// Manual Imports Logic
+// Manual Imports
 document.getElementById('inst-up').onchange = async (e) => {
     if (!e.target.files[0]) return;
     showToast("Decoding Instrumental...");
@@ -558,7 +558,7 @@ document.getElementById('zip-up').onchange = async (e) => {
     } catch(err) { showToast("Error reading ZIP"); }
 };
 
-// UI Event Handlers
+// UI Handlers
 document.getElementById('note-style-select').onchange = (e) => {
     noteStyle = e.target.value;
     document.getElementById('arrow-colors-ui').classList.toggle('hidden-ui', noteStyle !== 'arrows');
@@ -657,35 +657,44 @@ function loop() {
         drawReceptor(ctx, x, sY, 100, lane, noteStyle, pressed);
     }
 
-    // DRAW RATING & COMBO
-    if (comboUI.alpha > 0) {
-        ctx.save();
-        const uiX = isMiddlescroll ? playerX - 100 : canvas.width / 2;
-        const uiY = canvas.height / 2;
-        
-        ctx.globalAlpha = comboUI.alpha;
-        ctx.textAlign = "center";
-        
-        // Bounce Logic
-        if (comboUI.scale > 1.0) comboUI.scale -= 0.05;
-        if (comboUI.scale < 1.0) comboUI.scale = 1.0;
-        
-        // Fade Logic
-        comboUI.alpha -= 0.02;
+    // --- NEW RATING & COMBO HUD RENDERING ---
+    ctx.save();
+    const uiX = canvas.width / 2;
+    const uiY = canvas.height / 2 - 50;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
-        // Rating Text
-        ctx.fillStyle = "white";
-        ctx.font = `bold ${40 * comboUI.scale}px Inter`;
-        ctx.fillText(comboUI.rating.toUpperCase(), uiX, uiY);
-
-        // Combo Number
+    // 1. Permanent Combo Number (Visible as long as combo > 0)
+    if (combo > 0) {
         ctx.fillStyle = comboUI.isFC ? "#FFD700" : "white";
-        ctx.font = `bold ${30 * comboUI.scale}px Inter`;
-        ctx.fillText(comboUI.combo, uiX, uiY + 40);
+        ctx.font = "bold 35px Inter";
+        ctx.fillText(combo, uiX, uiY + 50);
         
-        ctx.restore();
+        ctx.font = "bold 12px Inter";
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillText("COMBO", uiX, uiY + 75);
     }
 
+    // 2. Animated Rating Text (Sick, Good, etc.)
+    if (comboUI.alpha > 0) {
+        ctx.globalAlpha = comboUI.alpha;
+        
+        // Bounce Logic: Move up and shrink over time
+        comboUI.yOffset -= 1.5; 
+        if (comboUI.scale > 1.0) comboUI.scale -= 0.05;
+        
+        // Fade Logic
+        comboUI.alpha -= 0.018; 
+
+        ctx.fillStyle = "white";
+        ctx.font = `italic bold ${45 * comboUI.scale}px Inter`;
+        
+        // Draw rating with bounce offset
+        ctx.fillText(comboUI.rating.toUpperCase(), uiX, uiY + comboUI.yOffset);
+    }
+    ctx.restore();
+
+    // Progress Bar
     ctx.fillStyle = '#111'; ctx.fillRect(340, 680, 600, 15);
     ctx.fillStyle = '#38EF7D'; ctx.fillRect(340 + (600 * (1-health)), 680, 600 * health, 15);
     
