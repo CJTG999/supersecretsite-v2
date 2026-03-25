@@ -225,6 +225,7 @@
     </div>
 
     <div class="input-group">
+        <button id="arrow-toggle" class="menu-btn">CONTROL: LETTERS</button>
         <button id="scroll-toggle" class="menu-btn">DOWNSCROLL: ON</button>
         <button id="middle-toggle" class="menu-btn">MIDDLESCROLL: OFF</button>
         <button id="bot-toggle" class="menu-btn">BOTPLAY: OFF</button>
@@ -250,7 +251,7 @@
 
 <script>
 /**
- * FNF WEB ENGINE - UPDATED HUD & ANIMATIONS
+ * FNF WEB ENGINE - UPDATED WITH ARROW KEY TOGGLE
  */
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -283,10 +284,10 @@ let instBuf, vocBuf, hitSoundBuf, instSource, vocSource;
 let isPlaying = false, startTime = 0, songTime = 0;
 let notes = [], activeNotes = [];
 let scrollSpeed = 2.5, isDownscroll = true, isBotplay = false, useHitSounds = true, ghostTapping = true, isMiddlescroll = false;
+let useArrowKeys = false; // Toggle state for arrow keys
 let health = 0.5, score = 0, combo = 0, totalMisses = 0;
 let noteStyle = 'arrows';
 
-// --- NEW HUD ANIMATION STATE ---
 let comboUI = {
     rating: "",
     alpha: 0,
@@ -295,13 +296,11 @@ let comboUI = {
     isFC: true
 };
 
-// Texture Data
 let arrowSheet = new Image();
 let atlasData = {};
 let tintCache = [null, null, null, null]; 
 let receptorCache = [null, null, null, null]; 
 
-// Key Tracking
 let keys = ['d', 'f', 'j', 'k'];
 let keyPressedState = [false, false, false, false];
 let opponentPressedState = [false, false, false, false];
@@ -374,7 +373,6 @@ function playHitSound() {
     source.start(0);
 }
 
-// --- UPDATED RATING LOGIC ---
 function triggerRating(diff) {
     let r = "SH!T";
     const absDiff = Math.abs(diff);
@@ -384,8 +382,8 @@ function triggerRating(diff) {
     
     comboUI.rating = r;
     comboUI.alpha = 1.0;
-    comboUI.scale = 1.4; // Initial pop size
-    comboUI.yOffset = 0; // Reset bounce
+    comboUI.scale = 1.4;
+    comboUI.yOffset = 0;
     comboUI.isFC = (totalMisses === 0);
 }
 
@@ -657,14 +655,12 @@ function loop() {
         drawReceptor(ctx, x, sY, 100, lane, noteStyle, pressed);
     }
 
-    // --- NEW RATING & COMBO HUD RENDERING ---
     ctx.save();
     const uiX = canvas.width / 2;
     const uiY = canvas.height / 2 - 50;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // 1. Permanent Combo Number (Visible as long as combo > 0)
     if (combo > 0) {
         ctx.fillStyle = comboUI.isFC ? "#FFD700" : "white";
         ctx.font = "bold 35px Inter";
@@ -675,26 +671,17 @@ function loop() {
         ctx.fillText("COMBO", uiX, uiY + 75);
     }
 
-    // 2. Animated Rating Text (Sick, Good, etc.)
     if (comboUI.alpha > 0) {
         ctx.globalAlpha = comboUI.alpha;
-        
-        // Bounce Logic: Move up and shrink over time
         comboUI.yOffset -= 1.5; 
         if (comboUI.scale > 1.0) comboUI.scale -= 0.05;
-        
-        // Fade Logic
         comboUI.alpha -= 0.018; 
-
         ctx.fillStyle = "white";
         ctx.font = `italic bold ${45 * comboUI.scale}px Inter`;
-        
-        // Draw rating with bounce offset
         ctx.fillText(comboUI.rating.toUpperCase(), uiX, uiY + comboUI.yOffset);
     }
     ctx.restore();
 
-    // Progress Bar
     ctx.fillStyle = '#111'; ctx.fillRect(340, 680, 600, 15);
     ctx.fillStyle = '#38EF7D'; ctx.fillRect(340 + (600 * (1-health)), 680, 600 * health, 15);
     
@@ -702,12 +689,24 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
+// --- UPDATED INPUT HANDLING FOR ARROW KEYS ---
 window.onkeydown = (e) => {
     if (document.activeElement.tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
+    
     if (k === ' ') { e.preventDefault(); isPlaying ? stop() : start(); return; }
     if (k === 'r') { stop(); start(); return; }
-    const lane = keys.indexOf(k);
+
+    const arrowMap = { "arrowleft": 0, "arrowdown": 1, "arrowup": 2, "arrowright": 3 };
+    let lane = -1;
+
+    if (useArrowKeys && arrowMap[k] !== undefined) {
+        lane = arrowMap[k];
+        e.preventDefault(); // Prevent page scroll
+    } else {
+        lane = keys.indexOf(k);
+    }
+
     if (lane !== -1) {
         keyPressedState[lane] = true;
         if (isPlaying && !isBotplay) {
@@ -731,8 +730,22 @@ window.onkeydown = (e) => {
 };
 
 window.onkeyup = (e) => {
-    const lane = keys.indexOf(e.key.toLowerCase());
+    const k = e.key.toLowerCase();
+    const arrowMap = { "arrowleft": 0, "arrowdown": 1, "arrowup": 2, "arrowright": 3 };
+    let lane = -1;
+
+    if (useArrowKeys && arrowMap[k] !== undefined) {
+        lane = arrowMap[k];
+    } else {
+        lane = keys.indexOf(k);
+    }
+    
     if (lane !== -1) keyPressedState[lane] = false;
+};
+
+document.getElementById('arrow-toggle').onclick = (e) => { 
+    useArrowKeys = !useArrowKeys; 
+    e.target.innerText = `CONTROL: ${useArrowKeys ? 'ARROWS' : 'LETTERS'}`; 
 };
 
 document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.innerText = `DOWNSCROLL: ${isDownscroll ? 'ON' : 'OFF'}`; };
