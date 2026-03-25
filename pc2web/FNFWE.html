@@ -283,8 +283,17 @@ let instBuf, vocBuf, hitSoundBuf, instSource, vocSource;
 let isPlaying = false, startTime = 0, songTime = 0;
 let notes = [], activeNotes = [];
 let scrollSpeed = 2.5, isDownscroll = true, isBotplay = false, useHitSounds = true, ghostTapping = true, isMiddlescroll = false;
-let health = 0.5, score = 0, combo = 0;
+let health = 0.5, score = 0, combo = 0, totalMisses = 0;
 let noteStyle = 'arrows';
+
+// Rating UI Animation state
+let comboUI = {
+    rating: "",
+    combo: 0,
+    alpha: 0,
+    scale: 1,
+    isFC: true
+};
 
 // Texture Data
 let arrowSheet = new Image();
@@ -363,6 +372,20 @@ function playHitSound() {
     source.buffer = hitSoundBuf;
     source.connect(hitGain);
     source.start(0);
+}
+
+function triggerRating(diff) {
+    let r = "SH!T";
+    const absDiff = Math.abs(diff);
+    if (absDiff < 45) r = "Sick";
+    else if (absDiff < 90) r = "Good";
+    else if (absDiff < 135) r = "Bad";
+    
+    comboUI.rating = r;
+    comboUI.combo = combo;
+    comboUI.alpha = 1.0;
+    comboUI.scale = 1.3;
+    comboUI.isFC = (totalMisses === 0);
 }
 
 function parseChart(json) {
@@ -565,7 +588,7 @@ document.getElementById('preset-select').onchange = async (e) => {
 async function start() {
     if (!instBuf) return;
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    isPlaying = true; health = 0.5; score = 0; combo = 0;
+    isPlaying = true; health = 0.5; score = 0; combo = 0; totalMisses = 0;
     activeNotes = notes.map(n => ({...n, hit: false, missed: false}));
     
     instSource = audioCtx.createBufferSource(); instSource.buffer = instBuf;
@@ -603,10 +626,22 @@ function loop() {
         const diff = n.time - songTime;
         const y = isDownscroll ? sY - (diff * scrollSpeed) : sY + (diff * scrollSpeed);
         
-        if (diff < -150) { n.missed = true; if (n.isPlayer) { health -= 0.08; combo = 0; } }
+        if (diff < -150) { 
+            n.missed = true; 
+            if (n.isPlayer) { 
+                health -= 0.08; 
+                combo = 0; 
+                totalMisses++; 
+            } 
+        }
         if (y < -100 || y > 820) return;
 
-        if (isBotplay && n.isPlayer && diff <= 0) { n.hit = true; playHitSound(); combo++; }
+        if (isBotplay && n.isPlayer && diff <= 0) { 
+            n.hit = true; 
+            playHitSound(); 
+            combo++; 
+            triggerRating(0); 
+        }
         if (!n.isPlayer && diff <= 0) { n.hit = true; opponentPressedState[n.lane] = true; }
         if (!n.isPlayer && isMiddlescroll) return;
 
@@ -620,6 +655,35 @@ function loop() {
         const x = (isPlayer ? playerX : opponentX) + (lane * 110);
         const pressed = isPlayer ? keyPressedState[lane] : opponentPressedState[lane];
         drawReceptor(ctx, x, sY, 100, lane, noteStyle, pressed);
+    }
+
+    // DRAW RATING & COMBO
+    if (comboUI.alpha > 0) {
+        ctx.save();
+        const uiX = isMiddlescroll ? playerX - 100 : canvas.width / 2;
+        const uiY = canvas.height / 2;
+        
+        ctx.globalAlpha = comboUI.alpha;
+        ctx.textAlign = "center";
+        
+        // Bounce Logic
+        if (comboUI.scale > 1.0) comboUI.scale -= 0.05;
+        if (comboUI.scale < 1.0) comboUI.scale = 1.0;
+        
+        // Fade Logic
+        comboUI.alpha -= 0.02;
+
+        // Rating Text
+        ctx.fillStyle = "white";
+        ctx.font = `bold ${40 * comboUI.scale}px Inter`;
+        ctx.fillText(comboUI.rating.toUpperCase(), uiX, uiY);
+
+        // Combo Number
+        ctx.fillStyle = comboUI.isFC ? "#FFD700" : "white";
+        ctx.font = `bold ${30 * comboUI.scale}px Inter`;
+        ctx.fillText(comboUI.combo, uiX, uiY + 40);
+        
+        ctx.restore();
     }
 
     ctx.fillStyle = '#111'; ctx.fillRect(340, 680, 600, 15);
@@ -639,8 +703,20 @@ window.onkeydown = (e) => {
         keyPressedState[lane] = true;
         if (isPlaying && !isBotplay) {
             const note = activeNotes.find(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < 160);
-            if (note) { note.hit = true; health = Math.min(1, health + 0.02); score += 100; combo++; playHitSound(); }
-            else if (!ghostTapping) { health -= 0.04; combo = 0; }
+            if (note) { 
+                const diff = note.time - songTime;
+                note.hit = true; 
+                health = Math.min(1, health + 0.02); 
+                score += 100; 
+                combo++; 
+                playHitSound();
+                triggerRating(diff);
+            }
+            else if (!ghostTapping) { 
+                health -= 0.04; 
+                combo = 0; 
+                totalMisses++;
+            }
         }
     }
 };
@@ -651,6 +727,7 @@ window.onkeyup = (e) => {
 };
 
 document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.innerText = `DOWNSCROLL: ${isDownscroll ? 'ON' : 'OFF'}`; };
+document.getElementById('middle-toggle').onclick = (e) => { isMiddlescroll = !isMiddlescroll; e.target.innerText = `MIDDLESCROLL: ${isMiddlescroll ? 'ON' : 'OFF'}`; };
 document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.innerText = `BOTPLAY: ${isBotplay ? 'ON' : 'OFF'}`; };
 document.getElementById('hitsound-toggle').onclick = (e) => { useHitSounds = !useHitSounds; e.target.innerText = `HIT SOUNDS: ${useHitSounds ? 'ON' : 'OFF'}`; };
 document.getElementById('speed-slider').oninput = (e) => { scrollSpeed = parseFloat(e.target.value); document.getElementById('speed-val').innerText = scrollSpeed; };
