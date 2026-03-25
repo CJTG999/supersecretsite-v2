@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FNF Web - Advanced Engine</title>
-    <!-- JSZip for Zip file support -->
+    <title>FNF Web Engine v3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -12,8 +11,9 @@
             --panel: #111;
             --text: #eee;
             --accent: #38EF7D;
+            --secondary: #00D2FF;
             --error: #ff4b2b;
-            --sidebar-width: 300px;
+            --sidebar-width: 320px;
         }
 
         body {
@@ -26,7 +26,6 @@
             overflow: hidden;
         }
 
-        /* Sidebar Styling */
         #sidebar {
             width: var(--sidebar-width);
             background: var(--panel);
@@ -39,7 +38,6 @@
             z-index: 100;
         }
 
-        h2 { font-size: 18px; margin-top: 0; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
         .section-header {
             font-size: 10px;
             color: #555;
@@ -48,77 +46,91 @@
             margin: 20px 0 10px 0;
             border-bottom: 1px solid #222;
             padding-bottom: 4px;
-            display: block;
         }
 
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        label { font-size: 11px; font-weight: bold; color: #999; }
+        label { font-size: 11px; font-weight: bold; color: #999; display: flex; justify-content: space-between; }
         
-        select, input[type="range"], button.menu-btn {
+        select, input, button.menu-btn {
             background: #1a1a1a;
             color: #fff;
             border: 1px solid #333;
-            padding: 8px;
-            border-radius: 4px;
+            padding: 10px;
+            border-radius: 6px;
             font-size: 12px;
             cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
             transition: all 0.2s;
         }
-        
+
         button.menu-btn:hover { border-color: var(--accent); background: #222; }
-        button.menu-btn.active { border-color: var(--accent); color: var(--accent); }
         
-        input[type="file"] { font-size: 10px; color: #777; }
-
-        /* Keybind Grid */
-        .bind-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .key-setter {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            color: var(--accent);
-            padding: 10px 0;
-            text-align: center;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
+        .keybind-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
         }
-        .key-setter.waiting { border-color: #fff; color: #fff; animation: pulse 1s infinite; }
+        .keybind-grid input {
+            text-align: center;
+            padding: 5px;
+            text-transform: uppercase;
+        }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        .color-grid input[type="color"] {
+            padding: 2px;
+            height: 30px;
+            border: none;
+            background: none;
+        }
 
-        /* Game Area */
         #main-stage {
             flex-grow: 1;
             position: relative;
             background: #000;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
-        canvas { width: 100%; height: 100%; object-fit: contain; }
+        canvas { width: 100%; height: 100%; object-fit: contain; background: #000; }
 
         .overlay {
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.85);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 50;
+            transition: opacity 0.3s ease;
+        }
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .btn-start {
-            padding: 15px 50px;
-            font-size: 20px;
-            font-weight: bold;
+            padding: 20px 60px;
+            font-size: 24px;
+            font-weight: 900;
             background: var(--accent);
             color: #000;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
+            transition: transform 0.2s;
         }
+        .btn-start:hover:not(:disabled) { transform: scale(1.05); }
         .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+        .hidden-ui { display: none !important; }
 
         #toast {
             position: fixed;
@@ -126,562 +138,525 @@
             right: 20px;
             background: var(--accent);
             color: #000;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: 12px 24px;
+            border-radius: 8px;
             font-weight: bold;
             transform: translateY(100px);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.3s;
             z-index: 1000;
         }
         #toast.show { transform: translateY(0); }
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2>FNF Web Engine v2.0</h2>
+    <h2 style="color: var(--accent); margin: 0 0 20px 0;">FNF WEB ENGINE</h2>
 
-    <span class="section-header">Bulk Upload</span>
+    <span class="section-header">Volumes</span>
     <div class="input-group">
-        <label>Upload Folder or ZIP</label>
-        <input type="file" id="bulk-folder" webkitdirectory directory multiple>
-        <input type="file" id="bulk-zip" accept=".zip" style="margin-top: 5px;">
+        <label>Instrumental <span id="vol-inst-val">80%</span></label>
+        <input type="range" id="vol-inst" min="0" max="1" step="0.05" value="0.8">
+        
+        <label>Vocals <span id="vol-voc-val">100%</span></label>
+        <input type="range" id="vol-voc" min="0" max="1" step="0.05" value="1.0">
+        
+        <label>Hit Sounds <span id="vol-hit-val">60%</span></label>
+        <input type="range" id="vol-hit" min="0" max="1" step="0.05" value="0.6">
     </div>
 
-    <span class="section-header">Presets</span>
+    <span class="section-header">Preset Manager</span>
     <div class="input-group">
-        <label>Select Song</label>
+        <label>Select Preset</label>
         <select id="preset-select">
-            <option value="">Custom (Upload below)</option>
+            <option value="">-- Choose a Song --</option>
             <option value="guns">Guns (Week 7)</option>
         </select>
-        <button id="save-as-preset" class="menu-btn">SAVE AS PRESET</button>
     </div>
 
-    <span class="section-header">Audio & Chart</span>
+    <span class="section-header">Manual Imports</span>
     <div class="input-group">
-        <label>Song Mode</label>
-        <select id="audio-mode">
-            <option value="1">1 File (Mixed)</option>
-            <option value="2" selected>2 Files (Split)</option>
-            <option value="3">3 Files (Inst + P + O)</option>
+        <label>Upload ZIP (all files)</label>
+        <input type="file" id="zip-up" accept=".zip">
+    </div>
+    <div class="input-group">
+        <label>Instrumental</label>
+        <input type="file" id="inst-up" accept="audio/*">
+    </div>
+    <div class="input-group">
+        <label>Vocals</label>
+        <input type="file" id="voc-up" accept="audio/*">
+    </div>
+    <div class="input-group">
+        <label>Chart (.json)</label>
+        <input type="file" id="chart-up" accept=".json">
+    </div>
+
+    <span class="section-header">Gameplay Settings</span>
+    <div class="input-group">
+        <label>Note Type</label>
+        <select id="note-style-select">
+            <option value="circle">Circles</option>
+            <option value="square">Squares</option>
+            <option value="triangle">Triangles</option>
+            <option value="arrows" selected>Arrows</option>
         </select>
+    </div>
+
+    <div id="arrow-colors-ui" class="input-group">
+        <label>Colors (L, D, U, R)</label>
+        <div class="color-grid">
+            <input type="color" id="color-0" value="#c24b99">
+            <input type="color" id="color-1" value="#00ffff">
+            <input type="color" id="color-2" value="#12fa05">
+            <input type="color" id="color-3" value="#f9393f">
+        </div>
+    </div>
+
+    <span class="section-header">Controls</span>
+    <div class="input-group">
+        <label>Keybinds</label>
+        <div class="keybind-grid">
+            <input type="text" id="key-0" value="D" maxlength="1">
+            <input type="text" id="key-1" value="F" maxlength="1">
+            <input type="text" id="key-2" value="J" maxlength="1">
+            <input type="text" id="key-3" value="K" maxlength="1">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <button id="scroll-toggle" class="menu-btn">DOWNSCROLL: ON</button>
+        <button id="middle-toggle" class="menu-btn">MIDDLESCROLL: OFF</button>
+        <button id="bot-toggle" class="menu-btn">BOTPLAY: OFF</button>
+        <button id="hitsound-toggle" class="menu-btn">HIT SOUNDS: ON</button>
+        <button id="ghost-toggle" class="menu-btn">GHOST TAPPING: ON</button>
     </div>
     
-    <div id="upload-inst" class="input-group"><label>Instrumental</label><input type="file" id="inst-up" accept="audio/*"></div>
-    <div id="upload-voc" class="input-group"><label id="voc-label">Vocals</label><input type="file" id="voc-up" accept="audio/*"></div>
-    <div id="upload-opp" class="input-group hidden"><label>Opponent Vocals</label><input type="file" id="opp-up" accept="audio/*"></div>
-    <div class="input-group"><label>Chart (.json)</label><input type="file" id="chart-up" accept=".json,.fnfc"></div>
-
-    <span class="section-header">Accessibility</span>
     <div class="input-group">
-        <label>Play Mode</label>
-        <select id="play-mode">
-            <option value="bf">Play BF (Normal)</option>
-            <option value="opponent">Play Opponent</option>
-            <option value="both">Play Both (Middlescroll)</option>
-        </select>
-    </div>
-
-    <span class="section-header">Sound</span>
-    <div class="input-group">
-        <label>Master Volume</label>
-        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
-    </div>
-    <div class="input-group">
-        <label>Hit Sounds</label>
-        <select id="hitsound-mode">
-            <option value="both">Both</option>
-            <option value="player" selected>Player Only</option>
-            <option value="opponent">Opponent Only</option>
-            <option value="none">None</option>
-        </select>
-    </div>
-
-    <span class="section-header">Gameplay</span>
-    <div class="input-group">
-        <label>Scroll Speed</label>
-        <input type="range" id="speed-slider" min="1" max="6" step="0.1" value="3.2">
-    </div>
-    <div class="input-group">
-        <button id="scroll-toggle" class="menu-btn">UPSCROLL</button>
-        <button id="bot-toggle" class="menu-btn">BOTPLAY: OFF</button>
-        <button id="ghost-toggle" class="menu-btn">GHOST TAPPING: OFF</button>
-    </div>
-
-    <span class="section-header">Keybinds</span>
-    <div class="bind-grid">
-        <div class="key-setter" data-lane="0" id="bind-0">D</div>
-        <div class="key-setter" data-lane="1" id="bind-1">F</div>
-        <div class="key-setter" data-lane="2" id="bind-2">J</div>
-        <div class="key-setter" data-lane="3" id="bind-3">K</div>
-    </div>
-
-    <span class="section-header">Data Management</span>
-    <div class="input-group">
-        <button id="clear-data" class="menu-btn" style="color: var(--error);">CLEAR ALL SAVED SONGS</button>
-        <button id="export-presets" class="menu-btn">EXPORT PRESETS (JSON)</button>
+        <label>Scroll Speed: <span id="speed-val">2.5</span></label>
+        <input type="range" id="speed-slider" min="1" max="5" step="0.1" value="2.5">
     </div>
 </div>
 
 <div id="main-stage">
     <div id="start-screen" class="overlay">
         <button id="start-btn" class="btn-start" disabled>AWAITING ASSETS</button>
-        <p style="color: #666; margin-top: 20px; font-size: 12px;">Controls: [R] Restart, [P] Exit to Menu</p>
+        <p style="color: #888; margin-top: 15px; font-family: monospace;">[SPACE] Start • [R] Restart</p>
     </div>
     <canvas id="game"></canvas>
 </div>
 
-<div id="toast">Preset Saved!</div>
+<div id="toast">Ready!</div>
 
 <script>
 /**
- * FNF WEB ENGINE - REFINED CORE WITH HOTKEYS AND POPUP UI
+ * FNF WEB ENGINE - UPDATED WITH INDIVIDUAL VOCAL UPLOADS
  */
-
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const startBtn = document.getElementById('start-btn');
-const speedSlider = document.getElementById('speed-slider');
-const volSlider = document.getElementById('volume-slider');
-const hitSoundSelect = document.getElementById('hitsound-mode');
-const audioModeSelect = document.getElementById('audio-mode');
-const playModeSelect = document.getElementById('play-mode');
-const toast = document.getElementById('toast');
+const startScreen = document.getElementById('start-screen');
 
-canvas.width = 1280; canvas.height = 720;
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-const HS_URL = "https://codehs.com/uploads/9a83a5f1ec0d6e55cab21c974f523a9a";
-const PRESETS = {
+// Volume Nodes
+const instGain = audioCtx.createGain();
+const vocGain = audioCtx.createGain();
+const hitGain = audioCtx.createGain();
+instGain.connect(audioCtx.destination);
+vocGain.connect(audioCtx.destination);
+hitGain.connect(audioCtx.destination);
+
+const BUILT_IN_PRESETS = {
     guns: {
+        name: "Guns (Week 7)",
         inst: "https://codehs.com/uploads/6a1397376b9e9e043c3a06c363d43aa4",
         voc: "https://codehs.com/uploads/036b51f0e018e8a9461289c5d1f948b3",
         chart: "https://codehs.com/uploads/2a7c94ee757ab992ca21bef7dd1ff91d"
     }
 };
 
-let audioCtx, instBuf, playerBuf, opponentBuf, hsBuf, chartData;
-let instS, playerS, opponentS, masterGain;
-let startTime = 0, isPlaying = false, isDownscroll = false;
-let isBotplay = false, ghostTapping = false, health = 1, activeNotes = [];
-let combo = 0, misses = 0, notesHit = 0, totalPlayed = 0;
-let binds = ['d', 'f', 'j', 'k'], held = [false, false, false, false], listeningForLane = -1;
-const colors = ['#FF4B2B', '#00D2FF', '#38EF7D', '#F9D423'];
+const HITSOUND_URL = "https://codehs.com/uploads/09743623372843dc76af5b7736be6680";
+const ARROW_PNG_URL = "https://codehs.com/uploads/18203ab3287b8e13f9dbfa755b53691e";
 
-// Visual effects state
-let popEffects = []; 
-let comboBounceScale = 1.0; // Scale for the combo number
+let instBuf, vocBuf, hitSoundBuf, instSource, vocSource;
+let isPlaying = false, startTime = 0, songTime = 0;
+let notes = [], activeNotes = [];
+let scrollSpeed = 2.5, isDownscroll = true, isBotplay = false, useHitSounds = true, ghostTapping = true, isMiddlescroll = false;
+let health = 0.5, score = 0, combo = 0;
+let noteStyle = 'arrows';
 
-const dbRequest = indexedDB.open("FNFPresets", 4);
-let db;
-dbRequest.onupgradeneeded = e => {
-    const d = e.target.result;
-    if (!d.objectStoreNames.contains("presets")) d.createObjectStore("presets");
-    if (!d.objectStoreNames.contains("userSongs")) d.createObjectStore("userSongs");
-};
-dbRequest.onsuccess = e => { db = e.target.result; loadUserSongList(); };
+// Texture Data
+let arrowSheet = new Image();
+let atlasData = {};
+let tintCache = [null, null, null, null]; 
+let receptorCache = [null, null, null, null]; 
 
-function showToast(msg) { toast.innerText = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000); }
+// Key Tracking
+let keys = ['d', 'f', 'j', 'k'];
+let keyPressedState = [false, false, false, false];
+let opponentPressedState = [false, false, false, false];
+let colors = ['#c24b99', '#00ffff', '#12fa05', '#f9393f'];
 
-audioModeSelect.onchange = () => {
-    const m = audioModeSelect.value;
-    document.getElementById('upload-voc').classList.toggle('hidden', m === "1");
-    document.getElementById('upload-opp').classList.toggle('hidden', m !== "3");
-    document.getElementById('voc-label').innerText = m === "3" ? "Player Vocals" : "Vocals";
-};
+canvas.width = 1280; canvas.height = 720;
 
-async function getBuf(src) {
-    if (!audioCtx) {
-        audioCtx = new AudioContext();
-        masterGain = audioCtx.createGain();
-        masterGain.connect(audioCtx.destination);
-    }
-    const r = await (src instanceof File || src instanceof Blob ? src.arrayBuffer() : fetch(src).then(x => x.arrayBuffer()));
-    return await audioCtx.decodeAudioData(r);
+function showToast(m) {
+    const t = document.getElementById('toast');
+    t.innerText = m; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-getBuf(HS_URL).then(b => hsBuf = b);
+function updateStartBtn() {
+    if (instBuf && notes.length > 0) {
+        startBtn.disabled = false;
+        startBtn.innerText = "START SONG";
+    }
+}
 
-function parseChart(raw) {
-    const data = raw.song || raw;
-    chartData = raw;
-    if (data.speed) speedSlider.value = data.speed;
-    activeNotes = [];
-    data.notes.forEach(s => {
-        s.sectionNotes.forEach(n => {
-            const isP = (n[1] < 4) ? s.mustHitSection : !s.mustHitSection;
-            activeNotes.push({ 
-                time: n[0], 
-                lane: n[1] % 4, 
-                isPlayer: isP, 
-                len: n[2] || 0,
-                hit: false, 
-                held: false,
-                fullyHit: false
+async function decodeAudio(data) {
+    let buffer = data;
+    if (typeof data === 'string') buffer = await fetch(data).then(r => r.arrayBuffer());
+    return await audioCtx.decodeAudioData(buffer);
+}
+
+async function initAssets() {
+    try {
+        hitSoundBuf = await decodeAudio(HITSOUND_URL);
+        arrowSheet.src = ARROW_PNG_URL;
+        await new Promise(r => arrowSheet.onload = r);
+
+        atlasData = {
+            LEFT:  { x: 156, y: 237, w: 154, h: 157 },
+            DOWN:  { x: 479, y: 234, w: 157, h: 154 },
+            UP:    { x: 637, y: 234, w: 157, h: 154 },
+            RIGHT: { x: 311, y: 237, w: 154, h: 157 }
+        };
+
+        updateTintCache();
+        startBtn.innerText = "AWAITING SONG SELECT";
+        showToast("Engine Ready");
+    } catch(e) { console.error(e); }
+}
+
+function updateTintCache() {
+    const lanes = ["LEFT", "DOWN", "UP", "RIGHT"];
+    lanes.forEach((name, i) => {
+        const data = atlasData[name];
+        [tintCache, receptorCache].forEach(cache => {
+            const canvas = document.createElement('canvas');
+            canvas.width = data.w; canvas.height = data.h;
+            const tctx = canvas.getContext('2d');
+            tctx.drawImage(arrowSheet, data.x, data.y, data.w, data.h, 0, 0, data.w, data.h);
+            tctx.globalCompositeOperation = 'multiply';
+            tctx.fillStyle = colors[i];
+            tctx.fillRect(0, 0, data.w, data.h);
+            tctx.globalCompositeOperation = 'destination-in';
+            tctx.drawImage(arrowSheet, data.x, data.y, data.w, data.h, 0, 0, data.w, data.h);
+            cache[i] = canvas;
+        });
+    });
+}
+
+function playHitSound() {
+    if (!useHitSounds || !hitSoundBuf) return;
+    const source = audioCtx.createBufferSource();
+    source.buffer = hitSoundBuf;
+    source.connect(hitGain);
+    source.start(0);
+}
+
+function parseChart(json) {
+    const data = json.song || json;
+    notes = [];
+    scrollSpeed = data.speed || 2.5;
+    document.getElementById('speed-slider').value = scrollSpeed;
+    document.getElementById('speed-val').innerText = scrollSpeed;
+
+    const sections = data.notes || [];
+    sections.forEach(section => {
+        if (!section.sectionNotes) return;
+        section.sectionNotes.forEach(n => {
+            notes.push({
+                time: n[0],
+                lane: n[1] % 4,
+                isPlayer: n[1] < 4 ? section.mustHitSection : !section.mustHitSection,
+                hit: false, missed: false
             });
         });
     });
-    startBtn.disabled = false; startBtn.innerText = "START SONG";
+    notes.sort((a,b) => a.time - b.time);
+    updateStartBtn();
 }
 
-async function handleBulkFiles(files) {
-    const mode = audioModeSelect.value;
-    let foundInst, foundVocals, foundOpp, foundChart;
-    const isAudio = f => f.name.match(/\.(mp3|ogg|wav)$/i);
-    const isChart = f => f.name.match(/\.(json|fnfc)$/i);
-    for (const file of files) {
-        const name = file.name.toLowerCase();
-        if (mode === "1") {
-            if (isAudio(file)) foundInst = file;
-            if (isChart(file)) foundChart = file;
-        } else if (mode === "2") {
-            if (name.includes("inst")) foundInst = file;
-            if (name.includes("vocals") || name.includes("voices")) foundVocals = file;
-            if (isChart(file)) foundChart = file;
-        } else if (mode === "3") {
-            if (name.includes("inst")) foundInst = file;
-            if (name.includes("vocals-bf") || name.includes("voices-bf")) foundVocals = file;
-            if (name.includes("vocals-opponent") || name.includes("voices-opponent") || name.includes("voices-opp")) foundOpp = file;
-            if (isChart(file)) foundChart = file;
-        }
+// Rendering Logic
+function drawReceptor(ctx, x, y, size, lane, style, isPressed) {
+    const cx = x + size/2;
+    const cy = y + size/2;
+    const r = size * 0.45;
+
+    if (style === 'arrows' && receptorCache[lane]) {
+        const sprite = receptorCache[lane];
+        const scale = size / sprite.width;
+        ctx.globalAlpha = isPressed ? 1.0 : 0.4;
+        if (!isPressed) ctx.filter = 'grayscale(100%)';
+        ctx.drawImage(sprite, x, y, sprite.width * scale, sprite.height * scale);
+        ctx.filter = 'none'; ctx.globalAlpha = 1.0;
+        return;
     }
-    if (foundInst) instBuf = await getBuf(foundInst);
-    if (foundVocals) playerBuf = await getBuf(foundVocals);
-    if (foundOpp) opponentBuf = await getBuf(foundOpp);
-    if (foundChart) {
-        const text = await (foundChart.text ? foundChart.text() : new Response(foundChart).text());
-        parseChart(JSON.parse(text));
+
+    if (isPressed) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = colors[lane];
+    } else {
+        ctx.shadowBlur = 0;
     }
-    if (foundInst && foundChart) showToast("Bulk Upload Successful!");
-    else showToast("Files partial. Ensure names match mode.");
+
+    ctx.strokeStyle = isPressed ? colors[lane] : '#222';
+    ctx.lineWidth = 4;
+    ctx.fillStyle = isPressed ? colors[lane] + '44' : 'transparent';
+
+    switch(style) {
+        case 'circle':
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+            if (isPressed) ctx.fill();
+            break;
+        case 'square':
+            const rs = size * 0.8;
+            ctx.strokeRect(cx - rs/2, cy - rs/2, rs, rs);
+            if (isPressed) ctx.fillRect(cx - rs/2, cy - rs/2, rs, rs);
+            break;
+        case 'triangle':
+            ctx.beginPath();
+            const angle = [Math.PI, Math.PI/2, -Math.PI/2, 0][lane];
+            for(let i=0; i<3; i++) {
+                const a = angle + (i * 2 * Math.PI / 3);
+                ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            }
+            ctx.closePath(); ctx.stroke();
+            if (isPressed) ctx.fill();
+            break;
+    }
+    ctx.shadowBlur = 0;
 }
 
-document.getElementById('bulk-folder').onchange = (e) => handleBulkFiles(e.target.files);
-document.getElementById('bulk-zip').onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    showToast("Processing ZIP...");
-    const zip = await JSZip.loadAsync(file);
-    const files = [];
-    const promises = [];
-    zip.forEach((path, entry) => {
-        if (!entry.dir) {
-            const p = entry.async("blob").then(blob => {
-                blob.name = entry.name.split('/').pop();
-                files.push(blob);
-            });
-            promises.push(p);
-        }
-    });
-    await Promise.all(promises);
-    handleBulkFiles(files);
-};
+function drawNote(ctx, x, y, size, lane, style, isPlayer) {
+    const cx = x + size/2;
+    const cy = y + size/2;
+    const r = size * 0.45;
 
-async function loadUserSongList() {
-    const tx = db.transaction("userSongs", "readonly");
-    const store = tx.objectStore("userSongs");
-    store.openKeyCursor().onsuccess = e => {
-        const c = e.target.result;
-        if (c) {
-            const opt = document.createElement('option');
-            opt.value = `user_${c.key}`; opt.innerText = c.key;
-            document.getElementById('preset-select').appendChild(opt);
-            c.continue();
-        }
+    if (style === 'arrows' && tintCache[lane]) {
+        const sprite = tintCache[lane];
+        const scale = size / sprite.width;
+        if (!isPlayer) ctx.filter = 'grayscale(100%) brightness(50%)';
+        ctx.drawImage(sprite, x, y, sprite.width * scale, sprite.height * scale);
+        ctx.filter = 'none';
+        return;
+    }
+
+    ctx.fillStyle = isPlayer ? colors[lane] : '#444';
+    switch(style) {
+        case 'circle':
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+            break;
+        case 'square':
+            const rs = size * 0.8;
+            ctx.fillRect(cx - rs/2, cy - rs/2, rs, rs);
+            break;
+        case 'triangle':
+            ctx.beginPath();
+            const angle = [Math.PI, Math.PI/2, -Math.PI/2, 0][lane];
+            for(let i=0; i<3; i++) {
+                const a = angle + (i * 2 * Math.PI / 3);
+                ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            }
+            ctx.closePath(); ctx.fill();
+            break;
+    }
+}
+
+// Volume Controls
+['inst', 'voc', 'hit'].forEach(v => {
+    const input = document.getElementById(`vol-${v}`);
+    const display = document.getElementById(`vol-${v}-val`);
+    input.oninput = () => {
+        const val = parseFloat(input.value);
+        display.innerText = Math.round(val * 100) + '%';
+        if (v === 'inst') instGain.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
+        if (v === 'voc') vocGain.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
+        if (v === 'hit') hitGain.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
     };
-}
+    input.dispatchEvent(new Event('input'));
+});
 
-document.getElementById('save-as-preset').onclick = async () => {
-    if (!instBuf || !chartData) return showToast("Need Inst + Chart!");
-    const name = prompt("Enter preset name:");
-    if (!name) return;
-    const tx = db.transaction("userSongs", "readwrite");
-    tx.objectStore("userSongs").put({
-        inst: instBuf, voc: playerBuf, opp: opponentBuf, chart: chartData, mode: audioModeSelect.value
-    }, name);
-    showToast("Preset Saved!");
-    setTimeout(() => location.reload(), 500);
+// Manual Imports Logic
+document.getElementById('inst-up').onchange = async (e) => {
+    if (!e.target.files[0]) return;
+    showToast("Decoding Instrumental...");
+    instBuf = await decodeAudio(await e.target.files[0].arrayBuffer());
+    updateStartBtn();
+    showToast("Inst Loaded");
 };
 
-document.getElementById('clear-data').onclick = () => {
-    if(confirm("Delete all saved songs?")) {
-        const tx = db.transaction("userSongs", "readwrite");
-        tx.objectStore("userSongs").clear().onsuccess = () => location.reload();
-    }
+document.getElementById('voc-up').onchange = async (e) => {
+    if (!e.target.files[0]) return;
+    showToast("Decoding Vocals...");
+    vocBuf = await decodeAudio(await e.target.files[0].arrayBuffer());
+    showToast("Vocals Loaded");
 };
+
+document.getElementById('chart-up').onchange = (e) => {
+    if (!e.target.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            parseChart(JSON.parse(ev.target.result));
+            showToast("Chart Loaded");
+        } catch(err) { showToast("Invalid Chart JSON"); }
+    };
+    reader.readAsText(e.target.files[0]);
+};
+
+document.getElementById('zip-up').onchange = async (e) => {
+    if (!e.target.files[0]) return;
+    showToast("Reading ZIP...");
+    try {
+        const zip = await JSZip.loadAsync(e.target.files[0]);
+        let i, v, c;
+        for (let name in zip.files) {
+            const l = name.toLowerCase();
+            if (l.includes('inst')) i = zip.files[name];
+            else if (l.includes('voc')) v = zip.files[name];
+            else if (l.endsWith('.json')) c = zip.files[name];
+        }
+        if (i) instBuf = await decodeAudio(await i.async("arraybuffer"));
+        if (v) vocBuf = await decodeAudio(await v.async("arraybuffer"));
+        if (c) parseChart(JSON.parse(await c.async("string")));
+        showToast("ZIP Assets Extracted");
+    } catch(err) { showToast("Error reading ZIP"); }
+};
+
+// UI Event Handlers
+document.getElementById('note-style-select').onchange = (e) => {
+    noteStyle = e.target.value;
+    document.getElementById('arrow-colors-ui').classList.toggle('hidden-ui', noteStyle !== 'arrows');
+};
+
+[0,1,2,3].forEach(i => {
+    document.getElementById(`color-${i}`).onchange = (e) => {
+        colors[i] = e.target.value;
+        updateTintCache();
+    };
+    const keyInp = document.getElementById(`key-${i}`);
+    keyInp.oninput = () => { if (keyInp.value) keys[i] = keyInp.value.toLowerCase(); };
+});
 
 document.getElementById('preset-select').onchange = async (e) => {
     const val = e.target.value;
     if (!val) return;
-    startBtn.disabled = true; startBtn.innerText = "LOADING...";
-    if (val === "guns") {
-        instBuf = await getBuf(PRESETS.guns.inst);
-        playerBuf = await getBuf(PRESETS.guns.voc);
-        parseChart(await fetch(PRESETS.guns.chart).then(r => r.json()));
-    } else if (val.startsWith("user_")) {
-        const name = val.replace("user_", "");
-        db.transaction("userSongs").objectStore("userSongs").get(name).onsuccess = ev => {
-            const d = ev.target.result;
-            instBuf = d.inst; playerBuf = d.voc; opponentBuf = d.opp;
-            audioModeSelect.value = d.mode; audioModeSelect.onchange();
-            parseChart(d.chart);
-        };
-    }
+    showToast("Loading Preset...");
+    const p = BUILT_IN_PRESETS[val];
+    instBuf = await decodeAudio(p.inst);
+    vocBuf = p.voc ? await decodeAudio(p.voc) : null;
+    parseChart(await fetch(p.chart).then(r => r.json()));
+    showToast("Preset Ready");
 };
 
-document.getElementById('inst-up').onchange = async (e) => { instBuf = await getBuf(e.target.files[0]); showToast("Inst Loaded"); if(chartData) startBtn.disabled = false; };
-document.getElementById('chart-up').onchange = async (e) => { parseChart(JSON.parse(await e.target.files[0].text())); showToast("Chart Loaded"); };
-
-function playHS(isPlayerHit) {
-    if(!hsBuf) return;
-    const m = hitSoundSelect.value;
-    if (m === 'none' || (m === 'player' && !isPlayerHit) || (m === 'opponent' && isPlayerHit)) return;
-    const s = audioCtx.createBufferSource(); s.buffer = hsBuf;
-    const g = audioCtx.createGain(); g.gain.value = 0.3;
-    s.connect(g); g.connect(masterGain); s.start(0);
-}
-
-function addPopEffect(text, color = 'white') {
-    popEffects.push({
-        text: text,
-        x: canvas.width / 2,
-        y: (canvas.height / 2) - 40,
-        size: 32,
-        alpha: 1.0,
-        color: color,
-        life: 1.0
-    });
-    // Trigger combo bounce
-    comboBounceScale = 1.3;
-}
-
-function createRatingEffect(ms) {
-    const diff = Math.abs(ms);
-    let rating = "Shit";
-    let color = "#ff4b2b";
+// Game Management
+async function start() {
+    if (!instBuf) return;
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    isPlaying = true; health = 0.5; score = 0; combo = 0;
+    activeNotes = notes.map(n => ({...n, hit: false, missed: false}));
     
-    if (diff < 45) { rating = "Sick!"; color = "#00D2FF"; }
-    else if (diff < 90) { rating = "Good"; color = "#38EF7D"; }
-    else if (diff < 135) { rating = "Bad"; color = "#F9D423"; }
-    
-    addPopEffect(rating, color);
-}
+    instSource = audioCtx.createBufferSource(); instSource.buffer = instBuf;
+    instSource.connect(instGain);
+    if (vocBuf) {
+        vocSource = audioCtx.createBufferSource(); vocSource.buffer = vocBuf;
+        vocSource.connect(vocGain);
+    }
 
-function stopSong() {
-    isPlaying = false;
-    [instS, playerS, opponentS].forEach(s => { if(s) try{s.stop()}catch(e){} });
-}
-
-function exitToMenu() {
-    stopSong();
-    document.getElementById('start-screen').classList.remove('hidden');
-}
-
-function startSong() {
-    if(!instBuf) return;
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    stopSong();
-    instS = audioCtx.createBufferSource(); instS.buffer = instBuf; instS.connect(masterGain);
-    if (playerBuf) { playerS = audioCtx.createBufferSource(); playerS.buffer = playerBuf; playerS.connect(masterGain); }
-    if (opponentBuf) { opponentS = audioCtx.createBufferSource(); opponentS.buffer = opponentBuf; opponentS.connect(masterGain); }
-    activeNotes.forEach(n => { n.hit = false; n.held = false; n.fullyHit = false; });
-    health = 1; combo = 0; misses = 0; notesHit = 0; totalPlayed = 0; popEffects = [];
     startTime = audioCtx.currentTime;
-    [instS, playerS, opponentS].forEach(s => { if(s) s.start(0); });
-    isPlaying = true; document.getElementById('start-screen').classList.add('hidden');
+    instSource.start(0); if (vocSource) vocSource.start(0);
+    startScreen.classList.add('hidden');
+    requestAnimationFrame(loop);
+}
+
+function stop() {
+    isPlaying = false;
+    try { if(instSource) instSource.stop(); if(vocSource) vocSource.stop(); } catch(e){}
+    startScreen.classList.remove('hidden');
+}
+
+function loop() {
+    if (!isPlaying) return;
+    songTime = (audioCtx.currentTime - startTime) * 1000;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    const sY = isDownscroll ? 600 : 100;
+    const playerX = isMiddlescroll ? 465 : 740;
+    const opponentX = 140;
+
+    opponentPressedState = [false, false, false, false];
+
+    activeNotes.forEach(n => {
+        if (n.hit || n.missed) return;
+        const diff = n.time - songTime;
+        const y = isDownscroll ? sY - (diff * scrollSpeed) : sY + (diff * scrollSpeed);
+        
+        if (diff < -150) { n.missed = true; if (n.isPlayer) { health -= 0.08; combo = 0; } }
+        if (y < -100 || y > 820) return;
+
+        if (isBotplay && n.isPlayer && diff <= 0) { n.hit = true; playHitSound(); combo++; }
+        if (!n.isPlayer && diff <= 0) { n.hit = true; opponentPressedState[n.lane] = true; }
+        if (!n.isPlayer && isMiddlescroll) return;
+
+        drawNote(ctx, (n.isPlayer ? playerX : opponentX) + (n.lane * 110), y, 100, n.lane, noteStyle, n.isPlayer);
+    });
+
+    for (let i=0; i<8; i++) {
+        const lane = i % 4;
+        const isPlayer = i >= 4;
+        if (!isPlayer && isMiddlescroll) continue;
+        const x = (isPlayer ? playerX : opponentX) + (lane * 110);
+        const pressed = isPlayer ? keyPressedState[lane] : opponentPressedState[lane];
+        drawReceptor(ctx, x, sY, 100, lane, noteStyle, pressed);
+    }
+
+    ctx.fillStyle = '#111'; ctx.fillRect(340, 680, 600, 15);
+    ctx.fillStyle = '#38EF7D'; ctx.fillRect(340 + (600 * (1-health)), 680, 600 * health, 15);
+    
+    if (health <= 0) stop();
     requestAnimationFrame(loop);
 }
 
 window.onkeydown = (e) => {
+    if (document.activeElement.tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
-    
-    if (listeningForLane !== -1) {
-        binds[listeningForLane] = k; document.getElementById(`bind-${listeningForLane}`).innerText = k.toUpperCase();
-        document.getElementById(`bind-${listeningForLane}`).classList.remove('waiting'); listeningForLane = -1; return;
-    }
-
-    if (k === 'r' && (isPlaying || !document.getElementById('start-screen').classList.contains('hidden'))) {
-        if(chartData && instBuf) startSong();
-        return;
-    }
-    if (k === 'p' && isPlaying) {
-        exitToMenu();
-        return;
-    }
-
-    if(!isPlaying) return;
-    const lane = binds.indexOf(k);
-    if(lane === -1 || held[lane]) return;
-    held[lane] = true;
-    const songTime = (audioCtx.currentTime - startTime) * 1000;
-    const pMode = playModeSelect.value;
-    
-    const note = activeNotes.find(n => {
-        if(n.hit) return false;
-        const isTarget = (pMode === 'both') ? true : (pMode === 'opponent' ? !n.isPlayer : n.isPlayer);
-        return isTarget && n.lane === lane && Math.abs(n.time - songTime) < 160;
-    });
-
-    if(note) { 
-        note.hit = true; note.held = true; combo++; notesHit++; totalPlayed++; 
-        health = Math.min(2, health + 0.04); 
-        playHS(note.isPlayer);
-        createRatingEffect(note.time - songTime);
-    } 
-    else if (!ghostTapping) { 
-        health -= 0.05; combo = 0; misses++; totalPlayed++; 
-        addPopEffect("Miss", "#ff4b2b");
+    if (k === ' ') { e.preventDefault(); isPlaying ? stop() : start(); return; }
+    if (k === 'r') { stop(); start(); return; }
+    const lane = keys.indexOf(k);
+    if (lane !== -1) {
+        keyPressedState[lane] = true;
+        if (isPlaying && !isBotplay) {
+            const note = activeNotes.find(n => n.isPlayer && !n.hit && n.lane === lane && Math.abs(n.time - songTime) < 160);
+            if (note) { note.hit = true; health = Math.min(1, health + 0.02); score += 100; combo++; playHitSound(); }
+            else if (!ghostTapping) { health -= 0.04; combo = 0; }
+        }
     }
 };
 
 window.onkeyup = (e) => {
-    const l = binds.indexOf(e.key.toLowerCase());
-    if(l !== -1) {
-        held[l] = false;
-        activeNotes.forEach(n => { if(n.lane === l && n.held) n.held = false; });
-    }
+    const lane = keys.indexOf(e.key.toLowerCase());
+    if (lane !== -1) keyPressedState[lane] = false;
 };
 
-document.querySelectorAll('.key-setter').forEach(btn => {
-    btn.onclick = () => { listeningForLane = parseInt(btn.dataset.lane); btn.innerText = "..."; btn.classList.add('waiting'); };
-});
+document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.innerText = `DOWNSCROLL: ${isDownscroll ? 'ON' : 'OFF'}`; };
+document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.innerText = `BOTPLAY: ${isBotplay ? 'ON' : 'OFF'}`; };
+document.getElementById('hitsound-toggle').onclick = (e) => { useHitSounds = !useHitSounds; e.target.innerText = `HIT SOUNDS: ${useHitSounds ? 'ON' : 'OFF'}`; };
+document.getElementById('speed-slider').oninput = (e) => { scrollSpeed = parseFloat(e.target.value); document.getElementById('speed-val').innerText = scrollSpeed; };
 
-function getRank(acc, misses) {
-    if (misses === 0) {
-        if (acc >= 100) return "SFC";
-        if (acc >= 99) return "GFC";
-        return "FC";
-    }
-    if (misses < 10) return "SDBC";
-    return "Clear";
-}
-
-function loop() {
-    if(!isPlaying) return;
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    const songTime = (audioCtx.currentTime - startTime) * 1000;
-    const sY = isDownscroll ? 600 : 100;
-    const speed = parseFloat(speedSlider.value);
-    const pMode = playModeSelect.value;
-
-    masterGain.gain.value = parseFloat(volSlider.value);
-
-    activeNotes.forEach(n => {
-        if(n.hit) {
-            if(n.held && n.len > 0) {
-                if(n.time + n.len < songTime) { n.held = false; n.fullyHit = true; }
-                else health = Math.min(2, health + 0.005);
-            }
-            return;
-        }
-        const isHumanSide = (pMode === 'bf' && n.isPlayer) || (pMode === 'opponent' && !n.isPlayer) || (pMode === 'both');
-        if((!isHumanSide || isBotplay) && n.time <= songTime) {
-            n.hit = true; if(n.len > 0) n.held = true;
-            if(n.isPlayer || pMode === 'both') { 
-                combo++; notesHit++; totalPlayed++; health = Math.min(2, health + 0.04); 
-                if(isBotplay) createRatingEffect(0);
-            }
-            playHS(n.isPlayer);
-        }
-    });
-
-    // Draw Hitboxes
-    const lanes = pMode === 'both' ? 4 : 8;
-    for(let i=0; i<lanes; i++) {
-        const isP = pMode === 'both' ? true : i >= 4;
-        const lIdx = i % 4;
-        const isHeld = (isP && (isBotplay ? activeNotes.some(n=>n.lane===lIdx && n.held) : held[lIdx]));
-        const x = (canvas.width/2) + (pMode === 'both' ? -210 : (isP ? 100 : -520)) + (lIdx * 110);
-        ctx.strokeStyle = isHeld ? colors[lIdx] : '#333';
-        ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x+40, sY+40, 35, 0, Math.PI*2); ctx.stroke();
-    }
-
-    // Draw Notes and Holds
-    activeNotes.forEach(n => {
-        if(n.fullyHit || (n.hit && n.len <= 0)) return;
-        const x = (canvas.width/2) + (pMode === 'both' ? -210 : (n.isPlayer ? 100 : -520)) + (n.lane * 110);
-        const diff = n.time - songTime;
-        const visualY = isDownscroll ? sY - (diff * speed) : sY + (diff * speed);
-
-        if(n.len > 0) {
-            const holdHeight = n.len * speed;
-            const startY = visualY + 40;
-            let drawTop = startY;
-            let drawHeight = isDownscroll ? -holdHeight : holdHeight;
-            if (n.hit && n.held) {
-                drawTop = sY + 40;
-                const remainingLen = (n.time + n.len) - songTime;
-                drawHeight = isDownscroll ? -(remainingLen * speed) : (remainingLen * speed);
-            }
-            if (Math.abs(drawHeight) > 0) {
-                ctx.fillStyle = (n.isPlayer || pMode === 'both') ? colors[n.lane] : '#222';
-                ctx.globalAlpha = 0.4;
-                ctx.fillRect(x + 30, drawTop, 20, drawHeight);
-                ctx.globalAlpha = 1.0;
-            }
-        }
-
-        if(!n.hit) {
-            if(n.isPlayer && diff < -160) { 
-                n.hit = true; health -= 0.1; combo = 0; misses++; totalPlayed++; 
-                addPopEffect("Miss", "#ff4b2b");
-                return; 
-            }
-            if(visualY > -50 && visualY < 770) {
-                ctx.fillStyle = (n.isPlayer || pMode === 'both') ? colors[n.lane] : '#444';
-                ctx.beginPath(); ctx.arc(x+40, visualY+40, 35, 0, Math.PI*2); ctx.fill();
-            }
-        }
-    });
-
-    // Draw Pop Effects (Ratings)
-    popEffects = popEffects.filter(p => p.life > 0);
-    popEffects.forEach(p => {
-        const bounce = Math.sin((1 - p.life) * Math.PI) * 20;
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.font = `bold ${p.size}px Inter, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(p.text, canvas.width / 2, (canvas.height / 2) - 40 - bounce);
-        p.life -= 0.05;
-        p.alpha -= 0.04;
-    });
-
-    // UI Rendering
-    const hY = isDownscroll ? 60 : 660;
-    const acc = totalPlayed === 0 ? "0.00" : ((notesHit / totalPlayed) * 100).toFixed(2);
-    const rank = getRank(parseFloat(acc), misses);
-
-    ctx.globalAlpha = 1.0;
-    ctx.fillStyle = '#111'; ctx.fillRect(canvas.width/2 - 250, hY, 500, 12);
-    ctx.fillStyle = health > 0.4 ? '#38EF7D' : '#ff4b2b';
-    ctx.fillRect(canvas.width/2 - 250, hY, 500 * (health/2), 12);
-    
-    // Middle Combo Text with Bouncing Scale
-    ctx.fillStyle = 'white'; 
-    const currentSize = 48 * comboBounceScale;
-    ctx.font = `bold ${currentSize}px Inter, sans-serif`; 
-    ctx.textAlign = 'center';
-    ctx.fillText(combo, canvas.width/2, canvas.height/2 + 30);
-    
-    // Ease the combo bounce scale back to 1.0
-    if (comboBounceScale > 1.0) {
-        comboBounceScale -= 0.05;
-        if (comboBounceScale < 1.0) comboBounceScale = 1.0;
-    }
-    
-    ctx.font = 'bold 16px Inter, sans-serif';
-    ctx.fillText(`Combo: ${combo} | Misses: ${misses} | Acc: ${acc}% (${rank})`, canvas.width/2, hY + (isDownscroll ? 35 : -15));
-
-    if(health <= 0 || (instBuf && (audioCtx.currentTime - startTime) >= instBuf.duration)) startSong();
-    requestAnimationFrame(loop);
-}
-
-startBtn.onclick = startSong;
-document.getElementById('bot-toggle').onclick = (e) => { isBotplay = !isBotplay; e.target.classList.toggle('active'); e.target.innerText = `BOTPLAY: ${isBotplay?'ON':'OFF'}`; };
-document.getElementById('ghost-toggle').onclick = (e) => { ghostTapping = !ghostTapping; e.target.classList.toggle('active'); e.target.innerText = `GHOST TAPPING: ${ghostTapping?'ON':'OFF'}`; };
-document.getElementById('scroll-toggle').onclick = (e) => { isDownscroll = !isDownscroll; e.target.classList.toggle('active'); e.target.innerText = isDownscroll ? "DOWNSCROLL" : "UPSCROLL"; };
+startBtn.onclick = start;
+initAssets();
 </script>
 </body>
 </html>
