@@ -375,143 +375,159 @@
             }, 
             lists: {}, broadcasts: {},
             blocks: {
-                // WHEN FLAG CLICKED
                 "START": {
-                    opcode: "event_whenflagclicked",
-                    next: "SET_SIZE",
-                    parent: null, topLevel: true, x: 50, y: 50
+                    "opcode": "event_whenflagclicked",
+                    "next": "SET_SIZE",
+                    "parent": null,
+                    "inputs": {},
+                    "fields": {},
+                    "topLevel": true,
+                    "x": 50,
+                    "y": 50
                 },
-                // SET SIZE
                 "SET_SIZE": {
-                    opcode: "looks_setsizeto",
-                    next: "GO_FRONT",
-                    parent: "START",
-                    inputs: { "SIZE": [1, [4, scalePercent.toString()]] }
+                    "opcode": "looks_setsizeto",
+                    "next": "GO_FRONT",
+                    "parent": "START",
+                    "inputs": { "SIZE": [1, [4, scalePercent.toString()]] },
+                    "fields": {},
+                    "topLevel": false
                 },
-                // GO TO FRONT
                 "GO_FRONT": {
-                    opcode: "looks_goforwardbackwardlayers",
-                    next: "GO_XY",
-                    parent: "SET_SIZE",
-                    inputs: { "NUM": [1, [4, "1"]] },
-                    fields: { "FORWARD_BACKWARD": ["front", null] }
+                    "opcode": "looks_goforwardbackwardlayers",
+                    "next": "GO_XY",
+                    "parent": "SET_SIZE",
+                    "inputs": { "NUM": [1, [4, "1"]] },
+                    "fields": { "FORWARD_BACKWARD": ["front", null] },
+                    "topLevel": false
                 },
-                // GO TO X:0 Y:0
                 "GO_XY": {
-                    opcode: "motion_gotoxy",
-                    next: "RESET_COSTUME",
-                    parent: "GO_FRONT",
-                    inputs: { "X": [1, [4, "0"]], "Y": [1, [4, "0"]] }
+                    "opcode": "motion_gotoxy",
+                    "next": "RESET_COSTUME",
+                    "parent": "GO_FRONT",
+                    "inputs": { "X": [1, [4, "0"]], "Y": [1, [4, "0"]] },
+                    "fields": {},
+                    "topLevel": false
                 },
-                // SWITCH COSTUME TO frame_0 (Reset)
                 "RESET_COSTUME": {
-                    opcode: "looks_switchcostumeto",
-                    next: "SET_FPS",
-                    parent: "GO_XY",
-                    inputs: { "COSTUME": [1, [10, "frame_0"]] }
+                    "opcode": "looks_switchcostumeto",
+                    "next": "SET_FPS",
+                    "parent": "GO_XY",
+                    "inputs": { "COSTUME": [1, [10, "frame_0"]] },
+                    "fields": {},
+                    "topLevel": false
                 },
-                // SET FPS VARIABLE
                 "SET_FPS": {
-                    opcode: "data_setvariableto",
-                    next: "RESET_TIMER",
-                    parent: "RESET_COSTUME",
-                    inputs: { "VALUE": [1, [4, settings.fps.toString()]] },
-                    fields: { "VARIABLE": ["FPS", fpsVarId] }
+                    "opcode": "data_setvariableto",
+                    "next": "RESET_TIMER",
+                    "parent": "RESET_COSTUME",
+                    "inputs": { "VALUE": [1, [4, settings.fps.toString()]] },
+                    "fields": { "VARIABLE": ["FPS", fpsVarId] },
+                    "topLevel": false
                 },
-                // RESET TIMER
                 "RESET_TIMER": {
-                    opcode: "sensing_resettimer",
-                    next: audioMd5 ? "PLAY_SOUND" : "REPEAT_UNTIL",
-                    parent: "SET_FPS"
+                    "opcode": "sensing_resettimer",
+                    "next": audioMd5 ? "PLAY_SOUND" : "REPEAT_UNTIL",
+                    "parent": "SET_FPS",
+                    "inputs": {},
+                    "fields": {},
+                    "topLevel": false
                 },
-                // PLAY SOUND (Start sound, not until done)
                 ...(audioMd5 ? {
                     "PLAY_SOUND": {
-                        opcode: "sound_play",
-                        next: "REPEAT_UNTIL",
-                        parent: "RESET_TIMER",
-                        inputs: { "SOUND_MENU": [1, "SOUND_MENU_BLOCK"] }
+                        "opcode": "sound_play",
+                        "next": "REPEAT_UNTIL",
+                        "parent": "RESET_TIMER",
+                        "inputs": { "SOUND_MENU": [1, "SOUND_MENU_BLOCK"] },
+                        "fields": {},
+                        "topLevel": false
                     },
                     "SOUND_MENU_BLOCK": {
-                        opcode: "sound_sounds_menu",
-                        parent: "PLAY_SOUND",
-                        fields: { "SOUND_MENU": [settings.audioName, null] }, 
-                        shadow: true
+                        "opcode": "sound_sounds_menu",
+                        "parent": "PLAY_SOUND",
+                        "inputs": {},
+                        "fields": { "SOUND_MENU": [settings.audioName, null] },
+                        "shadow": true,
+                        "topLevel": false
                     }
                 } : {}),
-                
-                // --- THE SYNC LOOP ---
                 "REPEAT_UNTIL": {
-                    opcode: "control_repeat_until",
-                    next: "STOP_SOUNDS",
-                    parent: audioMd5 ? "PLAY_SOUND" : "RESET_TIMER",
-                    inputs: { 
-                        "CONDITION": [2, "CHECK_DONE"],
-                        "SUBSTACK": [2, "SYNC_FRAME"]
-                    }
+                    "opcode": "control_repeat_until",
+                    "next": "STOP_SOUNDS",
+                    "parent": audioMd5 ? "PLAY_SOUND" : "RESET_TIMER",
+                    "inputs": { "CONDITION": [2, "CHECK_DONE"], "SUBSTACK": [2, "SYNC_FRAME"] },
+                    "fields": {},
+                    "topLevel": false
                 },
-                // Condition: Costume# = Total Frames
                 "CHECK_DONE": {
-                    opcode: "operator_equals",
-                    parent: "REPEAT_UNTIL",
-                    inputs: {
+                    "opcode": "operator_equals",
+                    "parent": "REPEAT_UNTIL",
+                    "inputs": {
                         "OPERAND1": [3, "GET_COSTUME_NUM", [10, ""]],
-                        "OPERAND2": [1, [10, totalFrames.toString()]] 
-                    }
+                        "OPERAND2": [1, [10, totalFrames.toString()]]
+                    },
+                    "fields": {},
+                    "topLevel": false
                 },
-                // Action: Switch Costume to (floor(timer * FPS) + 1)
                 "SYNC_FRAME": {
-                    opcode: "looks_switchcostumeto",
-                    parent: "REPEAT_UNTIL",
-                    inputs: { "COSTUME": [3, "MATH_ADD", [10, "frame_0"]] }
+                    "opcode": "looks_switchcostumeto",
+                    "parent": "REPEAT_UNTIL",
+                    "inputs": { "COSTUME": [3, "MATH_ADD", [10, "frame_0"]] },
+                    "fields": {},
+                    "topLevel": false
                 },
-                // Math: [floor(...)] + [1]
                 "MATH_ADD": {
-                    opcode: "operator_add",
-                    parent: "SYNC_FRAME",
-                    inputs: {
+                    "opcode": "operator_add",
+                    "parent": "SYNC_FRAME",
+                    "inputs": {
                         "NUM1": [3, "MATH_FLOOR", [10, ""]],
                         "NUM2": [1, [4, "1"]]
-                    }
-                },
-                // Math: floor([timer * FPS])
-                "MATH_FLOOR": {
-                    opcode: "operator_mathop",
-                    parent: "MATH_ADD",
-                    inputs: { 
-                        "NUM": [3, "MATH_MULT", [10, ""]] 
                     },
-                    fields: { 
-                        "OPERATOR": ["floor", null] 
-                    }
+                    "fields": {},
+                    "topLevel": false
                 },
-                // Math: [timer] * [FPS Variable]
+                "MATH_FLOOR": {
+                    "opcode": "operator_mathop",
+                    "parent": "MATH_ADD",
+                    "inputs": { "NUM": [3, "MATH_MULT", [10, ""]] },
+                    "fields": { "OPERATOR": ["floor", null] },
+                    "topLevel": false
+                },
                 "MATH_MULT": {
-                    opcode: "operator_multiply",
-                    parent: "MATH_FLOOR",
-                    inputs: {
+                    "opcode": "operator_multiply",
+                    "parent": "MATH_FLOOR",
+                    "inputs": {
                         "NUM1": [3, "GET_TIMER", [10, ""]],
                         "NUM2": [3, [12, "FPS", fpsVarId], [10, ""]]
-                    }
+                    },
+                    "fields": {},
+                    "topLevel": false
                 },
-
-                // --- HELPER SENSING / REPORTERS ---
                 "GET_TIMER": {
-                    opcode: "sensing_timer",
-                    parent: "MATH_MULT",
-                    next: null, inputs: {}, fields: {}, shadow: false, topLevel: false
+                    "opcode": "sensing_timer",
+                    "next": null,
+                    "parent": "MATH_MULT",
+                    "inputs": {},
+                    "fields": {},
+                    "shadow": false,
+                    "topLevel": false
                 },
                 "GET_COSTUME_NUM": {
-                    opcode: "looks_costumenumbername",
-                    parent: "CHECK_DONE",
-                    next: null, inputs: {}, fields: { "NUMBER_NAME": ["number", null] }, shadow: false, topLevel: false
+                    "opcode": "looks_costumenumbername",
+                    "next": null,
+                    "parent": "CHECK_DONE",
+                    "inputs": {},
+                    "fields": { "NUMBER_NAME": ["number", null] },
+                    "shadow": false,
+                    "topLevel": false
                 },
-
-                // --- ENDING ---
                 "STOP_SOUNDS": {
-                    opcode: "sound_stopallsounds",
-                    parent: "REPEAT_UNTIL",
-                    next: null
+                    "opcode": "sound_stopallsounds",
+                    "next": null,
+                    "parent": "REPEAT_UNTIL",
+                    "inputs": {},
+                    "fields": {},
+                    "topLevel": false
                 }
             },
             comments: {},
