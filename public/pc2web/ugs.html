@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UGS Files</title>
+    <link rel="icon" type="image/png" href="https://codehs.com/uploads/bba544f6cb843f6427d82fa9449d65b1">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f1016 0%, #1a1025 100%);
+            --sidebar-bg: rgba(20, 20, 30, 0.65);
+            --accent-color: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --star-color: #f59e0b;
+            --edit-color: #10b981;
+            --link-color: #0ea5e9;
+            --sidebar-width: 220px;
+            --modal-bg: #1e1e2d;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            color: var(--text-main);
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-right: 1px solid var(--border-glass);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            box-sizing: border-box;
+        }
+
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+
+        .sidebar-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-main);
+            text-align: left;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .sidebar-btn:hover {
+            background: var(--accent-color);
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 15px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            width: calc(100vw - var(--sidebar-width));
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .content-wrapper {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .brand-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .brand-icon {
+            width: 120px;
+            height: 120px;
+            border: none;
+            background: transparent;
+            padding: 0;
+            box-shadow: none;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
+        }
+
+        .brand-icon:hover { transform: scale(1.05); }
+
+        h1 {
+            color: var(--text-main);
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin: 0 0 10px 0;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            width: 100%;
+        }
+
+        .modded-by {
+            color: var(--accent-hover);
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 12px;
+            text-shadow: 0 0 10px var(--accent-glow);
+            width: 100%;
+        }
+
+        .subtitle-link {
+            color: var(--text-muted);
+            text-align: center;
+            font-weight: 400;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .subtitle-link a {
+            color: var(--accent-hover);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+            position: relative;
+        }
+
+        .tools-container {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            padding: 10px 16px;
+            border-radius: 10px;
+            color: var(--text-main);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-color);
+        }
+
+        .search-container {
+            width: 100%;
+            margin: 10px 0 35px 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        #search-bar {
+            flex-grow: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            border-radius: 12px;
+            color: var(--text-main);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        #search-bar:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-glow);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        #category-filter {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            border-radius: 12px;
+            padding: 0 15px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        #category-filter option {
+            background: var(--modal-bg);
+            color: var(--text-main);
+        }
+
+        #sections-container {
+            width: 100%;
+        }
+
+        .letter-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            width: 100%;
+            backdrop-filter: blur(8px);
+            box-sizing: border-box;
+        }
+
+        .letter-header {
+            color: var(--text-main);
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-glass);
+            text-align: center;
+        }
+
+        .buttons-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .game-item-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        /* Default List View Buttons */
+        .game-item-row input[type="button"] {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            padding: 14px 24px;
+            font-size: 15px;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.25s ease;
+            width: 100%;
+            color: var(--text-main);
+            text-align: left; /* Aligned left for easier reading */
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+
+        .game-item-row input[type="button"]:hover {
+            background: var(--accent-color);
+            border-color: var(--accent-hover);
+            box-shadow: 0 6px 20px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-btn:hover { transform: translateY(-2px); }
+
+        .fav-btn:hover {
+            color: var(--star-color);
+            border-color: var(--star-color);
+            background: rgba(245, 158, 11, 0.1);
+        }
+        .fav-btn.active {
+            color: var(--star-color);
+            border-color: var(--star-color);
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .link-btn:hover {
+            color: var(--link-color);
+            border-color: var(--link-color);
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .edit-btn:hover {
+            color: var(--edit-color);
+            border-color: var(--edit-color);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .grid-mode .buttons-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .grid-mode .game-item-row {
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
+            height: 100%;
+        }
+
+        .grid-mode .game-item-row input[type="button"] {
+            text-align: center;
+            margin-bottom: auto;
+            height: 100%;
+            min-height: 80px;
+            white-space: normal;
+        }
+
+        .grid-mode .action-buttons {
+            width: 100%;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--modal-bg);
+            padding: 25px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 450px;
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-content h3 { margin-top: 0; margin-bottom: 20px; }
+        .modal-content label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-muted); }
+        .modal-content input[type="text"], .modal-content input[type="color"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-glass);
+            color: white;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+        }
+        .btn-cancel { background: rgba(255,255,255,0.1); }
+        .btn-primary { background: var(--accent-color); }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 10000;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 768px) {
+            :root { --sidebar-width: 70px; }
+            .sidebar-btn { padding: 12px; justify-content: center; }
+            .sidebar-btn span { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar"></div>
+
+    <div class="main-content">
+        <div class="content-wrapper">
+            <div class="brand-header">
+                <img src="/favicon.png" alt="UGS Icon" class="brand-icon" id="main-icon">
+            </div>
+
+            <h1 id="main-title">UGS Files</h1>
+            <div class="modded-by">Modded by CJ Shaffer</div>
+            <div class="modded-by">Join the <a href="https://docs.google.com/document/d/1ONEW83zv_C4-Kct0lBzWdjmz5bdlvs8SB43gTMiJRhA/edit?usp=sharing">Google Doc</a> for important info and updates</div>
+
+            <div class="tools-container">
+                <button class="tool-btn" onclick="window.location.href='/FNFWE.html'">MY NEW GAME: <br> 🎵 FNFWE</button>
+                <button class="tool-btn" onclick="openSettings()">⚙️ Settings</button>
+                <button class="tool-btn" onclick="playRandomGame()">🎲 Random Game</button>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" id="search-bar" placeholder="Search files, games, or nicknames..." onkeyup="filterFiles()">
+            </div>
+
+            <button class="tool-btn" style="margin-bottom: 20px; width: 100%; justify-content: center;" onclick="forceLoadGames()">Click to load if it isn't loading</button>
+
+            <div id="sections-container">
+                <!-- Sections dynamically appended here by games.js and our script -->
+            </div>
+        </div>
+    </div>
+
+    <div id="unified-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-header">Settings</h3>
+            <div id="modal-body-content"></div>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn btn-primary" id="modal-confirm-btn">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast">Message!</div>
+
+    <script src="games.js"></script>
+
+    <script>
+        let favorites = JSON.parse(localStorage.getItem('ugs_favorites')) || [];
+        let recentlyPlayed = JSON.parse(localStorage.getItem('ugs_recent')) || [];
+        let customLinks = JSON.parse(localStorage.getItem('ugs_custom_links')) || [];
+        let gameNicknames = JSON.parse(localStorage.getItem('ugs_nicknames')) || {};
+        let isGridView = localStorage.getItem('ugs_grid_view') === 'true';
+        
+        let cloakerTitle = localStorage.getItem('ugs_cloak_title') || '';
+        let cloakerIcon = localStorage.getItem('ugs_cloak_icon') || '';
+        let accentColor = localStorage.getItem('ugs_accent_color') || '#6366f1';
+
+        // Apply visual settings immediately
+        document.documentElement.style.setProperty('--accent-color', accentColor);
+        if (cloakerTitle) {
+            document.title = cloakerTitle;
+            const mainTitle = document.getElementById('main-title');
+            if(mainTitle) mainTitle.innerText = cloakerTitle;
+        }
+        if (cloakerIcon) {
+            let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+            link.type = 'image/x-icon';
+            link.rel = 'shortcut icon';
+            link.href = cloakerIcon;
+            document.getElementsByTagName('head')[0].appendChild(link);
+            const mainIcon = document.getElementById('main-icon');
+            if(mainIcon) mainIcon.src = cloakerIcon;
+        }
+
+        // Panic Key (Escape or Backtick)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === '`') {
+                window.location.href = 'https://classroom.google.com';
+            }
+        });
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function openModal(title, bodyHTML, onConfirm) {
+            document.getElementById('modal-header').innerText = title;
+            document.getElementById('modal-body-content').innerHTML = bodyHTML;
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.onclick = () => {
+                if (onConfirm()) closeModal();
+            };
+            document.getElementById('unified-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('unified-modal').classList.remove('active');
+        }
+
+        function openSettings() {
+            const html = `
+                <label>Accent Color</label>
+                <input type="color" id="set-color" value="${accentColor}">
+                <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 15px 0;">
+                <label>Cloaker: Tab Title (Leave blank for default)</label>
+                <input type="text" id="set-title" value="${cloakerTitle}" placeholder="e.g. Google Drive">
+                <label>Cloaker: Favicon (URL or Upload)</label>
+                <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                    <input type="text" id="set-icon" value="${cloakerIcon}" placeholder="https://..." style="margin-bottom: 0;">
+                    <button type="button" class="tool-btn" style="margin-bottom: 0; padding: 0 15px; border-radius: 8px;" onclick="document.getElementById('favicon-upload').click()" title="Upload Image">📁</button>
+                    <input type="file" id="favicon-upload" accept="image/*" style="display:none" onchange="handleFaviconUpload(event)">
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 15px 0;">
+                <div style="display:flex; gap:10px;">
+                    <button class="tool-btn" onclick="exportData()">⬇️ Export Config</button>
+                    <button class="tool-btn" onclick="document.getElementById('import-file').click()">⬆️ Import Config</button>
+                    <input type="file" id="import-file" style="display:none" onchange="importData(event)">
+                </div>
+            `;
+            openModal("Site Settings", html, () => {
+                const newColor = document.getElementById('set-color').value;
+                const newTitle = document.getElementById('set-title').value;
+                const newIcon = document.getElementById('set-icon').value;
+                
+                localStorage.setItem('ugs_accent_color', newColor);
+                localStorage.setItem('ugs_cloak_title', newTitle);
+                localStorage.setItem('ugs_cloak_icon', newIcon);
+                
+                showToast("Settings saved! Reloading...");
+                setTimeout(() => window.location.reload(), 1000);
+                return true;
+            });
+        }
+
+        function exportData() {
+            const data = { favorites, recentlyPlayed, customLinks, gameNicknames, cloakerTitle, cloakerIcon, accentColor };
+            const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'ugs_backup.json';
+            a.click(); URL.revokeObjectURL(url);
+            showToast("Exported backup file.");
+        }
+
+        function handleFaviconUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Limit to ~500KB to prevent localStorage from filling up
+            if (file.size > 500 * 1024) {
+                showToast("File too large! Please use an image under 500KB.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('set-icon').value = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    if(data.favorites) localStorage.setItem('ugs_favorites', JSON.stringify(data.favorites));
+                    if(data.recentlyPlayed) localStorage.setItem('ugs_recent', JSON.stringify(data.recentlyPlayed));
+                    if(data.customLinks) localStorage.setItem('ugs_custom_links', JSON.stringify(data.customLinks));
+                    if(data.gameNicknames) localStorage.setItem('ugs_nicknames', JSON.stringify(data.gameNicknames));
+                    showToast("Import successful! Reloading...");
+                    setTimeout(() => window.location.reload(), 1000);
+                } catch (err) { showToast("Invalid backup file."); }
+            };
+            reader.readAsText(file);
+        }
+
+        function editNickname(id, currentOrigName) {
+            const currentNick = gameNicknames[id] || "";
+            const html = `
+                <label>Set nickname for: ${currentOrigName}</label>
+                <input type="text" id="nick-input" value="${currentNick}" placeholder="Custom name...">
+                <small style="color:var(--text-muted)">Clear input to remove nickname.</small>
+            `;
+            openModal("Edit Nickname", html, () => {
+                const val = document.getElementById('nick-input').value.trim();
+                if (val) {
+                    gameNicknames[id] = val;
+                } else {
+                    delete gameNicknames[id];
+                }
+                localStorage.setItem('ugs_nicknames', JSON.stringify(gameNicknames));
+                updateGameButtonText(id);
+                showToast("Nickname updated.");
+                return true;
+            });
+        }
+
+        function updateGameButtonText(id) {
+            document.querySelectorAll(`.game-item-row[data-id="${id}"] input[type="button"]`).forEach(btn => {
+                const orig = btn.getAttribute('data-origname');
+                if (orig) {
+                    btn.value = gameNicknames[id] ? `${orig} [${gameNicknames[id]}]` : orig;
+                }
+            });
+        }
+
+        function copyDirectLink(id) {
+            const url = window.location.origin + window.location.pathname + '?game=' + encodeURIComponent(id);
+            const tempInput = document.createElement('input');
+            tempInput.value = url;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast("Direct Link copied to clipboard!");
+        }
+
+        function addToRecent(id, name) {
+            recentlyPlayed = recentlyPlayed.filter(g => g.id !== id); // remove if exists
+            recentlyPlayed.unshift({ id, name }); // add to top
+            if (recentlyPlayed.length > 5) recentlyPlayed.pop(); // keep last 5
+            localStorage.setItem('ugs_recent', JSON.stringify(recentlyPlayed));
+            renderRecentSection();
+        }
+
+        function renderFavoritesSection() {
+            renderDynamicSection('favorites-section', '★ Favorites', favorites.map(id => ({ id })));
+        }
+
+        function renderRecentSection() {
+            renderDynamicSection('recent-section', '🕒 Recently Played', recentlyPlayed);
+        }
+
+        function renderCustomLinksSection() {
+            const container = document.getElementById('sections-container');
+            let section = document.getElementById('custom-links-section');
+            
+            if (customLinks.length === 0) {
+                if (section) section.remove();
+                return;
+            }
+
+            if (!section) {
+                section = document.createElement('div');
+                section.id = 'custom-links-section';
+                section.className = 'letter-section';
+                container.prepend(section);
+            }
+            
+            section.innerHTML = `
+                <div class="letter-header">🔗 My Links</div>
+                <div class="buttons-container" id="custom-links-buttons"></div>
+            `;
+            
+            const btnContainer = document.getElementById('custom-links-buttons');
+            customLinks.forEach(link => {
+                const row = document.createElement('div');
+                row.className = 'game-item-row';
+                row.innerHTML = `
+                    <input type="button" value="${link.name}" onclick="window.open('${link.url}', '_blank')">
+                    <div class="action-buttons">
+                        <button class="icon-btn edit-btn" onclick="deleteCustomLink('${link.id}')">🗑️</button>
+                    </div>
+                `;
+                btnContainer.appendChild(row);
+            });
+        }
+
+        function renderDynamicSection(sectionId, title, itemsList) {
+            const container = document.getElementById('sections-container');
+            let section = document.getElementById(sectionId);
+
+            if (itemsList.length === 0) {
+                if (section) section.remove();
+                return;
+            }
+
+            if (!section) {
+                section = document.createElement('div');
+                section.id = sectionId;
+                section.className = 'letter-section';
+                // Insert after Custom Links, before normal letters
+                const refNode = document.querySelector('.letter-section:not(#favorites-section):not(#recent-section):not(#custom-links-section)');
+                container.insertBefore(section, refNode);
+            }
+
+            section.innerHTML = `
+                <div class="letter-header">${title}</div>
+                <div class="buttons-container" id="${sectionId}-buttons"></div>
+            `;
+
+            const btnContainer = document.getElementById(`${sectionId}-buttons`);
+            itemsList.forEach(item => {
+                // Find original to clone
+                const originalRow = document.querySelector(`.letter-section:not(#favorites-section):not(#recent-section) .game-item-row[data-id="${item.id}"]`);
+                if (originalRow) {
+                    const clone = originalRow.cloneNode(true);
+                    
+                    // Re-attach listeners manually because cloneNode doesn't copy DOM properties
+                    const origBtn = originalRow.querySelector('input[type="button"]');
+                    const cloneBtn = clone.querySelector('input[type="button"]');
+                    if (origBtn && cloneBtn) {
+                        cloneBtn.onclick = (e) => {
+                            addToRecent(item.id, cloneBtn.getAttribute('data-origname'));
+                            origBtn.onclick(e);
+                        };
+                    }
+
+                    // Re-attach tool buttons
+                    clone.querySelector('.fav-btn').onclick = () => toggleFavorite(item.id);
+                    clone.querySelector('.link-btn').onclick = () => copyDirectLink(item.id);
+                    clone.querySelector('.edit-btn').onclick = () => editNickname(item.id, cloneBtn.getAttribute('data-origname'));
+
+                    btnContainer.appendChild(clone);
+                }
+            });
+        }
+
+        function deleteCustomLink(id) {
+            customLinks = customLinks.filter(l => l.id !== id);
+            localStorage.setItem('ugs_custom_links', JSON.stringify(customLinks));
+            renderCustomLinksSection();
+        }
+
+        function addCustomLinkModal() {
+            const html = `
+                <label>Link Title</label>
+                <input type="text" id="link-name" placeholder="e.g. My Favorite Wiki">
+                <label>URL</label>
+                <input type="text" id="link-url" placeholder="https://...">
+            `;
+            openModal("Add Custom Link", html, () => {
+                const name = document.getElementById('link-name').value.trim();
+                const url = document.getElementById('link-url').value.trim();
+                if (name && url) {
+                    customLinks.push({ id: 'custom-' + Date.now(), name, url });
+                    localStorage.setItem('ugs_custom_links', JSON.stringify(customLinks));
+                    renderCustomLinksSection();
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        function setupGameMods() {
+            const allButtons = document.querySelectorAll('.letter-section input[type="button"]');
+            let moddedCount = 0;
+
+            allButtons.forEach((btn, index) => {
+                const parent = btn.parentElement;
+                if (parent.classList.contains('game-item-row')) return; // Already processed
+
+                const origName = btn.value;
+                const itemId = btn.getAttribute('onclick') ? btn.getAttribute('onclick').match(/['"](.*?)['"]/)?.[1] || `game-${index}` : `game-${index}`;
+                
+                // Store original name and categorize
+                btn.setAttribute('data-origname', origName);
+                btn.setAttribute('data-category', guessCategory(origName));
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'game-item-row';
+                wrapper.setAttribute('data-id', itemId);
+
+                // Action buttons container
+                const actions = document.createElement('div');
+                actions.className = 'action-buttons';
+
+                // Edit/Nickname Button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'icon-btn edit-btn';
+                editBtn.innerHTML = '✎';
+                editBtn.title = 'Set Nickname';
+                editBtn.onclick = (e) => { e.stopPropagation(); editNickname(itemId, origName); };
+
+                // Link Button
+                const linkBtn = document.createElement('button');
+                linkBtn.className = 'icon-btn link-btn';
+                linkBtn.innerHTML = '🔗';
+                linkBtn.title = 'Copy Direct Link';
+                linkBtn.onclick = (e) => { e.stopPropagation(); copyDirectLink(itemId); };
+
+                // Favorite Button
+                const favBtn = document.createElement('button');
+                favBtn.className = 'icon-btn fav-btn';
+                favBtn.innerHTML = favorites.includes(itemId) ? '★' : '☆';
+                if (favorites.includes(itemId)) favBtn.classList.add('active');
+                favBtn.onclick = (e) => { e.stopPropagation(); toggleFavorite(itemId, favBtn); };
+
+                actions.appendChild(editBtn);
+                actions.appendChild(linkBtn);
+                actions.appendChild(favBtn);
+
+                // Re-wire main button to track recent
+                const originalOnClick = btn.onclick;
+                btn.onclick = (e) => {
+                    addToRecent(itemId, origName);
+                    if (originalOnClick) originalOnClick.call(btn, e);
+                };
+
+                btn.parentNode.insertBefore(wrapper, btn);
+                wrapper.appendChild(btn);
+                wrapper.appendChild(actions);
+
+                // Apply any saved nickname immediately
+                if (gameNicknames[itemId]) {
+                    btn.value = `${origName} [${gameNicknames[itemId]}]`;
+                }
+
+                moddedCount++;
+            });
+
+            if (moddedCount > 0) {
+                renderFavoritesSection();
+                renderRecentSection();
+                renderCustomLinksSection();
+                updateViewMode();
+                checkDirectLinkExecution();
+            }
+        }
+
+        function guessCategory(name) {
+            name = name.toLowerCase();
+            if (name.match(/shoot|gun|strike|combat|ninja|smash|battle|fight/)) return 'action';
+            if (name.match(/car|drive|race|moto|drift/)) return 'driving';
+            if (name.match(/math|puzzle|block|2048|logic|word/)) return 'puzzle';
+            if (name.match(/basketball|soccer|football|golf|tennis/)) return 'sports';
+            return 'arcade'; // default fallback
+        }
+
+        function toggleFavorite(id, btnElement) {
+            const index = favorites.indexOf(id);
+            if (index === -1) {
+                favorites.push(id);
+            } else {
+                favorites.splice(index, 1);
+            }
+            localStorage.setItem('ugs_favorites', JSON.stringify(favorites));
+            
+            // Sync all visual states
+            document.querySelectorAll(`.game-item-row[data-id="${id}"] .fav-btn`).forEach(b => {
+                b.innerHTML = favorites.includes(id) ? '★' : '☆';
+                if(favorites.includes(id)) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+            
+            renderFavoritesSection();
+        }
+
+        function toggleGridView() {
+            isGridView = !isGridView;
+            localStorage.setItem('ugs_grid_view', isGridView);
+            updateViewMode();
+        }
+
+        function updateViewMode() {
+            const container = document.getElementById('sections-container');
+            if (isGridView) container.classList.add('grid-mode');
+            else container.classList.remove('grid-mode');
+        }
+
+        function playRandomGame() {
+            const rows = document.querySelectorAll('.letter-section:not(#favorites-section):not(#recent-section):not(#custom-links-section) .game-item-row');
+            if (rows.length === 0) return;
+            const randomRow = rows[Math.floor(Math.random() * rows.length)];
+            const btn = randomRow.querySelector('input[type="button"]');
+            if (btn) btn.click();
+        }
+
+        function filterFiles() {
+            const query = document.getElementById('search-bar').value.toLowerCase().trim();
+            const sections = document.querySelectorAll('.letter-section');
+
+            sections.forEach(section => {
+                const rows = section.querySelectorAll('.game-item-row');
+                let hasVisibleRows = false;
+
+                rows.forEach(row => {
+                    const btn = row.querySelector('input[type="button"]');
+                    if (btn) {
+                        const originalName = (btn.getAttribute('data-origname') || '').toLowerCase();
+                        const currentVal = btn.value.toLowerCase();
+                        
+                        const matchesSearch = originalName.includes(query) || currentVal.includes(query);
+
+                        if (matchesSearch) {
+                            row.style.display = 'flex'; // handled by flex/grid implicitly
+                            hasVisibleRows = true;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
+                });
+
+                section.style.display = hasVisibleRows ? 'block' : 'none';
+            });
+        }
+
+        let hasExecutedDirectLink = false;
+        function checkDirectLinkExecution() {
+            if (hasExecutedDirectLink) return;
+            const urlParams = new URLSearchParams(window.location.search);
+            const gameToLoad = urlParams.get('game');
+            if (gameToLoad) {
+                const targetBtn = document.querySelector(`.letter-section:not(#favorites-section):not(#recent-section) .game-item-row[data-id="${gameToLoad}"] input[type="button"]`);
+                if (targetBtn) {
+                    hasExecutedDirectLink = true;
+                    showToast("Opening requested game...");
+                    setTimeout(() => targetBtn.click(), 500);
+                }
+            }
+        }
+
+        function forceLoadGames() {
+            const script = document.createElement('script');
+            script.src = 'games.js';
+            document.body.appendChild(script);
+        }
+
+        // Wait for games.js to populate the DOM, then modify it
+        const observer = new MutationObserver((mutations) => {
+            for (let mutation of mutations) {
+                if (mutation.addedNodes.length) {
+                    // Check if games have been added
+                    if (document.querySelector('.letter-section input[type="button"]')) {
+                        setTimeout(setupGameMods, 100);
+                        // Stop observing once processed to avoid infinite loops when we add our own sections
+                        if(document.querySelectorAll('.game-item-row').length > 10) observer.disconnect();
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            observer.observe(document.getElementById('sections-container'), { childList: true, subtree: true });
+            // Fallback if observer misses it
+            setTimeout(setupGameMods, 500);
+            setTimeout(setupGameMods, 1500);
+        });
+    </script>
+</body>
+</html>
