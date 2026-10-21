@@ -144,6 +144,9 @@
             </div>
         </div>
         <div class="flex items-center space-x-3 text-xs text-slate-400">
+            <a href="./webpod-manager.html" title="Export / Import library as ZIP" class="hidden sm:inline-flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-700 transition text-cyan-300">
+                <i class="fa-solid fa-file-zipper"></i> Backup
+            </a>
             <span class="hidden md:inline-flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
                 <i class="fa-solid fa-keyboard text-cyan-400"></i> Arrows / Space Supported
             </span>
@@ -172,7 +175,7 @@
                             <i class="fa-solid fa-tv mr-1"></i>Preview
                         </button>
                     </div>
-                    <span id="lyricSourceTag" class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">LRCLIB</span>
+                    <span id="lyricSourceTag" class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700"><a href="https://lrclib.net/">LRCLIB</a></span>
                 </div>
             </div>
             <!-- Lyric Search Bar & Options -->
@@ -188,18 +191,17 @@
                         <i class="fa-solid fa-file-arrow-up pointer-events-none"></i>
                         <span>Upload</span>
                     </button>
-                    <!-- Paste Captions Button -->
-                    <button type="button" id="btnPasteCaption" title="Paste LRC/SRT text for current track" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-md shrink-0">
-                        <i class="fa-solid fa-keyboard pointer-events-none"></i>
-                        <span>Paste</span>
-                    </button>
+                    <!-- Make YO Captions Link Button -->
+                    <a href="./captions.html" title="Make YO Captions!" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-md shrink-0">
+                        <span>Make YO Captions!</span>
+                    </a>
                 </form>
                 <!-- Lyric Delay / Offset Slider Control (-5.0s to +5.0s) -->
                 <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
                     <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1">
                         <i class="fa-solid fa-clock-rotate-left text-cyan-400 text-[10px]"></i> Offset:
                     </span>
-                    <input type="range" id="sliderLyricOffset" min="-10.0" max="10.0" step="0.1" value="0.0" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    <input type="range" id="sliderLyricOffset" min="-30.0" max="30.0" step="0.1" value="0.0" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
                     <span id="txtLyricOffsetVal" class="text-cyan-400 font-mono font-bold shrink-0 min-w-[42px] text-right">0.0s</span>
                     <button id="btnResetLyricOffset" title="Reset offset to 0s" class="text-[10px] bg-black hover:bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition">Reset</button>
                 </div>
@@ -512,7 +514,7 @@ const state = {
     isPlaying: false,      // Playback status
     isShuffle: false,      // Shuffle state
     loopMode: 'off',       // 'off', 'all', 'one'
-    lyricOffset: 0.0,      // Caption delay/offset in seconds
+    lyricOffset: 0.0,      // Caption delay/offset in seconds (loaded from current track)
     currentLyrics: [],     // Time-synced lyrics array [{ time: float, text: string }]
     activeLyricIndex: -1,  // Currently active lyric line
     lyricsViewMode: 'list', // 'list' | 'preview' (retro LCD live stage)
@@ -530,6 +532,8 @@ const state = {
         lowLatencyLyrics: true    // rAF-driven lyric updates for minimal lag
     }
 };
+// Debounce handle for persisting lyric offset to IndexedDB
+let offsetSaveTimer = null;
 // Low-latency lyric rAF handle
 let lyricRafId = null;
 // Web Audio API DSP Nodes
@@ -783,6 +787,17 @@ async function loadAndPlayTrack(index) {
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     state.currentIndex = index;
     const track = state.playlist[index];
+
+    // Restore per-track lyric offset
+    state.lyricOffset = typeof track.lyricOffset === 'number' ? track.lyricOffset : 0.0;
+    const sliderOffset = document.getElementById('sliderLyricOffset');
+    const txtOffset = document.getElementById('txtLyricOffsetVal');
+    if (sliderOffset) sliderOffset.value = String(state.lyricOffset);
+    if (txtOffset) {
+        const val = state.lyricOffset;
+        txtOffset.textContent = (val > 0 ? `+${val.toFixed(1)}s` : `${val.toFixed(1)}s`);
+    }
+
     // Convert stored ArrayBuffer or blob back into Object URL
     let srcUrl = track.url;
     if (track.fileBuffer) {
@@ -806,12 +821,23 @@ async function loadAndPlayTrack(index) {
         state.currentLyrics = track.customLyrics;
         state.activeLyricIndex = -1;
         renderLyrics();
-        setLyricStatus('Attached File', 'emerald');
+        const srcLabel = track.lyricsSource === 'lrclib'
+            ? (track.lrclibId != null ? `LRCLIB #${track.lrclibId}` : 'LRCLIB')
+            : (track.lyricsSource === 'custom' ? 'Attached File' : 'Synced');
+        setLyricStatus(srcLabel, 'emerald');
         const trackNameTag = document.getElementById('lyricCurrentTrackName');
         if (trackNameTag) trackNameTag.textContent = `${track.title} - ${track.artist || 'Unknown'}`;
     } else {
         fetchOnlineLyrics(track.title, track.artist);
     }
+}
+
+/** Persist lyricOffset (and optional lyrics fields) for the current track to IndexedDB */
+async function persistCurrentTrackMeta() {
+    if (state.currentIndex < 0 || state.currentIndex >= state.playlist.length) return;
+    const track = state.playlist[state.currentIndex];
+    track.lyricOffset = state.lyricOffset;
+    await saveTrackToDB(track);
 }
 async function fetchOnlineLyrics(title, artist) {
     state.currentLyrics = [];
@@ -856,12 +882,29 @@ async function fetchLrclibLyrics(title, artist) {
             if (match && match.syncedLyrics) {
                 state.currentLyrics = parseLrcLyrics(match.syncedLyrics);
                 renderLyrics();
-                setLyricStatus('Synced', 'emerald');
+                setLyricStatus(match.id != null ? `LRCLIB #${match.id}` : 'Synced', 'emerald');
+                // Persist lyrics + LRCLIB id on the current track
+                if (state.currentIndex >= 0 && state.currentIndex < state.playlist.length) {
+                    const track = state.playlist[state.currentIndex];
+                    track.customLyrics = state.currentLyrics;
+                    track.lyricsSource = 'lrclib';
+                    track.lrclibId = match.id != null ? match.id : null;
+                    track.lyricOffset = state.lyricOffset;
+                    await saveTrackToDB(track);
+                }
                 return;
             } else if (match && match.plainLyrics) {
                 state.currentLyrics = match.plainLyrics.split('\n').filter(l => l.trim()).map(line => ({ time: 0, text: line.trim() }));
                 renderLyrics();
                 setLyricStatus('Unsynced', 'amber');
+                if (state.currentIndex >= 0 && state.currentIndex < state.playlist.length) {
+                    const track = state.playlist[state.currentIndex];
+                    track.customLyrics = state.currentLyrics;
+                    track.lyricsSource = 'lrclib';
+                    track.lrclibId = match.id != null ? match.id : null;
+                    track.lyricOffset = state.lyricOffset;
+                    await saveTrackToDB(track);
+                }
                 return;
             }
         }
@@ -884,6 +927,14 @@ async function fetchMusixmatchLyrics(title, artist) {
             state.currentLyrics = body.split('\n').filter(l => l.trim() && !l.includes('*******')).map(line => ({ time: 0, text: line.trim() }));
             renderLyrics();
             setLyricStatus('Plain Lyrics', 'amber');
+            if (state.currentIndex >= 0 && state.currentIndex < state.playlist.length) {
+                const track = state.playlist[state.currentIndex];
+                track.customLyrics = state.currentLyrics;
+                track.lyricsSource = 'musixmatch';
+                track.lrclibId = null;
+                track.lyricOffset = state.lyricOffset;
+                await saveTrackToDB(track);
+            }
             return;
         }
     } catch (e) {
@@ -1332,7 +1383,7 @@ function setupEventListeners() {
     // Lyrics view mode toggle (List ↔ Retro LCD Live Preview)
     document.getElementById('btnViewList')?.addEventListener('click', () => setLyricsViewMode('list'));
     document.getElementById('btnViewPreview')?.addEventListener('click', () => setLyricsViewMode('preview'));
-    // Lyric Offset / Delay Slider Control
+    // Lyric Offset / Delay Slider Control — persists per-track
     const sliderOffset = document.getElementById('sliderLyricOffset');
     const txtOffset = document.getElementById('txtLyricOffsetVal');
     const btnResetOffset = document.getElementById('btnResetLyricOffset');
@@ -1343,6 +1394,9 @@ function setupEventListeners() {
                 const val = state.lyricOffset;
                 txtOffset.textContent = (val > 0 ? `+${val.toFixed(1)}s` : `${val.toFixed(1)}s`);
             }
+            // Debounce save to IndexedDB
+            if (offsetSaveTimer) clearTimeout(offsetSaveTimer);
+            offsetSaveTimer = setTimeout(() => persistCurrentTrackMeta(), 400);
         });
     }
     if (btnResetOffset) {
@@ -1350,6 +1404,7 @@ function setupEventListeners() {
             state.lyricOffset = 0.0;
             if (sliderOffset) sliderOffset.value = '0.0';
             if (txtOffset) txtOffset.textContent = '0.0s';
+            persistCurrentTrackMeta();
         });
     }
     // Audio DSP Speed Slider
@@ -1438,7 +1493,10 @@ async function handleAudioFileUpload(e) {
                 mimeType: file.type || 'audio/mpeg',
                 size: file.size,
                 fileBuffer: buffer,
-                customLyrics: []
+                customLyrics: [],
+                lyricOffset: 0.0,
+                lyricsSource: 'none',
+                lrclibId: null
             };
             state.playlist.push(trackObj);
             await saveTrackToDB(trackObj);
@@ -1508,6 +1566,11 @@ async function handleSrtFileUpload(e) {
         if (parsedLyrics.length > 0) {
             const idx = pendingTrackIndexForSrt;
             state.playlist[idx].customLyrics = parsedLyrics;
+            state.playlist[idx].lyricsSource = 'custom';
+            state.playlist[idx].lrclibId = null;
+            if (typeof state.playlist[idx].lyricOffset !== 'number') {
+                state.playlist[idx].lyricOffset = 0.0;
+            }
             await saveTrackToDB(state.playlist[idx]);
             
             if (idx === state.currentIndex) {
@@ -1547,6 +1610,11 @@ async function applyPastedLyrics() {
     }
     const idx = state.currentIndex;
     state.playlist[idx].customLyrics = parsedLyrics;
+    state.playlist[idx].lyricsSource = 'custom';
+    state.playlist[idx].lrclibId = null;
+    if (typeof state.playlist[idx].lyricOffset !== 'number') {
+        state.playlist[idx].lyricOffset = 0.0;
+    }
     await saveTrackToDB(state.playlist[idx]);
     state.currentLyrics = parsedLyrics;
     state.activeLyricIndex = -1;
@@ -1658,7 +1726,13 @@ window.addEventListener('DOMContentLoaded', async () => {
         await initDB();
         const savedTracks = await loadTracksFromDB();
         if (savedTracks && savedTracks.length > 0) {
-            state.playlist = savedTracks;
+            // Migrate older tracks that lack the new metadata fields
+            state.playlist = savedTracks.map(t => ({
+                lyricOffset: 0.0,
+                lyricsSource: (t.customLyrics && t.customLyrics.length) ? 'custom' : 'none',
+                lrclibId: null,
+                ...t
+            }));
             renderPlaylist();
         }
     } catch (e) {
