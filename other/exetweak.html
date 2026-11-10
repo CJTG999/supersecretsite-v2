@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ExeTweak: change a program's icon and details</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235b8cff'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M9 11h14M9 16h14M9 21h14' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='13' cy='11' r='2.6' fill='white'/%3E%3Ccircle cx='20' cy='16' r='2.6' fill='white'/%3E%3Ccircle cx='12' cy='21' r='2.6' fill='white'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0d1016; --bg2:#121722; --panel:#171c27; --panel2:#1e2532; --line:#2b3445; --text:#e9eef7; --muted:#8e9ab0;
+  --accent:#5b8cff; --accent2:#8b5cf6; --good:#34d399; --warn:#fbbf24; --bad:#f87171; --shadow:0 10px 30px rgba(0,0,0,.35);
+  --r:14px; color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#f3f5fa; --bg2:#eaeef7; --panel:#ffffff; --panel2:#f2f5fb; --line:#dbe2ef; --text:#151a26; --muted:#62708a; --shadow:0 10px 30px rgba(30,45,90,.10); color-scheme:light; }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(1200px 500px at 15% -10%, color-mix(in srgb,var(--accent) 16%,transparent), transparent 60%),radial-gradient(900px 500px at 100% 0%, color-mix(in srgb,var(--accent2) 14%,transparent), transparent 60%),var(--bg);
+  color:var(--text);font:15px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+header.top{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 35%,transparent)}
+header h1{font-size:24px;line-height:1.1;margin:0;letter-spacing:-.02em}
+header p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.badge{margin-left:auto;font-size:12.5px;color:var(--muted);border:1px solid var(--line);padding:6px 11px;border-radius:999px;background:color-mix(in srgb,var(--panel) 80%,transparent);display:flex;gap:7px;align-items:center;white-space:nowrap}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 25%,transparent)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:24px;align-items:start}
+.side{position:sticky;top:18px;display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:18px;transition:opacity .25s}
+.card.locked{opacity:.45;pointer-events:none;filter:saturate(.6)}
+.card h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
+.step{width:24px;height:24px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center}
+.sub{color:var(--muted);font-size:13.5px;margin:-6px 0 14px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:26px 16px;border:2px dashed var(--line);border-radius:12px;background:var(--bg2);cursor:pointer;transition:.15s;position:relative}
+.drop:hover,.drop.over,.drop:focus-within{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg2))}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop b{font-size:15px}.drop span{color:var(--muted);font-size:13px}
+.drop.compact{padding:16px 12px}
+.file{display:none;align-items:center;gap:14px;margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.file.on{display:flex}
+.file img{width:44px;height:44px;object-fit:contain;flex:none}
+.file .nm{font-weight:600;word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--bg2)}
+.note{display:flex;gap:10px;padding:10px 12px;border-radius:10px;font-size:13.5px;margin-top:10px;border:1px solid;align-items:flex-start}
+.note.info{background:color-mix(in srgb,var(--accent) 10%,transparent);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.note.warn{background:color-mix(in srgb,var(--warn) 11%,transparent);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.note.bad{background:color-mix(in srgb,var(--bad) 11%,transparent);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+.note.ok{background:color-mix(in srgb,var(--good) 11%,transparent);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.note ul{margin:4px 0 0;padding-left:18px}
+details{margin-top:12px}
+summary{cursor:pointer;color:var(--muted);font-size:13.5px;user-select:none}
+summary:hover{color:var(--text)}
+table.res{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+table.res td,table.res th{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left}
+table.res th{color:var(--muted);font-weight:600}
+.resbox{max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+.resbox table{margin:0}
+
+.iconrow{display:grid;grid-template-columns:auto auto auto 1fr;gap:16px;align-items:center}
+.tile{width:104px;text-align:center;font-size:12px;color:var(--muted)}
+.tile .sq{width:104px;height:104px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;margin-bottom:6px;
+  background:conic-gradient(#8883 25%,transparent 0 50%,#8883 0 75%,transparent 0) 0 0/16px 16px,var(--bg2)}
+.tile img{width:72px;height:72px;object-fit:contain}
+.arrow{color:var(--muted);font-size:22px}
+.opts{display:grid;gap:14px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.opt{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.opt>label,.opt>span.l{min-width:92px;color:var(--muted);font-size:13.5px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg2)}
+.seg label{padding:6px 13px;cursor:pointer;font-size:13.5px;user-select:none}
+.seg input{display:none}
+.seg input:checked+span{color:#fff}
+.seg label:has(input:checked){background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+input[type=range]{accent-color:var(--accent);width:180px}
+.check{display:flex;gap:9px;align-items:center;font-size:14px;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.hint{color:var(--muted);font-size:12.5px}
+.link{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:13.5px}
+.link:hover{text-decoration:underline}
+
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.field{display:grid;gap:5px}
+.field.full{grid-column:1/-1}
+.field label{font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.field label em{font-style:normal;font-size:12px;opacity:.8}
+input[type=text]{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);outline:none;transition:.12s}
+input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+input[type=text].changed{border-color:color-mix(in srgb,var(--accent2) 65%,var(--line))}
+input[type=text].warnfmt{border-color:var(--warn)}
+.btn{border:1px solid var(--line);background:var(--panel2);padding:9px 16px;border-radius:10px;cursor:pointer;font-weight:600;transition:.12s}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{border:0;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));padding:13px 22px;font-size:15.5px;border-radius:12px;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 32%,transparent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.saverow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.progress{height:8px;background:var(--bg2);border-radius:99px;overflow:hidden;margin-top:14px;display:none;border:1px solid var(--line)}
+.progress.on{display:block}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .15s}
+
+/* live preview */
+.pcard{padding:16px}
+.pcard h3{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.scene{position:relative;height:262px;border-radius:12px;overflow:hidden;background:
+  radial-gradient(260px 160px at 85% 15%,#ffb36b88,transparent 70%),radial-gradient(300px 220px at 10% 90%,#3b82f6aa,transparent 70%),linear-gradient(135deg,#1e2a5a,#5b3b8f 55%,#c05a8b)}
+.dicon{position:absolute;left:10px;top:10px;width:74px;text-align:center;color:#fff;font-size:11.5px;line-height:1.25;text-shadow:0 1px 3px #000a}
+.dicon img{width:46px;height:46px;object-fit:contain;display:block;margin:0 auto 3px}
+.dicon span{display:block;word-break:break-word;max-height:2.6em;overflow:hidden}
+.win{position:absolute;left:96px;right:14px;top:26px;height:156px;border-radius:9px;background:#f6f7fb;color:#20232b;box-shadow:0 10px 30px #0007;overflow:hidden;border:1px solid #fff4}
+.wt{height:32px;display:flex;align-items:center;gap:8px;padding-left:10px;background:#fff;font-size:12px}
+.wt img{width:16px;height:16px;object-fit:contain}
+.wt .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wt .b{width:34px;height:32px;display:grid;place-items:center;font-size:11px;color:#444}
+.wb{padding:12px;display:grid;gap:8px}
+.ln{height:8px;border-radius:5px;background:#dfe3ee}
+.tb{position:absolute;left:0;right:0;bottom:0;height:40px;background:#f3f4f9dd;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;gap:4px}
+.tb .it{width:34px;height:34px;border-radius:7px;display:grid;place-items:center;position:relative}
+.tb .it img{width:22px;height:22px;object-fit:contain}
+.tb .it.act{background:#0001}
+.tb .it.act::after{content:"";position:absolute;bottom:2px;width:14px;height:3px;border-radius:3px;background:#2f6bff}
+.tb .gh{width:20px;height:20px;border-radius:6px;background:#9aa3b8}
+.tb .gh.b{background:#ef7d57}.tb .gh.c{background:#4fb286}
+.tb .start{display:grid;grid-template-columns:repeat(2,8px);gap:2px}
+.tb .start i{width:8px;height:8px;background:#2f6bff;border-radius:1px}
+.props{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;margin:0}
+.props dt{color:var(--muted)}
+.props dd{margin:0;word-break:break-word}
+.props dd:empty::after{content:"–";color:var(--muted)}
+.foot{color:var(--muted);font-size:12.5px;margin-top:30px;text-align:center}
+@media (max-width:980px){.grid{grid-template-columns:1fr}.side{position:static;order:-1}}
+@media (max-width:560px){.fields{grid-template-columns:1fr}.iconrow{grid-template-columns:auto auto auto}.iconrow>.hint{grid-column:1/-1}.badge{display:none}.saverow{grid-template-columns:1fr}.tile,.tile .sq{width:92px}.tile .sq{height:92px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="logo"><svg width="26" height="26" viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 10h20M6 16h20M6 22h20"/><circle cx="12" cy="10" r="3" fill="#fff"/><circle cx="21" cy="16" r="3" fill="#fff"/><circle cx="11" cy="22" r="3" fill="#fff"/></svg></div>
+  <div><h1>ExeTweak</h1><p>Change the icon, name and details of a Windows program.</p></div>
+  <div class="badge"><i></i>Runs on your PC. Nothing is uploaded.</div>
+</header>
+
+<div class="grid">
+<main>
+  <section class="card" id="cExe">
+    <h2><span class="step">1</span>Choose your program</h2>
+    <label class="drop" id="dropExe">
+      <input type="file" id="fileExe" accept=".exe,.scr,.dll,application/x-msdownload,application/octet-stream">
+      <b>Drop an .exe here, or click to browse</b>
+      <span>Works with Electron apps and most other Windows programs, even very large ones.</span>
+    </label>
+    <div class="file" id="fileCard">
+      <img id="fileIcon" alt="">
+      <div><div class="nm" id="fileName"></div><div class="chips" id="fileChips"></div></div>
+    </div>
+    <div id="exeNotes"></div>
+    <details id="resDetails" hidden><summary>What's inside this file (resources)</summary><div class="resbox"><table class="res" id="resTable"></table></div></details>
+  </section>
+
+  <section class="card locked" id="cIcon">
+    <h2><span class="step">2</span>Icon</h2>
+    <p class="sub">This is the icon on the desktop, in Explorer, in the taskbar and on the window's title bar (unless the app sets its own at runtime).</p>
+    <div class="iconrow">
+      <div class="tile"><div class="sq"><img id="imgCur" alt=""></div>Current</div>
+      <div class="arrow">→</div>
+      <div class="tile"><div class="sq" id="newSq"><img id="imgNew" alt="" style="display:none"><span id="newEmpty" class="hint">none yet</span></div>New</div>
+      <div class="hint" id="newInfo">Pick an image below to replace the icon.</div>
+    </div>
+    <label class="drop compact" id="dropIcon" style="margin-top:16px">
+      <input type="file" id="fileIcon2" accept="image/*,.ico">
+      <b>Drop a new icon image here, or click to browse</b>
+      <span>PNG, SVG, JPG, WebP or ICO. A square image of 256×256 px or more looks best.</span>
+    </label>
+    <div class="opts" id="iconOpts" style="display:none">
+      <div class="opt" id="scaleOpt"><span class="l">Scaling</span>
+        <span class="seg"><label><input type="radio" name="scale" value="smooth" checked><span>Smooth</span></label><label><input type="radio" name="scale" value="crisp"><span>Crisp pixels</span></label></span>
+        <span class="hint" id="scaleHint"></span></div>
+      <div class="opt" id="padOpt"><label for="pad">Padding</label><input type="range" id="pad" min="0" max="25" value="4"><span class="hint" id="padVal">4%</span></div>
+      <label class="check" id="allWrap" style="display:none"><input type="checkbox" id="allGroups"><span id="allLabel"></span></label>
+      <div><button class="link" id="dlIco" type="button">Download the generated .ico</button></div>
+    </div>
+  </section>
+
+  <section class="card locked" id="cDetails">
+    <h2><span class="step">3</span>Details <button class="link" id="resetVer" type="button" style="margin-left:auto;font-weight:400">Reset</button></h2>
+    <p class="sub">Shown in Explorer's Details tab, Task Manager and app lists. Leave a box empty to remove that entry.</p>
+    <div class="fields" id="fieldsMain"></div>
+    <details><summary>More fields</summary><div class="fields" id="fieldsMore" style="margin-top:12px"></div></details>
+  </section>
+
+  <section class="card locked" id="cSave">
+    <h2><span class="step">4</span>Save</h2>
+    <div class="saverow">
+      <div class="field"><label for="outName">New file name</label><input type="text" id="outName" spellcheck="false"></div>
+      <button class="btn primary" id="btnSave" type="button" disabled>Create modified program</button>
+    </div>
+    <p class="hint" style="margin:10px 0 0" id="saveHint">Your original file is never changed. A new copy is created.</p>
+    <div class="progress" id="prog"><i></i></div>
+    <div id="saveNotes"></div>
+  </section>
+</main>
+
+<aside class="side">
+  <div class="card pcard" style="margin:0">
+    <h3>Live preview</h3>
+    <div class="scene">
+      <div class="dicon"><img id="pvDesk" alt=""><span id="pvDeskName">program</span></div>
+      <div class="win">
+        <div class="wt"><img id="pvTitle" alt=""><span class="t" id="pvTitleText">program</span><span class="b">–</span><span class="b">☐</span><span class="b">✕</span></div>
+        <div class="wb"><div class="ln" style="width:70%"></div><div class="ln" style="width:92%"></div><div class="ln" style="width:55%"></div><div class="ln" style="width:80%"></div></div>
+      </div>
+      <div class="tb"><div class="it"><div class="start"><i></i><i></i><i></i><i></i></div></div><div class="it act"><img id="pvTask" alt=""></div><div class="it"><div class="gh"></div></div><div class="it"><div class="gh b"></div></div><div class="it"><div class="gh c"></div></div></div>
+    </div>
+  </div>
+  <div class="card pcard" style="margin:0">
+    <h3>Details tab</h3>
+    <dl class="props">
+      <dt>Description</dt><dd id="pDesc"></dd>
+      <dt>File version</dt><dd id="pFv"></dd>
+      <dt>Product name</dt><dd id="pPn"></dd>
+      <dt>Product version</dt><dd id="pPv"></dd>
+      <dt>Company</dt><dd id="pCo"></dd>
+      <dt>Copyright</dt><dd id="pCr"></dd>
+      <dt>Original name</dt><dd id="pOn"></dd>
+    </dl>
+  </div>
+</aside>
+</div>
+<p class="foot">Editing a program breaks its digital signature, so the signature is removed from the copy. Only change software you own or are allowed to modify.</p>
+</div>
+
+<script>
+/* ExeTweak engine: reads and rewrites the resource section of Windows PE files.
+   No DOM, no dependencies. Works in browsers (File/Blob) and in Node (Buffer). */
+(function (root) {
+'use strict';
+
+/* ---------- small helpers ---------- */
+const u16 = (b, o) => b[o] | (b[o + 1] << 8);
+const u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+function w16(b, o, v) { b[o] = v & 255; b[o + 1] = (v >>> 8) & 255; }
+function w32(b, o, v) { b[o] = v & 255; b[o + 1] = (v >>> 8) & 255; b[o + 2] = (v >>> 16) & 255; b[o + 3] = (v >>> 24) & 255; }
+const alignUp = (v, a) => Math.ceil(v / a) * a;
+function copy(x) { const o = new Uint8Array(x.length); o.set(x); return o; }
+function ascii(b, o, n) { let s = ''; for (let i = 0; i < n && b[o + i]; i++) s += String.fromCharCode(b[o + i]); return s; }
+
+const RT_NAMES = { 1: 'CURSOR', 2: 'BITMAP', 3: 'ICON', 4: 'MENU', 5: 'DIALOG', 6: 'STRING', 7: 'FONTDIR', 8: 'FONT', 9: 'ACCELERATOR',
+  10: 'RCDATA', 11: 'MESSAGETABLE', 12: 'GROUP_CURSOR', 14: 'GROUP_ICON', 16: 'VERSION', 17: 'DLGINCLUDE', 19: 'PLUGPLAY',
+  20: 'VXD', 21: 'ANICURSOR', 22: 'ANIICON', 23: 'HTML', 24: 'MANIFEST' };
+const RT_ICON = 3, RT_GROUP_ICON = 14, RT_VERSION = 16;
+
+/* ---------- data sources ---------- */
+function sourceFromFile(file) {
+  return { kind: 'file', file, size: file.size,
+    async read(off, len) { return new Uint8Array(await file.slice(off, Math.min(file.size, off + len)).arrayBuffer()); } };
+}
+function sourceFromBuffer(buf) {
+  return { kind: 'buf', buf, size: buf.length,
+    async read(off, len) { return buf.subarray(off, Math.min(buf.length, off + len)); } };
+}
+
+/* ---------- resource directory: parse ---------- */
+async function parseResources(buf, rootRva, getOutside) {
+  const res = new Map();
+  const seen = new Set();
+  const readName = (off) => {
+    if (off + 2 > buf.length) throw new Error('Corrupt resource name.');
+    const n = u16(buf, off); let s = '';
+    for (let i = 0; i < n; i++) s += String.fromCharCode(u16(buf, off + 2 + i * 2));
+    return s;
+  };
+  function listDir(off) {
+    if (off + 16 > buf.length) throw new Error('Corrupt resource directory.');
+    if (seen.has(off)) throw new Error('Resource directory loops back on itself.');
+    seen.add(off);
+    const nNamed = u16(buf, off + 12), nId = u16(buf, off + 14), out = [];
+    if (nNamed + nId > 20000) throw new Error('Resource directory is implausibly large.');
+    for (let i = 0; i < nNamed + nId; i++) {
+      const eo = off + 16 + i * 8;
+      if (eo + 8 > buf.length) throw new Error('Corrupt resource directory.');
+      const nf = u32(buf, eo), of = u32(buf, eo + 4);
+      out.push({ key: nf >= 0x80000000 ? readName(nf - 0x80000000) : nf, isDir: of >= 0x80000000, off: of >= 0x80000000 ? of - 0x80000000 : of });
+    }
+    return out;
+  }
+  for (const t of listDir(0)) {
+    if (!t.isDir) throw new Error('Unusual resource layout.');
+    const tm = new Map();
+    for (const n of listDir(t.off)) {
+      if (!n.isDir) throw new Error('Unusual resource layout.');
+      const nm = new Map();
+      for (const l of listDir(n.off)) {
+        if (l.isDir || typeof l.key !== 'number') continue;
+        const rva = u32(buf, l.off), size = u32(buf, l.off + 4), cp = u32(buf, l.off + 8);
+        const rel = rva - rootRva;
+        let data;
+        if (rel >= 0 && rel + size <= buf.length) data = copy(buf.subarray(rel, rel + size));
+        else data = copy(await getOutside(rva, size));
+        nm.set(l.key, { data, cp });
+      }
+      if (nm.size) tm.set(n.key, nm);
+    }
+    if (tm.size) res.set(t.key, tm);
+  }
+  return res;
+}
+
+/* ---------- resource directory: build ---------- */
+function keyCmp(a, b) {
+  const as = typeof a === 'string', bs = typeof b === 'string';
+  if (as && !bs) return -1; if (!as && bs) return 1;
+  if (as) { const A = a.toUpperCase(), B = b.toUpperCase(); return A < B ? -1 : A > B ? 1 : 0; }
+  return a - b;
+}
+function buildResourceSection(res, baseRva) {
+  const types = [];
+  for (const [tk, tm] of res) {
+    const names = [];
+    for (const [nk, nm] of tm) {
+      const langs = [];
+      for (const [lk, e] of nm) langs.push({ key: lk, e });
+      if (langs.length) { langs.sort((a, b) => a.key - b.key); names.push({ key: nk, langs }); }
+    }
+    if (names.length) { names.sort((a, b) => keyCmp(a.key, b.key)); types.push({ key: tk, names }); }
+  }
+  types.sort((a, b) => keyCmp(a.key, b.key));
+  let cur = 16 + 8 * types.length;
+  for (const t of types) { t.off = cur; cur += 16 + 8 * t.names.length; }
+  for (const t of types) for (const n of t.names) { n.off = cur; cur += 16 + 8 * n.langs.length; }
+  for (const t of types) for (const n of t.names) for (const l of n.langs) { l.off = cur; cur += 16; }
+  const strOff = new Map();
+  const addStr = (s) => { if (typeof s === 'string' && !strOff.has(s)) { cur = alignUp(cur, 2); strOff.set(s, cur); cur += 2 + s.length * 2; } };
+  for (const t of types) { addStr(t.key); for (const n of t.names) addStr(n.key); }
+  cur = alignUp(cur, 8);
+  for (const t of types) for (const n of t.names) for (const l of n.langs) { l.dataOff = cur; cur = alignUp(cur + l.e.data.length, 8); }
+  const out = new Uint8Array(Math.max(cur, 16));
+  const writeDir = (off, items) => {
+    const named = items.filter((i) => typeof i.key === 'string').length;
+    w16(out, off + 12, named); w16(out, off + 14, items.length - named);
+    items.forEach((it, i) => {
+      const eo = off + 16 + 8 * i;
+      w32(out, eo, typeof it.key === 'string' ? (0x80000000 + strOff.get(it.key)) : it.key);
+      w32(out, eo + 4, it.target);
+    });
+  };
+  writeDir(0, types.map((t) => ({ key: t.key, target: 0x80000000 + t.off })));
+  for (const t of types) {
+    writeDir(t.off, t.names.map((n) => ({ key: n.key, target: 0x80000000 + n.off })));
+    for (const n of t.names) {
+      writeDir(n.off, n.langs.map((l) => ({ key: l.key, target: l.off })));
+      for (const l of n.langs) {
+        w32(out, l.off, baseRva + l.dataOff); w32(out, l.off + 4, l.e.data.length); w32(out, l.off + 8, l.e.cp || 0);
+        out.set(l.e.data, l.dataOff);
+      }
+    }
+  }
+  for (const [s, o] of strOff) { w16(out, o, s.length); for (let i = 0; i < s.length; i++) w16(out, o + 2 + i * 2, s.charCodeAt(i)); }
+  return out;
+}
+
+/* ---------- icons ---------- */
+function isPng(d) { return d.length > 24 && d[0] === 0x89 && d[1] === 0x50 && d[2] === 0x4e && d[3] === 0x47; }
+
+function parseGroupIcon(d) {
+  if (d.length < 6 || u16(d, 2) !== 1) return null;
+  const n = u16(d, 4), entries = [];
+  for (let i = 0; i < n && 6 + i * 14 + 14 <= d.length; i++) {
+    const o = 6 + i * 14;
+    entries.push({ w: d[o] || 256, h: d[o + 1] || 256, colors: d[o + 2], planes: u16(d, o + 4), bitCount: u16(d, o + 6), bytes: u32(d, o + 8), id: u16(d, o + 12) });
+  }
+  return entries;
+}
+function buildGroupIcon(images, ids) {
+  const out = new Uint8Array(6 + images.length * 14);
+  w16(out, 2, 1); w16(out, 4, images.length);
+  images.forEach((im, i) => {
+    const o = 6 + i * 14;
+    out[o] = im.w >= 256 ? 0 : im.w; out[o + 1] = im.h >= 256 ? 0 : im.h; out[o + 2] = im.colors || 0;
+    w16(out, o + 4, im.planes || 1); w16(out, o + 6, im.bitCount || 32); w32(out, o + 8, im.data.length); w16(out, o + 12, ids[i]);
+  });
+  return out;
+}
+function buildIco(images) {
+  let off = 6 + images.length * 16;
+  const total = off + images.reduce((a, im) => a + im.data.length, 0);
+  const out = new Uint8Array(total);
+  w16(out, 2, 1); w16(out, 4, images.length);
+  images.forEach((im, i) => {
+    const o = 6 + i * 16;
+    out[o] = im.w >= 256 ? 0 : im.w; out[o + 1] = im.h >= 256 ? 0 : im.h; out[o + 2] = im.colors || 0;
+    w16(out, o + 4, im.planes || 1); w16(out, o + 6, im.bitCount || 32); w32(out, o + 8, im.data.length); w32(out, o + 12, off);
+    out.set(im.data, off); off += im.data.length;
+  });
+  return out;
+}
+function parseIco(b) {
+  if (b.length < 22 || u16(b, 0) !== 0 || u16(b, 2) !== 1) throw new Error('That does not look like a valid .ico file.');
+  const n = u16(b, 4), images = [];
+  for (let i = 0; i < n; i++) {
+    const o = 6 + i * 16;
+    if (o + 16 > b.length) break;
+    const size = u32(b, o + 8), off = u32(b, o + 12);
+    if (off + size > b.length) continue;
+    const data = copy(b.subarray(off, off + size));
+    let w, h, bitCount = u16(b, o + 6);
+    if (isPng(data)) {
+      w = (data[16] << 24 | data[17] << 16 | data[18] << 8 | data[19]) >>> 0;
+      h = (data[20] << 24 | data[21] << 16 | data[22] << 8 | data[23]) >>> 0;
+      bitCount = 32;
+    } else {
+      w = u32(data, 4); h = u32(data, 8) >>> 1; bitCount = u16(data, 14) || bitCount;
+    }
+    images.push({ w, h, colors: b[o + 2], planes: 1, bitCount, data });
+  }
+  if (!images.length) throw new Error('No usable images were found in that .ico file.');
+  images.sort((a, c) => a.w - c.w);
+  return images;
+}
+function rgbaToDib(rgba, s) {
+  const maskStride = ((s + 31) >> 5) << 2;
+  const out = new Uint8Array(40 + s * s * 4 + maskStride * s);
+  w32(out, 0, 40); w32(out, 4, s); w32(out, 8, s * 2); w16(out, 12, 1); w16(out, 14, 32);
+  const maskBase = 40 + s * s * 4;
+  for (let y = 0; y < s; y++) {
+    const dy = s - 1 - y;
+    for (let x = 0; x < s; x++) {
+      const i = (y * s + x) * 4, p = 40 + (dy * s + x) * 4;
+      out[p] = rgba[i + 2]; out[p + 1] = rgba[i + 1]; out[p + 2] = rgba[i]; out[p + 3] = rgba[i + 3];
+      if (rgba[i + 3] < 128) out[maskBase + dy * maskStride + (x >> 3)] |= 0x80 >> (x & 7);
+    }
+  }
+  return out;
+}
+async function makeIconSet(sizes, getRGBA, encodePng) {
+  const images = [];
+  for (const s of sizes) {
+    const rgba = getRGBA(s);
+    if (s >= 256) images.push({ w: s, h: s, colors: 0, planes: 1, bitCount: 32, data: await encodePng(rgba, s) });
+    else images.push({ w: s, h: s, colors: 0, planes: 1, bitCount: 32, data: rgbaToDib(rgba, s) });
+  }
+  return images;
+}
+
+/* ---------- version info ---------- */
+const utf16z = (s) => { const o = new Uint8Array(s.length * 2 + 2); for (let i = 0; i < s.length; i++) w16(o, i * 2, s.charCodeAt(i)); return o; };
+
+function parseVersion(b) {
+  try {
+    const rd = (pos) => {
+      const len = u16(b, pos), valLen = u16(b, pos + 2), type = u16(b, pos + 4);
+      let p = pos + 6, key = '';
+      while (p + 1 < b.length) { const c = u16(b, p); p += 2; if (!c) break; key += String.fromCharCode(c); }
+      const valPos = alignUp(p, 4);
+      const valBytes = type === 1 ? valLen * 2 : valLen;
+      return { pos, len, valLen, type, key, valPos, valBytes, childPos: alignUp(valPos + valBytes, 4), end: Math.min(pos + len, b.length) };
+    };
+    const rootN = rd(0);
+    if (rootN.key !== 'VS_VERSION_INFO') return null;
+    const v = { fileVersion: [0, 0, 0, 0], productVersion: [0, 0, 0, 0], fileFlagsMask: 0x3f, fileFlags: 0, fileOS: 0x40004, fileType: 1, fileSubtype: 0,
+      fileDateMS: 0, fileDateLS: 0, strings: [], lang: 0x0409, cp: 0x04b0, hasStrings: false };
+    if (rootN.valLen >= 52 && u32(b, rootN.valPos) === 0xfeef04bd) {
+      const p = rootN.valPos;
+      const fMS = u32(b, p + 8), fLS = u32(b, p + 12), pMS = u32(b, p + 16), pLS = u32(b, p + 20);
+      v.fileVersion = [fMS >>> 16, fMS & 0xffff, fLS >>> 16, fLS & 0xffff];
+      v.productVersion = [pMS >>> 16, pMS & 0xffff, pLS >>> 16, pLS & 0xffff];
+      v.fileFlagsMask = u32(b, p + 24); v.fileFlags = u32(b, p + 28); v.fileOS = u32(b, p + 32);
+      v.fileType = u32(b, p + 36); v.fileSubtype = u32(b, p + 40); v.fileDateMS = u32(b, p + 44); v.fileDateLS = u32(b, p + 48);
+    }
+    let pos = rootN.childPos, firstTable = true;
+    while (pos + 6 <= rootN.end) {
+      const n = rd(pos);
+      if (n.len < 6) break;
+      if (n.key === 'StringFileInfo') {
+        let tp = n.childPos;
+        while (tp + 6 <= n.end) {
+          const t = rd(tp);
+          if (t.len < 6) break;
+          if (firstTable) {
+            firstTable = false; v.hasStrings = true;
+            if (/^[0-9a-fA-F]{8}$/.test(t.key)) { v.lang = parseInt(t.key.slice(0, 4), 16); v.cp = parseInt(t.key.slice(4), 16); }
+            let sp = t.childPos;
+            while (sp + 6 <= t.end) {
+              const s = rd(sp);
+              if (s.len < 6) break;
+              let val = '';
+              for (let i = 0; i < s.valLen && s.valPos + i * 2 + 1 < b.length; i++) { const c = u16(b, s.valPos + i * 2); if (!c) break; val += String.fromCharCode(c); }
+              v.strings.push([s.key, val]);
+              sp = alignUp(sp + s.len, 4);
+            }
+          }
+          tp = alignUp(tp + t.len, 4);
+        }
+      } else if (n.key === 'VarFileInfo') {
+        let tp = n.childPos;
+        while (tp + 6 <= n.end) {
+          const t = rd(tp);
+          if (t.len < 6) break;
+          if (t.key === 'Translation' && t.valLen >= 4) { v.lang = u16(b, t.valPos); v.cp = u16(b, t.valPos + 2); }
+          tp = alignUp(tp + t.len, 4);
+        }
+      }
+      pos = alignUp(pos + n.len, 4);
+    }
+    return v;
+  } catch (e) { return null; }
+}
+
+function mkNode(key, type, valBytes, valLenField, children) {
+  const k = utf16z(key);
+  const valStart = alignUp(6 + k.length, 4);
+  let end = valStart + (valBytes ? valBytes.length : 0);
+  const placed = [];
+  if (children && children.length) {
+    end = alignUp(end, 4);
+    for (const c of children) { end = alignUp(end, 4); placed.push([end, c]); end += c.length; }
+  }
+  const out = new Uint8Array(end);
+  w16(out, 0, end); w16(out, 2, valLenField); w16(out, 4, type); out.set(k, 6);
+  if (valBytes) out.set(valBytes, valStart);
+  for (const [o, c] of placed) out.set(c, o);
+  return out;
+}
+function buildVersion(v) {
+  const fixed = new Uint8Array(52);
+  const fv = v.fileVersion, pv = v.productVersion;
+  const dw = [0xfeef04bd, 0x00010000, ((fv[0] << 16) | fv[1]) >>> 0, ((fv[2] << 16) | fv[3]) >>> 0, ((pv[0] << 16) | pv[1]) >>> 0, ((pv[2] << 16) | pv[3]) >>> 0,
+    v.fileFlagsMask, v.fileFlags, v.fileOS, v.fileType, v.fileSubtype, v.fileDateMS || 0, v.fileDateLS || 0];
+  dw.forEach((x, i) => w32(fixed, i * 4, x));
+  const hex = (n, d) => n.toString(16).padStart(d, '0');
+  const strNodes = v.strings.filter(([, val]) => val !== '').map(([k, val]) => mkNode(k, 1, utf16z(val), val.length + 1, null));
+  const table = mkNode(hex(v.lang, 4) + hex(v.cp, 4), 1, null, 0, strNodes);
+  const sfi = mkNode('StringFileInfo', 1, null, 0, [table]);
+  const tr = new Uint8Array(4); w16(tr, 0, v.lang); w16(tr, 2, v.cp);
+  const vfi = mkNode('VarFileInfo', 1, null, 0, [mkNode('Translation', 0, tr, 4, null)]);
+  return mkNode('VS_VERSION_INFO', 0, fixed, 52, [sfi, vfi]);
+}
+
+/* ---------- open a PE file ---------- */
+function cloneRes(res) {
+  const o = new Map();
+  for (const [t, tm] of res) { const m1 = new Map(); for (const [n, nm] of tm) m1.set(n, new Map(nm)); o.set(t, m1); }
+  return o;
+}
+
+async function openPE(src) {
+  const first = await src.read(0, Math.min(src.size, 4096));
+  if (first.length < 64 || first[0] !== 0x4d || first[1] !== 0x5a) throw new Error('This does not look like a Windows program (no MZ header).');
+  const peOff = u32(first, 0x3c);
+  if (peOff < 0x40 || peOff + 24 > src.size) throw new Error('The PE header offset is invalid; the file may be damaged.');
+  const probe = await src.read(0, Math.min(src.size, peOff + 0x800));
+  if (u32(probe, peOff) !== 0x4550) throw new Error('This does not look like a Windows program (no PE signature).');
+  const co = peOff + 4, nSec0 = u16(probe, co + 2), optSize = u16(probe, co + 16), machine = u16(probe, co);
+  const opt = co + 20, magic = u16(probe, opt), is64 = magic === 0x20b;
+  if (magic !== 0x10b && !is64) throw new Error('Unsupported executable type (not PE32 or PE32+).');
+  const sizeOfHeaders = u32(probe, opt + 60);
+  if (sizeOfHeaders < 0x40 || sizeOfHeaders > 0x100000 || sizeOfHeaders > src.size) throw new Error('Unexpected header size; the file may be damaged.');
+  const H = copy(await src.read(0, sizeOfHeaders));
+  const secAlign = u32(H, opt + 32), fileAlign = u32(H, opt + 36), sizeOfImage = u32(H, opt + 56);
+  const nDD = u32(H, opt + (is64 ? 108 : 92)), ddOff = opt + (is64 ? 112 : 96);
+  const secOff = opt + optSize;
+  if (nDD < 3 || ddOff + 40 > H.length || secOff + nSec0 * 40 > H.length) throw new Error('Unexpected header layout.');
+  if (!fileAlign || !secAlign) throw new Error('Invalid alignment values in header.');
+  const sections = [];
+  for (let i = 0; i < nSec0; i++) {
+    const o = secOff + i * 40;
+    sections.push({ idx: i, name: ascii(H, o, 8), vsize: u32(H, o + 8), va: u32(H, o + 12), rawSize: u32(H, o + 16), raw: u32(H, o + 20), chars: u32(H, o + 36) });
+  }
+  const dd = (i) => ({ rva: u32(H, ddOff + i * 8), size: u32(H, ddOff + i * 8 + 4) });
+  const dd2 = dd(2), dd4 = nDD > 4 ? dd(4) : { rva: 0, size: 0 };
+  const secOf = (rva) => sections.find((s) => rva >= s.va && rva < s.va + Math.max(s.vsize, s.rawSize));
+  const rvaToOff = (rva) => { const s = secOf(rva); return s ? s.raw + (rva - s.va) : null; };
+
+  let res = new Map(), rsrcSec = null;
+  if (dd2.rva && dd2.size) {
+    rsrcSec = secOf(dd2.rva) || null;
+    const off = rvaToOff(dd2.rva);
+    if (off == null || off >= src.size) throw new Error('The resource table points outside the file.');
+    const buf = await src.read(off, dd2.size);
+    res = await parseResources(buf, dd2.rva, async (rva, len) => {
+      const o = rvaToOff(rva); if (o == null) throw new Error('A resource points outside the file.');
+      return src.read(o, len);
+    });
+  }
+
+  let lastRawEnd = 0;
+  for (const s of sections) lastRawEnd = Math.max(lastRawEnd, s.raw + s.rawSize);
+  const certAtEnd = dd4.size && dd4.rva && dd4.rva + dd4.size >= src.size - 8;
+  const dataEnd = certAtEnd ? dd4.rva : src.size;
+  const overlayBytes = Math.max(0, dataEnd - lastRawEnd);
+  let installer = null;
+  if (overlayBytes >= 32) {
+    const chunk = await src.read(lastRawEnd, Math.min(overlayBytes, 16384));
+    const magic = [0xef, 0xbe, 0xad, 0xde, 0x4e, 0x75, 0x6c, 0x6c, 0x73, 0x6f, 0x66, 0x74, 0x49, 0x6e, 0x73, 0x74];
+    for (let o = 0; o + 16 <= chunk.length && !installer; o++) {
+      let ok = true; for (let i = 0; i < 16; i++) if (chunk[o + i] !== magic[i]) { ok = false; break; }
+      if (ok) installer = 'NSIS';
+    }
+  }
+
+  const pe = {
+    src, H, is64, machine, sections, secAlign, fileAlign, sizeOfHeaders, res, dd2, dd4, rsrcSec, overlayBytes, installer,
+    signed: !!dd4.size,
+    arch: ({ 0x8664: 'x64', 0x14c: 'x86', 0xaa64: 'ARM64', 0x1c4: 'ARM' })[machine] || ('0x' + machine.toString(16)),
+    get resourceCount() { let n = 0; for (const tm of this.res.values()) for (const nm of tm.values()) n += nm.size; return n; }
+  };
+
+  pe.groupIcons = (r = pe.res) => {
+    const out = [], g = r.get(RT_GROUP_ICON);
+    if (!g) return out;
+    for (const [name, nm] of g) for (const [lang, e] of nm) out.push({ name, lang, entries: parseGroupIcon(e.data) || [] });
+    return out;
+  };
+  pe.getVersion = () => {
+    const t = pe.res.get(RT_VERSION); if (!t) return null;
+    for (const nm of t.values()) for (const e of nm.values()) { const v = parseVersion(e.data); if (v) return v; }
+    return null;
+  };
+  /* ICO bytes of the icon Windows shows for this program (first group), for previews */
+  pe.getPrimaryIco = () => {
+    const gs = pe.groupIcons(); if (!gs.length) return null;
+    const icons = pe.res.get(RT_ICON); if (!icons) return null;
+    const images = [];
+    for (const e of gs[0].entries) {
+      const m = icons.get(e.id); if (!m) continue;
+      const hit = m.get(gs[0].lang) || m.values().next().value; if (!hit) continue;
+      images.push({ w: e.w, h: e.h, colors: e.colors, planes: e.planes, bitCount: e.bitCount, data: hit.data });
+    }
+    return images.length ? { ico: buildIco(images), images } : null;
+  };
+  pe.listResources = () => {
+    const out = [];
+    for (const [t, tm] of pe.res) for (const [n, nm] of tm) for (const [l, e] of nm)
+      out.push({ type: typeof t === 'number' ? (RT_NAMES[t] || String(t)) : t, name: n, lang: l, size: e.data.length });
+    return out;
+  };
+
+  /* ----- editing session: works on a private copy, so nothing is changed until build() ----- */
+  pe.edit = () => {
+    const work = cloneRes(pe.res);
+    const ed = {};
+    ed.setIcon = (images, { allGroups = false } = {}) => {
+      let t14 = work.get(RT_GROUP_ICON); if (!t14) { t14 = new Map(); work.set(RT_GROUP_ICON, t14); }
+      let t3 = work.get(RT_ICON); if (!t3) { t3 = new Map(); work.set(RT_ICON, t3); }
+      const names = [...t14.keys()];
+      let targets = [];
+      if (!names.length) targets.push({ name: 1, lang: 1033 });
+      else for (const n of (allGroups ? names : [names[0]])) for (const l of t14.get(n).keys()) targets.push({ name: n, lang: l });
+      const isTarget = (n, l) => targets.some((t) => t.name === n && t.lang === l);
+      const keep = new Set();
+      for (const [n, nm] of t14) for (const [l, e] of nm) if (!isTarget(n, l)) for (const x of (parseGroupIcon(e.data) || [])) keep.add(x.id);
+      for (const t of targets) {
+        const e = t14.get(t.name) && t14.get(t.name).get(t.lang);
+        if (!e) continue;
+        for (const x of (parseGroupIcon(e.data) || [])) {
+          if (keep.has(x.id)) continue;
+          const m = t3.get(x.id); if (m) { m.delete(t.lang); if (!m.size) t3.delete(x.id); }
+        }
+      }
+      let next = 1; for (const k of t3.keys()) if (typeof k === 'number') next = Math.max(next, k + 1);
+      for (const t of targets) {
+        const ids = images.map(() => next++);
+        images.forEach((im, i) => {
+          let m = t3.get(ids[i]); if (!m) { m = new Map(); t3.set(ids[i], m); }
+          m.set(t.lang, { data: im.data, cp: 0 });
+        });
+        let nm = t14.get(t.name); if (!nm) { nm = new Map(); t14.set(t.name, nm); }
+        nm.set(t.lang, { data: buildGroupIcon(images, ids), cp: 0 });
+      }
+      return targets.length;
+    };
+    ed.setVersion = (v) => {
+      let t = work.get(RT_VERSION); if (!t) { t = new Map(); work.set(RT_VERSION, t); }
+      let name = 1, lang = 1033;
+      if (t.size) { name = t.keys().next().value; lang = t.get(name).keys().next().value; }
+      let nm = t.get(name); if (!nm) { nm = new Map(); t.set(name, nm); }
+      nm.set(lang, { data: buildVersion(v), cp: 0 });
+    };
+    ed.build = () => buildOutput(pe, work);
+    return ed;
+  };
+  return pe;
+}
+
+/* ---------- write the modified file (as a list of parts, so huge files are never copied into memory) ---------- */
+async function buildOutput(pe, res) {
+  const src = pe.src, fa = pe.fileAlign, sa = pe.secAlign;
+  const H = copy(pe.H);
+  // re-derive header offsets
+  const peOff = u32(H, 0x3c), co = peOff + 4, opt = co + 20, is64 = pe.is64;
+  const optSize = u16(H, co + 16), secOff = opt + optSize, ddOff = opt + (is64 ? 112 : 96);
+  let nSec = u16(H, co + 2);
+  let fileEnd = src.size, certStripped = false;
+  if (pe.dd4.size) {
+    if (pe.dd4.rva + pe.dd4.size >= src.size - 8 && pe.dd4.rva <= src.size) fileEnd = pe.dd4.rva;
+    w32(H, ddOff + 32, 0); w32(H, ddOff + 36, 0);
+    w16(H, opt + 70, u16(H, opt + 70) & ~0x80);     // drop FORCE_INTEGRITY: it needs a valid signature
+    certStripped = true;
+  }
+  w32(H, opt + 64, 0);                               // checksum: 0 = not computed (fine for normal programs)
+
+  const body0 = buildResourceSection(res, 0), size = body0.length;
+  const rs = pe.rsrcSec;
+  const parts = [];
+  let mode, total;
+
+  if (rs && rs.name.toLowerCase() === '.rsrc' && rs.va === pe.dd2.rva && rs.raw >= pe.sizeOfHeaders && size <= rs.rawSize &&
+      size <= alignUp(rs.vsize, sa) && rs.raw + rs.rawSize <= fileEnd) {
+    mode = 'in-place';
+    const body = buildResourceSection(res, rs.va);
+    w32(H, secOff + rs.idx * 40 + 8, size);
+    w32(H, ddOff + 16, rs.va); w32(H, ddOff + 20, size);
+    const padded = new Uint8Array(rs.rawSize); padded.set(body);
+    parts.push(H, { start: pe.sizeOfHeaders, end: rs.raw }, padded);
+    if (rs.raw + rs.rawSize < fileEnd) parts.push({ start: rs.raw + rs.rawSize, end: fileEnd });
+    total = fileEnd;
+  } else {
+    mode = 'new-section';
+    let maxEnd = u32(H, opt + 56);
+    for (const s of pe.sections) maxEnd = Math.max(maxEnd, alignUp(s.va + Math.max(s.vsize, 1), sa));
+    const newVa = alignUp(maxEnd, sa);
+    const body = buildResourceSection(res, newVa);
+    const rawSize = alignUp(size, fa), rawPtr = alignUp(fileEnd, fa);
+    const tableEnd = secOff + nSec * 40;
+    const hdr = new Uint8Array(40);
+    hdr.set([0x2e, 0x72, 0x73, 0x72, 0x63]);          // ".rsrc"
+    w32(hdr, 8, size); w32(hdr, 12, newVa); w32(hdr, 16, rawSize); w32(hdr, 20, rawPtr); w32(hdr, 36, 0x40000040);
+    const free = tableEnd + 40 <= pe.sizeOfHeaders && H.subarray(tableEnd, tableEnd + 40).every((x) => x === 0);
+    if (free) {
+      if (rs && rs.name.toLowerCase() === '.rsrc') H.set([0x2e, 0x6f, 0x6c, 0x64, 0x72, 0x73, 0x72, 0x63], secOff + rs.idx * 40);   // ".oldrsrc"
+      H.set(hdr, tableEnd); nSec++; w16(H, co + 2, nSec);
+    } else if (rs && rs.name.toLowerCase() === '.rsrc') {
+      for (let i = rs.idx; i < nSec - 1; i++) H.copyWithin(secOff + i * 40, secOff + (i + 1) * 40, secOff + (i + 2) * 40);
+      H.set(hdr, secOff + (nSec - 1) * 40);
+    } else throw new Error('There is no free space in this file\'s header for a new section.');
+    w32(H, opt + 56, newVa + alignUp(size, sa));
+    w32(H, opt + 8, u32(H, opt + 8) + rawSize);
+    w32(H, ddOff + 16, newVa); w32(H, ddOff + 20, size);
+    parts.push(H, { start: pe.sizeOfHeaders, end: fileEnd });
+    if (rawPtr > fileEnd) parts.push(new Uint8Array(rawPtr - fileEnd));
+    parts.push(body);
+    if (rawSize > size) parts.push(new Uint8Array(rawSize - size));
+    total = rawPtr + rawSize;
+  }
+  return { parts, size: total, mode, certStripped, resourceBytes: size };
+}
+
+/* ---------- assemble parts ---------- */
+function partsToBlob(parts, file) {
+  return new Blob(parts.map((p) => (p instanceof Uint8Array ? p : file.slice(p.start, p.end))), { type: 'application/octet-stream' });
+}
+async function partsToBytes(parts, src) {
+  const chunks = []; let n = 0;
+  for (const p of parts) { const c = p instanceof Uint8Array ? p : await src.read(p.start, p.end - p.start); chunks.push(c); n += c.length; }
+  const out = new Uint8Array(n); let o = 0;
+  for (const c of chunks) { out.set(c, o); o += c.length; }
+  return out;
+}
+
+const api = { openPE, sourceFromFile, sourceFromBuffer, parseIco, buildIco, makeIconSet, rgbaToDib, partsToBlob, partsToBytes, parseVersion, buildVersion, buildResourceSection, parseResources, isPng, RT_NAMES };
+if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PEEngine = api;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+(() => {
+'use strict';
+const E = PEEngine;
+const $ = (s, r = document) => r.querySelector(s);
+const SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256];
+const FIELDS = [
+  ['FileDescription', 'File description', 'Task Manager, tooltips', 'main'],
+  ['ProductName', 'Product name', 'App name', 'main'],
+  ['CompanyName', 'Company', '', 'main'],
+  ['LegalCopyright', 'Copyright', '', 'main'],
+  ['FileVersion', 'File version', '1.2.3.4', 'main'],
+  ['ProductVersion', 'Product version', '1.2.3.4', 'main'],
+  ['OriginalFilename', 'Original filename', '', 'main'],
+  ['InternalName', 'Internal name', '', 'main'],
+  ['LegalTrademarks', 'Trademarks', '', 'more'],
+  ['Comments', 'Comments', '', 'more'],
+  ['PrivateBuild', 'Private build', '', 'more'],
+  ['SpecialBuild', 'Special build', '', 'more'],
+];
+const KNOWN = new Set(FIELDS.map((f) => f[0]));
+const S = { file: null, pe: null, ver0: null, vals: {}, orig: {}, extras: [], dirty: false, icon: null, cur: null, busy: false };
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n) => n > 1048576 ? (n / 1048576).toFixed(n > 1e8 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const url = (bytes, type) => URL.createObjectURL(new Blob([bytes], { type }));
+const PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="6" y="6" width="52" height="52" rx="12" fill="#9aa3b8"/><rect x="14" y="20" width="36" height="6" rx="3" fill="#fff" opacity=".8"/><rect x="14" y="32" width="24" height="6" rx="3" fill="#fff" opacity=".6"/></svg>');
+const note = (kind, html) => `<div class="note ${kind}"><div>${html}</div></div>`;
+
+/* ---------- build the details form ---------- */
+function buildForm() {
+  const main = $('#fieldsMain'), more = $('#fieldsMore');
+  main.innerHTML = more.innerHTML = '';
+  const add = (parent, key, label, hint) => {
+    const d = document.createElement('div'); d.className = 'field';
+    d.innerHTML = `<label for="f_${esc(key)}">${esc(label)}${hint ? `<em>${esc(hint)}</em>` : ''}</label><input type="text" id="f_${esc(key)}" data-key="${esc(key)}" autocomplete="off" spellcheck="false">`;
+    parent.appendChild(d);
+  };
+  for (const [k, l, h, where] of FIELDS) add(where === 'main' ? main : more, k, l, h);
+  for (const k of S.extras) add(more, k, k, 'custom');
+  document.querySelectorAll('#cDetails input[data-key]').forEach((inp) => {
+    inp.value = S.vals[inp.dataset.key] || '';
+    inp.addEventListener('input', onField);
+  });
+}
+function onField(e) {
+  const k = e.target.dataset.key; S.vals[k] = e.target.value; S.dirty = true;
+  e.target.classList.toggle('changed', (S.orig[k] || '') !== e.target.value);
+  if (k === 'FileVersion' || k === 'ProductVersion') e.target.classList.toggle('warnfmt', !!e.target.value && !/^\d+(\.\d+){0,3}$/.test(e.target.value.trim()));
+  updateAll();
+}
+
+/* ---------- previews ---------- */
+function pick(list, css) {
+  if (!list || !list.length) return PLACEHOLDER;
+  const need = css * (window.devicePixelRatio || 1);
+  return (list.find((x) => x.w >= need) || list[list.length - 1]).url;
+}
+function activeList() { return S.icon ? S.icon.list : (S.cur ? S.cur.list : null); }
+function updateAll() {
+  const list = activeList();
+  const nm = S.file ? S.file.name.replace(/\.[^.]+$/, '') : 'program';
+  const title = (S.vals.ProductName || S.vals.FileDescription || nm);
+  $('#pvDesk').src = pick(list, 46); $('#pvTitle').src = pick(list, 16); $('#pvTask').src = pick(list, 22);
+  $('#pvDeskName').textContent = nm; $('#pvTitleText').textContent = title;
+  const set = (id, k) => { $(id).textContent = S.vals[k] || ''; };
+  set('#pDesc', 'FileDescription'); set('#pFv', 'FileVersion'); set('#pPn', 'ProductName'); set('#pPv', 'ProductVersion'); set('#pCo', 'CompanyName'); set('#pCr', 'LegalCopyright'); set('#pOn', 'OriginalFilename');
+  $('#imgCur').src = S.cur ? pick(S.cur.list, 72) : PLACEHOLDER;
+  if (S.icon) $('#imgNew').src = pick(S.icon.list, 72);
+  $('#btnSave').disabled = !(S.pe && (S.icon || S.dirty)) || S.busy;
+  $('#fileIcon').src = S.cur ? pick(S.cur.list, 44) : PLACEHOLDER;
+}
+
+/* ---------- load the program ---------- */
+async function loadExe(file) {
+  $('#exeNotes').innerHTML = ''; $('#saveNotes').innerHTML = '';
+  let pe;
+  try { pe = await E.openPE(E.sourceFromFile(file)); }
+  catch (err) { $('#exeNotes').innerHTML = note('bad', `<b>Couldn't read that file.</b> ${esc(err.message)}`); return; }
+  S.file = file; S.pe = pe; S.icon = null; S.dirty = false;
+  $('#imgNew').style.display = 'none'; $('#newEmpty').style.display = ''; $('#iconOpts').style.display = 'none';
+  $('#newInfo').textContent = 'Pick an image below to replace the icon.';
+  S.ver0 = pe.getVersion();
+  S.vals = {}; S.extras = [];
+  if (S.ver0) for (const [k, v] of S.ver0.strings) { S.vals[k] = v; if (!KNOWN.has(k)) S.extras.push(k); }
+  S.orig = { ...S.vals };
+  buildForm();
+  const p = pe.getPrimaryIco();
+  S.cur = p ? { list: p.images.map((im) => ({ w: im.w, url: url(E.buildIco([im]), 'image/x-icon') })).sort((a, b) => a.w - b.w) } : null;
+
+  $('#fileCard').classList.add('on');
+  $('#fileName').textContent = file.name;
+  const groups = pe.groupIcons();
+  const chips = [pe.arch, fmt(file.size), `${pe.resourceCount} resources`, groups.length ? `${groups.length} icon group${groups.length > 1 ? 's' : ''}` : 'no icon', pe.signed ? 'signed' : 'unsigned'];
+  $('#fileChips').innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join('');
+  const notes = [];
+  if (pe.installer) notes.push(note('warn', `<b>This looks like an installer or portable launcher (${pe.installer}).</b> Changing it affects the installer file itself, not the app that gets installed or unpacked. Pick the app's own .exe for that.`));
+  if (pe.signed) notes.push(note('info', 'This file is digitally signed. The signature becomes invalid after any edit, so it will be removed from your copy. Windows may then show "unknown publisher".'));
+  if (!groups.length) notes.push(note('info', 'This file has no icon yet. One will be added.'));
+  if (!S.ver0) notes.push(note('info', 'This file has no details (version info) yet. They will be created from the fields below.'));
+  $('#exeNotes').innerHTML = notes.join('');
+  const rows = pe.listResources();
+  $('#resTable').innerHTML = '<tr><th>Type</th><th>Name</th><th>Lang</th><th>Size</th></tr>' + rows.slice(0, 400).map((r) => `<tr><td>${esc(r.type)}</td><td>${esc(r.name)}</td><td>${r.lang}</td><td>${fmt(r.size)}</td></tr>`).join('');
+  $('#resDetails').hidden = !rows.length;
+
+  const allW = $('#allWrap');
+  allW.style.display = groups.length > 1 ? 'flex' : 'none';
+  $('#allLabel').textContent = `Also replace the other ${groups.length - 1} icon group${groups.length > 2 ? 's' : ''} (file types, secondary icons)`;
+  $('#allGroups').checked = false;
+  const base = file.name.replace(/\.[^.]+$/, ''), ext = (/\.[^.]+$/.exec(file.name) || ['.exe'])[0];
+  $('#outName').value = `${base}-modified${ext}`;
+  ['#cIcon', '#cDetails', '#cSave'].forEach((s) => $(s).classList.remove('locked'));
+  updateAll();
+}
+
+/* ---------- icon from an image ---------- */
+function decodeImage(file) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(file), img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('That image could not be read.'));
+    img.src = u;
+  });
+}
+function renderCanvas(ic, size, mode, pad) {
+  const sw = ic.w, sh = ic.h, inner = size * (1 - 2 * pad);
+  let scale = Math.min(inner / sw, inner / sh);
+  const up = scale > 1;
+  if (mode === 'crisp' && up) scale = Math.max(1, Math.floor(scale));
+  const dw = Math.max(1, Math.round(sw * scale)), dh = Math.max(1, Math.round(sh * scale));
+  const dx = Math.round((size - dw) / 2), dy = Math.round((size - dh) / 2);
+  let src = ic.img, cw = sw, ch = sh;
+  if (!up) {
+    while (cw >= dw * 2 && ch >= dh * 2) {
+      const t = document.createElement('canvas'); t.width = Math.max(dw, Math.round(cw / 2)); t.height = Math.max(dh, Math.round(ch / 2));
+      const tg = t.getContext('2d'); tg.imageSmoothingQuality = 'high'; tg.drawImage(src, 0, 0, t.width, t.height);
+      src = t; cw = t.width; ch = t.height;
+    }
+  }
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingEnabled = !(mode === 'crisp' && up); g.imageSmoothingQuality = 'high';
+  g.drawImage(src, dx, dy, dw, dh);
+  return c;
+}
+async function rebuildIcon() {
+  const ic = S.icon; if (!ic || ic.kind !== 'img') return;
+  const tok = ++ic.tok, mode = document.querySelector('input[name=scale]:checked').value, pad = +$('#pad').value / 100;
+  const cv = {}; for (const s of SIZES) cv[s] = renderCanvas(ic, s, mode, pad);
+  const toPng = async (_r, s) => new Uint8Array(await (await new Promise((r) => cv[s].toBlob(r, 'image/png'))).arrayBuffer());
+  const images = await E.makeIconSet(SIZES, (s) => cv[s].getContext('2d').getImageData(0, 0, s, s).data, toPng);
+  if (tok !== ic.tok) return;
+  ic.images = images; ic.list = SIZES.map((s) => ({ w: s, url: cv[s].toDataURL('image/png') }));
+  updateAll();
+}
+async function loadIcon(file) {
+  try {
+    let ic;
+    if (/\.ico$/i.test(file.name) || /icon/.test(file.type)) {
+      const images = E.parseIco(new Uint8Array(await file.arrayBuffer()));
+      ic = { kind: 'ico', name: file.name, images, tok: 0, list: images.map((im) => ({ w: im.w, url: url(E.buildIco([im]), 'image/x-icon') })) };
+    } else {
+      const img = await decodeImage(file);
+      ic = { kind: 'img', name: file.name, img, w: img.naturalWidth || 512, h: img.naturalHeight || 512, tok: 0, list: [] };
+    }
+    S.icon = ic;
+    $('#imgNew').style.display = 'block'; $('#newEmpty').style.display = 'none'; $('#iconOpts').style.display = 'grid';
+    const isImg = ic.kind === 'img';
+    $('#scaleOpt').style.display = $('#padOpt').style.display = isImg ? 'flex' : 'none';
+    if (isImg) {
+      const small = Math.max(ic.w, ic.h) <= 64;
+      document.querySelector(`input[name=scale][value=${small ? 'crisp' : 'smooth'}]`).checked = true;
+      $('#scaleHint').textContent = small ? 'Small image: crisp pixels keeps it sharp when enlarged.' : '';
+      const px = Math.max(ic.w, ic.h);
+      $('#newInfo').innerHTML = `<b>${esc(file.name)}</b><br>${ic.w}×${ic.h} px. ` + (px < 256 ? 'Windows shows up to 256 px, so a larger source will look sharper.' : 'Good size.');
+      await rebuildIcon();
+    } else {
+      $('#newInfo').innerHTML = `<b>${esc(file.name)}</b><br>${ic.images.map((i) => i.w).join(', ')} px images are used as they are.`;
+      updateAll();
+    }
+  } catch (err) { $('#saveNotes').innerHTML = note('bad', esc(err.message)); }
+}
+
+/* ---------- save ---------- */
+function collectVersion() {
+  const b = S.ver0 || { fileVersion: [1, 0, 0, 0], productVersion: [1, 0, 0, 0], fileFlagsMask: 0x3f, fileFlags: 0, fileOS: 0x40004, fileType: 1, fileSubtype: 0, fileDateMS: 0, fileDateLS: 0, lang: 0x409, cp: 0x4b0 };
+  const strings = [];
+  for (const [k] of FIELDS) if (S.vals[k]) strings.push([k, S.vals[k]]);
+  for (const k of S.extras) if (S.vals[k]) strings.push([k, S.vals[k]]);
+  const num = (s, fb) => { const m = /^\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?/.exec(s || ''); return m ? [1, 2, 3, 4].map((i) => Math.min(65535, parseInt(m[i] || '0', 10))) : fb; };
+  return { ...b, fileVersion: num(S.vals.FileVersion, b.fileVersion), productVersion: num(S.vals.ProductVersion, b.productVersion), strings };
+}
+function setProgress(f) { $('#prog').classList.add('on'); $('#prog i').style.width = Math.round(f * 100) + '%'; }
+async function onSave() {
+  if (S.busy || !S.pe) return;
+  let name = ($('#outName').value || '').trim().replace(/[\\/:*?"<>|]/g, '_') || 'program-modified.exe';
+  const ext = (/\.[^.]+$/.exec(name) || [''])[0];
+  let handle = null;
+  if (window.showSaveFilePicker) {
+    try { handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Windows program', accept: { 'application/octet-stream': [ext || '.exe'] } }] }); }
+    catch (e) { if (e && e.name === 'AbortError') return; handle = null; }
+  }
+  S.busy = true; $('#btnSave').disabled = true; $('#saveNotes').innerHTML = ''; setProgress(0.02);
+  try {
+    const ed = S.pe.edit();
+    if (S.icon) ed.setIcon(S.icon.images, { allGroups: $('#allGroups').checked });
+    if (S.dirty) ed.setVersion(collectVersion());
+    const out = await ed.build();
+    if (handle) {
+      const w = await handle.createWritable(); let done = 0; const CH = 8 << 20;
+      for (const p of out.parts) {
+        if (p instanceof Uint8Array) { await w.write(p); done += p.length; }
+        else for (let a = p.start; a < p.end; a += CH) { const z = Math.min(p.end, a + CH); await w.write(S.file.slice(a, z)); done += z - a; setProgress(Math.min(1, done / out.size)); }
+      }
+      await w.close();
+    } else {
+      const blob = E.partsToBlob(out.parts, S.file), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    }
+    setProgress(1);
+    const next = ['<b>Saved ' + esc(name) + '</b> (' + fmt(out.size) + ').', '<ul><li>If the desktop icon still looks old, Windows is showing a cached copy. Rename the file or restart Explorer.</li>' +
+      (out.certStripped ? '<li>The old digital signature was removed.</li>' : '') +
+      '<li>If the title bar or taskbar icon doesn\'t change, the app sets its own window icon in code. That part lives inside the app and isn\'t touched here.</li></ul>'];
+    $('#saveNotes').innerHTML = note('ok', next.join(''));
+  } catch (err) {
+    $('#saveNotes').innerHTML = note('bad', `<b>Something went wrong.</b> ${esc(err.message || err)}`);
+  } finally { S.busy = false; updateAll(); setTimeout(() => $('#prog').classList.remove('on'), 1200); }
+}
+
+/* ---------- wiring ---------- */
+function drop(zoneSel, inputSel, handler) {
+  const z = $(zoneSel), i = $(inputSel);
+  ['dragenter', 'dragover'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.remove('over'); }));
+  z.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) handler(f); });
+  i.addEventListener('change', () => { if (i.files[0]) handler(i.files[0]); i.value = ''; });
+}
+drop('#dropExe', '#fileExe', loadExe);
+drop('#dropIcon', '#fileIcon2', loadIcon);
+document.querySelectorAll('input[name=scale]').forEach((r) => r.addEventListener('change', rebuildIcon));
+let padT; $('#pad').addEventListener('input', () => { $('#padVal').textContent = $('#pad').value + '%'; clearTimeout(padT); padT = setTimeout(rebuildIcon, 120); });
+$('#resetVer').addEventListener('click', () => { S.vals = { ...S.orig }; S.dirty = false; buildForm(); updateAll(); });
+$('#dlIco').addEventListener('click', () => {
+  if (!S.icon || !S.icon.images) return;
+  const a = document.createElement('a'); a.href = url(E.buildIco(S.icon.images), 'image/x-icon'); a.download = 'icon.ico'; document.body.appendChild(a); a.click(); a.remove();
+});
+$('#btnSave').addEventListener('click', onSave);
+window.addEventListener('dragover', (e) => e.preventDefault()); window.addEventListener('drop', (e) => e.preventDefault());
+buildForm(); updateAll();
+window.__ExeTweak = { S, loadExe, loadIcon };
+})();
+</script>
+</body>
+</html>
