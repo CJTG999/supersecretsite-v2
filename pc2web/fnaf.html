@@ -105,5 +105,29 @@
         <a href="https://gitlab.com/CJTG999/clickteam-fnaf-test/-/raw/b060e654c4c818782b3881b6745e8e006a159eaf/ucn/index.html" class="game-link"><span>UCN</span></a>
     </div>
 
+    <script>
+        document.querySelectorAll('.game-link').forEach(link => {
+            link.addEventListener('click', async (event) => {
+                event.preventDefault();
+                const rawUrl = link.getAttribute('href');
+
+                try {
+                    const response = await fetch(rawUrl);
+                    if (!response.ok) throw new Error('Failed to fetch file');
+                    
+                    const htmlText = await response.text();
+                    
+                    // Create an HTML Blob and open it in a new window/tab
+                    const blob = new Blob([htmlText], { type: 'text/html' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    
+                    window.location.href = blobUrl;
+                } catch (error) {
+                    console.error('Error loading raw file into Blob:', error);
+                    alert('Failed to load system content. Check console for details.');
+                }
+            });
+        });
+    </script>
 </body>
 </html>
