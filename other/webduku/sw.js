@@ -2,7 +2,7 @@
    Strategy: stale-while-revalidate for same-origin GETs. The game opens instantly from cache (even offline)
    and quietly refreshes in the background, so updates appear the NEXT time the app is launched.
    Bump VERSION whenever you change the SHELL list so old caches get purged. */
-const VERSION = 'webduku-v1';
+const VERSION = 'webduku-v2';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png',
