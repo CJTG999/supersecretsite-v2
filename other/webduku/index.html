@@ -551,6 +551,7 @@ function recordGame() {
   store.set('wd_history', JSON.stringify(history.slice(0, 100)));
 }
 function showHistory() {
+  $('blockSetPanel').hidden = true;
   const history = getHistory();
   const high = history.reduce((n, game) => Math.max(n, +game.score || 0), 0);
   $('historyStats').textContent = history.length
@@ -588,6 +589,7 @@ function popup(text, sub) {
 /* ---------- overlay ---------- */
 const ov = $('overlay');
 function showOverlay(mode) {
+  $('blockSetPanel').hidden = true;
   $('standardOverlay').hidden = false;
   $('historyPanel').hidden = true;
   ov.classList.remove('hidden');
