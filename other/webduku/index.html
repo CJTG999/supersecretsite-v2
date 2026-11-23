@@ -200,8 +200,8 @@ const SPAWN_CONFIG = {
   unfitPenalty       : 0.12,  // weight multiplier for pieces with no legal placement
   familyRepeatPenalty: 0.35,  // weight multiplier for repeating a shape family in one tray
   frustrationMinEmpty: 0.30,  // if >= this fraction of board is empty, require a solvable tray
-  solveAttempts      : 12,    // retries to find a solvable tray
-  solveBudget        : 3000,  // DFS node cap (if hit, tray is assumed fine)
+  solveAttempts      : 5,     // keep tray generation responsive
+  solveBudget        : 700,   // bounded DFS node cap (if hit, tray is assumed fine)
 };
 
 /* Touch / drag feel. */
@@ -210,7 +210,6 @@ const UI_CONFIG = {
   liftCells  : 1.3,  // ...or this many cells, whichever is larger
   snapRadius : 1,    // search +-N cells around the finger position for a valid spot
   snapMaxDist: 1.0,  // max distance (in cells) the preview may snap
-  clearMs    : 430,  // clear animation duration
 };
 
 /* =====================================================================
@@ -459,7 +458,7 @@ for (let b = 0; b < 9; b++) {
   boardEl.appendChild(box);
 }
 
-function renderBoard() { for (let i = 0; i < 81; i++) cellEls[i].className = 'cell' + (board[i] ? ' f' : ''); }
+function renderBoard() { for (let i = 0; i < 81; i++) { cellEls[i].style.removeProperty('--d'); cellEls[i].className = 'cell' + (board[i] ? ' f' : ''); } }
 function buildPieceEl(p, cellSize, gap) {
   const el = document.createElement('div'); el.className = 'piece';
   el.style.gridTemplateColumns = `repeat(${p.w}, ${cellSize})`; el.style.gridAutoRows = cellSize; el.style.gap = gap;
@@ -539,28 +538,53 @@ function afterTurn() {
   renderTray(); busy = false; checkGameOver(); if (!over) save();
 }
 function placePiece(slot, piece, r, c) {
-  busy = true; const g = gen, sim = simulate(board, piece, r, c);
+  // Validate again at commit time; never let a stale drag preview corrupt the board.
+  if (busy || over || !tray[slot] || tray[slot].key !== piece.key || !canPlace(board, piece, r, c)) return;
+
+  busy = true;
+  const sim = simulate(board, piece, r, c);
   const placed = piece.cells.map(([dr, dc]) => (r + dr) * 9 + c + dc);
-  placed.forEach(i => { board[i] = 1; }); tray[slot] = null;
+
+  // Commit the complete logical turn immediately. Clearing cells become available
+  // for the next placement without waiting for their cosmetic animation.
+  board = sim.board;
+  tray[slot] = null;
   addScore(SCORE_CONFIG.perBlockPlaced * placed.length);
-  renderBoard(); placed.forEach(i => pulse(cellEls[i], 'pop')); renderTray();
+  renderBoard();
+  placed.forEach(i => pulse(cellEls[i], 'pop'));
+  renderTray();
+
   if (sim.units.length) {
-    combo++; sinceClear = 0;
-    const pts = scoreForClear(sim.units.length, combo); addScore(pts);
+    combo++;
+    sinceClear = 0;
+    const pts = scoreForClear(sim.units.length, combo);
+    addScore(pts);
     popup('+' + pts, combo > 1 ? 'COMBO ×' + combo : (sim.units.length > 1 ? sim.units.length + ' CLEARS' : ''));
-    Sound.clear(sim.units.length, combo); buzz(20);
+    Sound.clear(sim.units.length, combo);
+    buzz(20);
+
     const ar = Math.floor(placed[0] / 9), ac = placed[0] % 9;
-    sim.clear.forEach(i => { const el = cellEls[i]; el.style.setProperty('--d', (Math.abs(Math.floor(i / 9) - ar) + Math.abs(i % 9 - ac)) * 18 + 'ms'); el.classList.add('clr'); });
-    setTimeout(() => {
-      if (g !== gen) return;
-      sim.clear.forEach(i => { board[i] = 0; cellEls[i].style.removeProperty('--d'); });
-      renderBoard(); afterTurn();
-    }, UI_CONFIG.clearMs + 160);
+    sim.clear.forEach(i => {
+      const el = cellEls[i];
+      el.style.setProperty('--d', (Math.abs(Math.floor(i / 9) - ar) + Math.abs(i % 9 - ac)) * 18 + 'ms');
+      el.classList.add('clr');
+      el.addEventListener('animationend', () => {
+        // Read the current board: another move may already have used this cell.
+        el.className = 'cell' + (board[i] ? ' f' : '');
+        el.style.removeProperty('--d');
+      }, { once: true });
+    });
+
+    // Apply the clear to game state now, not after the animation.
+    applyClear(board, sim.clear);
   } else {
-    Sound.place(); buzz(8);
+    Sound.place();
+    buzz(8);
     if (++sinceClear >= SCORE_CONFIG.comboWindow) combo = 0;
-    afterTurn();
   }
+
+  // Unlock input and save immediately. The clear animation is purely visual.
+  afterTurn();
 }
 
 /* ---------- drag & drop (pointer events) ---------- */
