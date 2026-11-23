@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101216">
+<title>WebDuku · Block Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#101216;--panel:#1a1d25;--panel2:#222630;--text:#e8ebf3;--muted:#8991a3;--line:#303541;--accent:#dfe3ee;--accentText:#151820;--cell:clamp(27px,7.4vw,43px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit}
+header{max-width:1120px;margin:auto;padding:22px 24px 14px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+h1{font-size:22px;margin:0}header p{margin:3px 0 0;color:var(--muted);font-size:13px}
+a{color:inherit;text-decoration:none}
+.back,.action,.small{border:0;border-radius:11px;padding:10px 14px;background:var(--panel2);font-weight:650}
+main{max-width:1120px;margin:0 auto;padding:10px 24px 40px;display:grid;grid-template-columns:minmax(230px,290px) 1fr;gap:18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px;min-width:0}
+.panel h2{font-size:15px;margin:0 0 12px}
+.list{display:flex;flex-direction:column;gap:6px;max-height:65vh;overflow:auto;padding-right:3px}
+.block-option{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;border:1px solid transparent;background:transparent;padding:9px 10px;border-radius:11px}
+.block-option.active{background:var(--panel2);border-color:#596174}
+.block-option small{color:var(--muted);font-size:11px}
+.mini{display:grid;gap:2px;grid-template-columns:repeat(var(--w),7px);flex:none}
+.mini i{width:7px;height:7px;border-radius:2px;background:var(--accent)}
+.mini i.off{background:transparent}
+.left-actions{display:flex;gap:8px;margin-top:12px}.left-actions button{flex:1}
+.editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.fields{display:grid;grid-template-columns:minmax(120px,1fr) auto auto;gap:10px;align-items:end;margin-bottom:16px}
+label{display:block;color:var(--muted);font-size:12px;font-weight:650;margin-bottom:5px}
+input[type=text],input[type=number]{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 10px;outline:none}
+input:focus{border-color:#8c96aa}
+.check{display:flex;align-items:center;gap:7px;padding:9px 0;color:var(--text);font-size:13px;white-space:nowrap}
+.grid-wrap{overflow:auto;padding:5px 0 12px}
+#drawGrid{display:grid;grid-template-columns:repeat(9,var(--cell));grid-template-rows:repeat(9,var(--cell));gap:4px;width:max-content;margin:auto;touch-action:manipulation}
+.tile{border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:0;min-width:0}
+.tile.on{background:var(--accent);border-color:var(--accent)}
+.hint{font-size:12px;color:var(--muted);margin:9px 0 0;text-align:center}
+.footer{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+.action.primary{background:var(--accent);color:var(--accentText)}
+.action.danger{background:#48252a;color:#ffdce0}
+#status{min-height:22px;margin:12px 0 0;color:#a8d8b3;font-size:13px}
+.note{font-size:12px;color:var(--muted);margin:0 0 14px}
+@media(max-width:760px){header{padding:18px 16px 10px}main{padding:10px 14px 30px;grid-template-columns:1fr}.list{max-height:230px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.block-option{min-width:0}.fields{grid-template-columns:1fr 1fr}.fields>div:first-child{grid-column:1/-1}.left-actions{margin-bottom:0}}
+</style>
+</head>
+<body>
+<header>
+ <div><h1>WebDuku Block Studio</h1><p>Build a custom block set for your game.</p></div>
+ <a class="back" href="index.html">← Back to game</a>
+</header>
+<main>
+ <aside class="panel">
+  <h2>Your block set</h2>
+  <p class="note">Pick any default block to edit it, or add your own. Changes here won't affect the game until you save.</p>
+  <div id="blockList" class="list"></div>
+  <div class="left-actions"><button class="small" id="addBlock">＋ Add block</button><button class="small" id="defaults">Restore defaults</button></div>
+ </aside>
+ <section class="panel">
+  <div class="editor-head"><h2 id="editorTitle">Edit block</h2><span id="cellCount" class="note">1 cell</span></div>
+  <div class="fields">
+   <div><label for="blockId">Block ID (letters, numbers, _ or -)</label><input id="blockId" type="text" maxlength="24" autocomplete="off"></div>
+   <div><label for="weight">Spawn weight</label><input id="weight" type="number" min=".1" max="100" step=".1" value="2"></div>
+   <label class="check"><input id="rotate" type="checkbox" checked> Allow rotations</label>
+  </div>
+  <div class="grid-wrap"><div id="drawGrid" aria-label="Block drawing grid"></div></div>
+  <p class="hint">Tap or click squares to add/remove cells. Empty outer rows and columns are trimmed when saved.</p>
+  <div class="footer">
+   <button class="action primary" id="saveSet">Save set for game</button>
+   <button class="action" id="clearShape">Clear shape</button>
+   <button class="action danger" id="deleteBlock">Delete custom block</button>
+  </div>
+  <p id="status" role="status"></p>
+ </section>
+</main>
+<script>
+'use strict';
+const DEFAULTS = [
+ {name:'dot',w:2,rot:false,shape:'#'},
+ {name:'domino',w:5,rot:true,shape:'##'},
+ {name:'I3',w:5,rot:true,shape:'###'},
+ {name:'L3',w:6,rot:true,shape:'#./##'},
+ {name:'I4',w:4,rot:true,shape:'####'},
+ {name:'O4',w:4,rot:false,shape:'##/##'},
+ {name:'L4',w:4,rot:true,shape:'#./#./##'},
+ {name:'J4',w:4,rot:true,shape:'.#/.#/##'},
+ {name:'T4',w:4,rot:true,shape:'###/.#.'},
+ {name:'S4',w:3,rot:true,shape:'.##/##.'},
+ {name:'Z4',w:3,rot:true,shape:'##./.##'},
+ {name:'I5',w:2.5,rot:true,shape:'#####'},
+ {name:'plus',w:2,rot:false,shape:'.#./###/.#.'},
+ {name:'V5',w:2,rot:true,shape:'#../#../###'},
+ {name:'U5',w:2,rot:true,shape:'#.#/###'},
+ {name:'T5',w:1.5,rot:true,shape:'###/.#./.#.'},
+ {name:'W5',w:1.5,rot:true,shape:'#../##./.##'},
+ {name:'R6',w:2,rot:true,shape:'###/###'},
+ {name:'O9',w:1,rot:false,shape:'###/###/###'}
+];
+const KEY='wd_custom_families';
+const clone=x=>JSON.parse(JSON.stringify(x));
+function readSaved(){try{const x=JSON.parse(localStorage.getItem(KEY)||'null');return Array.isArray(x)&&x.length?x:clone(DEFAULTS)}catch(e){return clone(DEFAULTS)}}
+let families=readSaved(), selected=0, matrix=[];
+const $=id=>document.getElementById(id);
+function shapeMatrix(shape){return shape.split('/').map(row=>[...row].map(ch=>ch==='#'))}
+function trimMatrix(m){
+ let top=m.findIndex(row=>row.some(Boolean)),bottom=m.length-1;
+ while(bottom>=0&&!m[bottom].some(Boolean))bottom--;
+ if(top<0)return null;
+ let left=m[0].length,right=-1;
+ for(let r=top;r<=bottom;r++)for(let c=0;c<m[r].length;c++)if(m[r][c]){left=Math.min(left,c);right=Math.max(right,c)}
+ return m.slice(top,bottom+1).map(row=>row.slice(left,right+1));
+}
+function shapeString(m){return m.map(row=>row.map(v=>v?'#':'.').join('')).join('/')}
+function current(){return families[selected]}
+function renderList(){
+ const list=$('blockList');list.innerHTML='';
+ families.forEach((f,i)=>{
+  const b=document.createElement('button');b.className='block-option'+(i===selected?' active':'');b.type='button';
+  const name=document.createElement('span');name.textContent=f.name;
+  const mat=shapeMatrix(f.shape),mini=document.createElement('span');mini.className='mini';mini.style.setProperty('--w',mat[0].length);
+  mat.flat().forEach(v=>{const cell=document.createElement('i');if(!v)cell.className='off';mini.appendChild(cell)});
+  b.append(name,mini);b.onclick=()=>{commitEditor(false);selected=i;loadEditor();};list.appendChild(b);
+ });
+ $('deleteBlock').disabled=!current().name.startsWith('custom_');
+}
+function renderGrid(){
+ const grid=$('drawGrid');grid.innerHTML='';
+ for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+  const b=document.createElement('button');b.type='button';b.className='tile'+(matrix[r][c]?' on':'');
+  b.setAttribute('aria-label','Row '+(r+1)+', column '+(c+1));
+  b.onclick=()=>{matrix[r][c]=!matrix[r][c];renderGrid();updateCount()};grid.appendChild(b);
+ }
+}
+function updateCount(){const n=matrix.flat().filter(Boolean).length;$('cellCount').textContent=n+' cell'+(n===1?'':'s')}
+function loadEditor(){
+ const f=current();matrix=Array.from({length:9},()=>Array(9).fill(false));
+ const m=shapeMatrix(f.shape),top=Math.floor((9-m.length)/2),left=Math.floor((9-m[0].length)/2);
+ m.forEach((row,r)=>row.forEach((v,c)=>matrix[top+r][left+c]=v));
+ $('blockId').value=f.name;$('weight').value=f.w;$('rotate').checked=!!f.rot;
+ $('editorTitle').textContent='Edit '+f.name;renderGrid();updateCount();renderList();
+}
+function commitEditor(showMessage=true){
+ const f=current();if(!f)return;
+ const id=$('blockId').value.trim();
+ if(!/^[a-z0-9_-]{1,24}$/i.test(id)){if(showMessage)$('status').textContent='Use 1–24 letters, numbers, underscores or hyphens for the block ID.';return false}
+ if(families.some((x,i)=>i!==selected&&x.name.toLowerCase()===id.toLowerCase())){if(showMessage)$('status').textContent='That block ID is already in use.';return false}
+ const weight=Number($('weight').value),m=trimMatrix(matrix);
+ if(!m){if(showMessage)$('status').textContent='Draw at least one square first.';return false}
+ if(!Number.isFinite(weight)||weight<.1||weight>100){if(showMessage)$('status').textContent='Spawn weight must be between 0.1 and 100.';return false}
+ f.name=id;f.w=weight;f.rot=$('rotate').checked;f.shape=shapeString(m);
+ return true;
+}
+$('addBlock').onclick=()=>{
+ commitEditor(false);
+ let n=1;while(families.some(f=>f.name==='custom_'+n))n++;
+ families.push({name:'custom_'+n,w:2,rot:true,shape:'#'});selected=families.length-1;loadEditor();$('status').textContent='New block added. Draw its shape, then save the set.';
+};
+$('defaults').onclick=()=>{
+ if(!confirm('Discard your edits and restore all default blocks?'))return;
+ families=clone(DEFAULTS);selected=0;loadEditor();$('status').textContent='Default blocks restored in the editor. Save to apply them to the game.';
+};
+$('clearShape').onclick=()=>{matrix=Array.from({length:9},()=>Array(9).fill(false));renderGrid();updateCount()};
+$('deleteBlock').onclick=()=>{
+ if(!current().name.startsWith('custom_'))return;
+ families.splice(selected,1);selected=Math.max(0,selected-1);loadEditor();$('status').textContent='Custom block removed from this draft. Save to apply.';
+};
+$('saveSet').onclick=()=>{
+ if(!commitEditor())return;
+ const names=new Set();
+ for(const f of families){if(names.has(f.name.toLowerCase())){$('status').textContent='Each block needs a unique ID.';return}names.add(f.name.toLowerCase())}
+ try{
+  localStorage.setItem(KEY,JSON.stringify(families));
+  // A saved game can contain piece keys from the previous set. Start a fresh
+  // game next time the player opens the board; best score/history stay intact.
+  localStorage.removeItem('wd_state');
+  $('status').textContent='Saved! Your next game will use this block set. Best score and history are kept.';
+  renderList();
+ }catch(e){$('status').textContent='Could not save. Your browser storage may be full or unavailable.'}
+};
+$('blockId').addEventListener('change',()=>commitEditor(false));
+$('weight').addEventListener('change',()=>commitEditor(false));
+$('rotate').addEventListener('change',()=>commitEditor(false));
+loadEditor();
+</script>
+</body>
+</html>
