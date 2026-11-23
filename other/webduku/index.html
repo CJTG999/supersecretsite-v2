@@ -683,11 +683,36 @@ $('historyClose').onclick = () => ov.classList.add('hidden');
 async function resetGame() {
   const resetButton = $('ovPrimary');
   resetButton.disabled = true;
-  resetButton.textContent = 'Updating…';
+  resetButton.textContent = 'Resetting…';
 
-  // Remove only WebDuku's saved game and app-shell caches. Keep wd_best and
-  // wd_history so the player's records survive a reset.
+  // The game itself is saved in localStorage. Clear only the current board;
+  // keep the best score and completed-game history.
   store.del('wd_state');
+
+  // Remove leftovers from older WebDuku versions that used a service worker.
+  await removeLegacyOfflineFiles();
+
+  // A unique URL makes the browser request a fresh HTML document.
+  const url = new URL(location.href);
+  url.searchParams.set('wd-refresh', Date.now().toString());
+  location.replace(url.href);
+}
+
+async function removeLegacyOfflineFiles() {
+  try {
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations
+        .filter(registration => {
+          const scope = new URL(registration.scope);
+          return scope.origin === location.origin &&
+                 scope.pathname.startsWith(location.pathname.replace(/[^/]*$/, ''));
+        })
+        .map(registration => registration.unregister()));
+    }
+  } catch (error) {}
+
+  // One-time cleanup of Cache API entries created by previous releases.
   try {
     if ('caches' in window) {
       const names = await caches.keys();
@@ -695,21 +720,12 @@ async function resetGame() {
         .filter(name => name.startsWith('webduku-'))
         .map(name => caches.delete(name)));
     }
-
-    // Ask the browser to check for the newest service-worker script before
-    // navigating. The new worker uses network-first navigation requests.
-    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration) await registration.update();
-    }
-  } catch (error) {
-    // Continue with a cache-busted navigation even if cache APIs are blocked.
-  }
-
-  const url = new URL(location.href);
-  url.searchParams.set('wd-refresh', Date.now().toString());
-  location.replace(url.href);
+  } catch (error) {}
 }
+
+// Remove old service-worker/offline caching automatically. New versions use
+// ordinary browser loading; localStorage remains responsible for game saves.
+removeLegacyOfflineFiles();
 syncSound();
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
@@ -717,10 +733,9 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && boa
 
 if (!loadGame()) newGame();
 
-/* ---------- PWA: service worker + iOS "Add to Home Screen" hint ---------- */
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
-}
+/* ---------- iOS "Add to Home Screen" hint ---------- */
+/* Service-worker registration intentionally removed: WebDuku uses normal
+   browser loading and localStorage for its persistent game data. */
 (function () {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
