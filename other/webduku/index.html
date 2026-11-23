@@ -81,7 +81,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .stat.main{align-items:center}
 .stat.main span:last-child{font-size:38px}
 .ctrls{display:flex;gap:6px;justify-content:flex-end}
-.ctrls button{width:34px;height:34px;border-radius:50%;background:var(--btn);display:grid;place-items:center}
+.ctrls button,.ctrls a{width:34px;height:34px;border-radius:50%;background:var(--btn);display:grid;place-items:center;color:inherit;text-decoration:none}
 .ctrls svg{width:18px;height:18px}
 #btnSound .mute{display:none}
 #btnSound.off .waves{display:none}
@@ -156,6 +156,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
       <button id="btnTheme" aria-label="Toggle light/dark theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
       <button id="btnSound" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path class="waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="mute" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       <button id="btnHistory" aria-label="Score history" title="Score history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <a id="btnEditor" href="block-editor.html" aria-label="Customize blocks" title="Customize blocks"><svg viewBox="0 0 24 24"><path d="M12 20h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></a>
     </div>
   </header>
   <div id="milestone"><div class="mtext"><span>NEXT MILESTONE</span><b id="mnext">250</b></div><div class="mbar"><i id="mfill"></i></div></div>
@@ -216,17 +217,18 @@ const SPAWN_CONFIG = {
 };
 
 /* Touch / drag feel. */
+const MOBILE_POINTER = window.matchMedia('(pointer: coarse)').matches;
 const UI_CONFIG = {
-  liftMinPx  : 40,   // preview floats at least this far above the finger
-  liftCells  : 1.3,  // ...or this many cells, whichever is larger
-  snapRadius : 1,    // search +-N cells around the finger position for a valid spot
-  snapMaxDist: 1.0,  // max distance (in cells) the preview may snap
+  liftMinPx  : MOBILE_POINTER ? 48 : 40,
+  liftCells  : MOBILE_POINTER ? 1.15 : 1.3,
+  snapRadius : MOBILE_POINTER ? 2 : 1,
+  snapMaxDist: MOBILE_POINTER ? 1.7 : 1.0,
 };
 
 /* =====================================================================
    PIECE LIBRARY  ('#' = block). rot:true generates all unique rotations.
    ===================================================================== */
-const FAMILIES = [
+const DEFAULT_FAMILIES = [
   { name:'dot',   w:2,   rot:false, shape:'#' },
   { name:'domino',w:5,   rot:true,  shape:'##' },
   { name:'I3',    w:5,   rot:true,  shape:'###' },
@@ -247,6 +249,25 @@ const FAMILIES = [
   { name:'R6',    w:2,   rot:true,  shape:'###/###' },
   { name:'O9',    w:1,   rot:false, shape:'###/###/###' },
 ];
+function loadBlockFamilies() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('wd_custom_families') || 'null');
+    if (!Array.isArray(saved) || !saved.length) return DEFAULT_FAMILIES;
+    const valid = saved.filter(f =>
+      f && typeof f.name === 'string' && /^[a-z0-9_-]{1,24}$/i.test(f.name) &&
+      Number.isFinite(+f.w) && +f.w > 0 && +f.w <= 100 &&
+      typeof f.shape === 'string' && f.shape.length <= 100 &&
+      f.shape.split('/').length <= 9 &&
+      f.shape.split('/').every(row => row.length > 0 && row.length <= 9 && /^[#.]+$/.test(row)) &&
+      f.shape.split('/').every(row => row.length === f.shape.split('/')[0].length) &&
+      f.shape.includes('#')
+    ).map(f => ({ name:f.name, w:+f.w, rot:!!f.rot, shape:f.shape }));
+    const names = new Set();
+    const unique = valid.filter(f => !names.has(f.name) && names.add(f.name));
+    return unique.length ? unique : DEFAULT_FAMILIES;
+  } catch (error) { return DEFAULT_FAMILIES; }
+}
+const FAMILIES = loadBlockFamilies();
 const parseShape = s => s.split('/').map(r => [...r].map(ch => ch === '#' ? 1 : 0));
 const rotateM = m => { const h=m.length, w=m[0].length, o=Array.from({length:w},()=>Array(h).fill(0));
   for (let r=0;r<h;r++) for (let c=0;c<w;c++) o[c][h-1-r]=m[r][c]; return o; };
