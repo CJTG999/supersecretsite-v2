@@ -102,11 +102,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .cell.f,.pc{background:var(--block);box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.18)}
 .cell.ghost{background:rgba(var(--block-rgb),.42);box-shadow:none}
 .cell.pre{animation:pulse .5s ease-in-out infinite alternate}
-.cell.pop{animation:pop .22s ease-out}
-.cell.clr{animation:clr .42s ease-in forwards;animation-delay:var(--d,0ms)}
-@keyframes pulse{from{opacity:1;transform:scale(1)}to{opacity:.45;transform:scale(.9)}}
-@keyframes pop{0%{transform:scale(.75)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
-@keyframes clr{0%{transform:scale(1);opacity:1}35%{transform:scale(1.14);opacity:1;filter:brightness(1.4)}100%{transform:scale(.15);opacity:0}}
 
 #popLayer{position:absolute;inset:0;pointer-events:none;display:grid;place-items:center}
 .pop{grid-area:1/1;text-align:center;animation:rise 1s ease-out forwards;text-shadow:0 2px 12px var(--bg),0 0 4px var(--bg)}
@@ -458,7 +453,7 @@ for (let b = 0; b < 9; b++) {
   boardEl.appendChild(box);
 }
 
-function renderBoard() { for (let i = 0; i < 81; i++) { cellEls[i].style.removeProperty('--d'); cellEls[i].className = 'cell' + (board[i] ? ' f' : ''); } }
+function renderBoard() { for (let i = 0; i < 81; i++) cellEls[i].className = 'cell' + (board[i] ? ' f' : ''); }
 function buildPieceEl(p, cellSize, gap) {
   const el = document.createElement('div'); el.className = 'piece';
   el.style.gridTemplateColumns = `repeat(${p.w}, ${cellSize})`; el.style.gridAutoRows = cellSize; el.style.gap = gap;
@@ -486,7 +481,6 @@ function save() {
   if (over) { store.del('wd_state'); return; }
   store.set('wd_state', JSON.stringify({ v: 1, board, tray: tray.map(p => p && p.key), score, combo, sinceClear }));
 }
-function pulse(el, cls) { el.classList.add(cls); el.addEventListener('animationend', () => el.classList.remove(cls), { once: true }); }
 function popup(text, sub) {
   const d = document.createElement('div'); d.className = 'pop'; d.innerHTML = `<b>${text}</b>${sub ? `<span>${sub}</span>` : ''}`;
   popLayer.appendChild(d); setTimeout(() => d.remove(), 1000);
@@ -543,16 +537,12 @@ function placePiece(slot, piece, r, c) {
 
   busy = true;
   const sim = simulate(board, piece, r, c);
-  const placed = piece.cells.map(([dr, dc]) => (r + dr) * 9 + c + dc);
+  const placedCount = piece.cells.length;
 
-  // Commit the complete logical turn immediately. Clearing cells become available
-  // for the next placement without waiting for their cosmetic animation.
+  // Update the board in one pass. No cell scaling, fading, or delayed tile cleanup.
   board = sim.board;
   tray[slot] = null;
-  addScore(SCORE_CONFIG.perBlockPlaced * placed.length);
-  renderBoard();
-  placed.forEach(i => pulse(cellEls[i], 'pop'));
-  renderTray();
+  addScore(SCORE_CONFIG.perBlockPlaced * placedCount);
 
   if (sim.units.length) {
     combo++;
@@ -562,20 +552,6 @@ function placePiece(slot, piece, r, c) {
     popup('+' + pts, combo > 1 ? 'COMBO ×' + combo : (sim.units.length > 1 ? sim.units.length + ' CLEARS' : ''));
     Sound.clear(sim.units.length, combo);
     buzz(20);
-
-    const ar = Math.floor(placed[0] / 9), ac = placed[0] % 9;
-    sim.clear.forEach(i => {
-      const el = cellEls[i];
-      el.style.setProperty('--d', (Math.abs(Math.floor(i / 9) - ar) + Math.abs(i % 9 - ac)) * 18 + 'ms');
-      el.classList.add('clr');
-      el.addEventListener('animationend', () => {
-        // Read the current board: another move may already have used this cell.
-        el.className = 'cell' + (board[i] ? ' f' : '');
-        el.style.removeProperty('--d');
-      }, { once: true });
-    });
-
-    // Apply the clear to game state now, not after the animation.
     applyClear(board, sim.clear);
   } else {
     Sound.place();
@@ -583,7 +559,7 @@ function placePiece(slot, piece, r, c) {
     if (++sinceClear >= SCORE_CONFIG.comboWindow) combo = 0;
   }
 
-  // Unlock input and save immediately. The clear animation is purely visual.
+  renderBoard();
   afterTurn();
 }
 
