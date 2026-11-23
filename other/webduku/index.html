@@ -129,6 +129,14 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .card .btn{display:block;width:100%;padding:14px;border-radius:14px;font-weight:700;font-size:16px;margin-top:12px;background:var(--block);color:var(--bg)}
 .card .btn.alt{background:var(--btn);color:var(--text)}
 .card .btn[hidden]{display:none}
+#historyPanel[hidden]{display:none}
+#historyPanel{margin-top:14px;text-align:left}
+#historyStats{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:10px;text-align:center}
+#historyList{max-height:min(42vh,340px);overflow:auto;display:flex;flex-direction:column;gap:7px;padding-right:2px}
+.history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:11px;background:var(--btn);font-size:13px}
+.history-row strong{font-size:16px;font-variant-numeric:tabular-nums}
+.history-row small{display:block;color:var(--muted);margin-top:2px}
+#historyPanel .btn{margin-top:12px}
 
 /* ---------- iOS install hint ---------- */
 #a2hs{position:fixed;left:0;right:0;margin:0 auto;bottom:max(14px,env(safe-area-inset-bottom));width:min(92vw,380px);z-index:60;
@@ -147,7 +155,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <div class="ctrls">
       <button id="btnTheme" aria-label="Toggle light/dark theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
       <button id="btnSound" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path class="waves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="mute" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
-      <button id="btnNew" aria-label="New game"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="btnHistory" aria-label="Score history" title="Score history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="btnNew" aria-label="Reset game" title="Reset game"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
   </header>
   <div id="milestone"><div class="mtext"><span>NEXT MILESTONE</span><b id="mnext">250</b></div><div class="mbar"><i id="mfill"></i></div></div>
@@ -156,8 +165,16 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 </div>
 <div id="a2hs" class="hidden" role="status"><span>Install <b>WebDuku</b>: tap <svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> then <b>Add to Home Screen</b></span><button id="a2hsClose" aria-label="Dismiss">✕</button></div>
 <div id="overlay" class="hidden"><div class="card">
-  <h2 id="ovTitle"></h2><p id="ovSub"></p><div class="big" id="ovScore"></div><p id="ovBest"></p>
-  <button class="btn" id="ovPrimary"></button><button class="btn alt" id="ovSecondary"></button>
+  <div id="standardOverlay">
+    <h2 id="ovTitle"></h2><p id="ovSub"></p><div class="big" id="ovScore"></div><p id="ovBest"></p>
+    <button class="btn" id="ovPrimary"></button><button class="btn alt" id="ovSecondary"></button>
+  </div>
+  <div id="historyPanel" hidden>
+    <h2 style="text-align:center;margin:0 0 6px">Score Records</h2>
+    <div id="historyStats"></div>
+    <div id="historyList"></div>
+    <button class="btn alt" id="historyClose">Close</button>
+  </div>
 </div></div>
 
 <script>
@@ -481,6 +498,47 @@ function save() {
   if (over) { store.del('wd_state'); return; }
   store.set('wd_state', JSON.stringify({ v: 1, board, tray: tray.map(p => p && p.key), score, combo, sinceClear }));
 }
+function getHistory() {
+  try {
+    const value = JSON.parse(store.get('wd_history', '[]'));
+    return Array.isArray(value) ? value.filter(x => x && Number.isFinite(+x.score) && Number.isFinite(+x.date)) : [];
+  } catch (e) { return []; }
+}
+function recordGame() {
+  const history = getHistory();
+  history.unshift({ score, date: Date.now() });
+  store.set('wd_history', JSON.stringify(history.slice(0, 100)));
+}
+function showHistory() {
+  const history = getHistory();
+  const high = history.reduce((n, game) => Math.max(n, +game.score || 0), 0);
+  $('historyStats').textContent = history.length
+    ? history.length + ' completed game' + (history.length === 1 ? '' : 's') + ' · Personal record: ' + Math.max(best, high).toLocaleString()
+    : 'No completed games yet. Finish a game to save your first score.';
+  const list = $('historyList');
+  list.innerHTML = '';
+  if (!history.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Your past scores will appear here.';
+    empty.style.cssText = 'text-align:center;color:var(--muted);font-size:13px;padding:12px 0';
+    list.appendChild(empty);
+  } else {
+    history.slice(0, 50).forEach((game, i) => {
+      const row = document.createElement('div'); row.className = 'history-row';
+      const info = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = '#' + (i + 1) + (i === 0 ? ' · Latest' : '');
+      const date = document.createElement('small');
+      date.textContent = new Date(game.date).toLocaleString();
+      info.append(label, date);
+      const points = document.createElement('strong'); points.textContent = (+game.score).toLocaleString();
+      row.append(info, points); list.appendChild(row);
+    });
+  }
+  $('standardOverlay').hidden = true;
+  $('historyPanel').hidden = false;
+  ov.classList.remove('hidden');
+}
 function popup(text, sub) {
   const d = document.createElement('div'); d.className = 'pop'; d.innerHTML = `<b>${text}</b>${sub ? `<span>${sub}</span>` : ''}`;
   popLayer.appendChild(d); setTimeout(() => d.remove(), 1000);
@@ -489,6 +547,8 @@ function popup(text, sub) {
 /* ---------- overlay ---------- */
 const ov = $('overlay');
 function showOverlay(mode) {
+  $('standardOverlay').hidden = false;
+  $('historyPanel').hidden = true;
   ov.classList.remove('hidden');
   const alt = $('ovSecondary');
   if (mode === 'over') {
@@ -497,9 +557,9 @@ function showOverlay(mode) {
     $('ovBest').textContent = (score > 0 && score > bestAtStart) ? 'New best score!' : 'Best: ' + best.toLocaleString();
     $('ovPrimary').textContent = 'Play Again'; $('ovPrimary').onclick = newGame; alt.hidden = true;
   } else {
-    $('ovTitle').textContent = 'Start over?'; $('ovSub').textContent = 'Your current game will be lost.';
+    $('ovTitle').textContent = 'Reset game?'; $('ovSub').textContent = 'Your current game will be cleared. Past scores will be kept.';
     $('ovScore').textContent = ''; $('ovBest').textContent = '';
-    $('ovPrimary').textContent = 'Restart'; $('ovPrimary').onclick = newGame;
+    $('ovPrimary').textContent = 'Reset & Reload'; $('ovPrimary').onclick = resetGame;
     alt.hidden = false; alt.textContent = 'Keep Playing'; alt.onclick = () => ov.classList.add('hidden');
   }
 }
@@ -523,7 +583,7 @@ function loadGame() {
 function checkGameOver() {
   const left = tray.filter(Boolean);
   if (left.length && !left.some(p => fitsAnywhere(board, p))) {
-    over = true; busy = true; save(); const g = gen;
+    over = true; busy = true; recordGame(); save(); const g = gen;
     setTimeout(() => { if (g !== gen) return; Sound.over(); buzz(40); showOverlay('over'); }, 450);
   }
 }
@@ -618,6 +678,33 @@ $('btnTheme').onclick = () => { const t = document.documentElement.dataset.theme
 const syncSound = () => $('btnSound').classList.toggle('off', !Sound.on);
 $('btnSound').onclick = () => { Sound.on = !Sound.on; store.set('wd_sound', Sound.on ? '1' : '0'); syncSound(); Sound.unlock(); Sound.pickup(); };
 $('btnNew').onclick = () => showOverlay('confirm');
+$('btnHistory').onclick = showHistory;
+$('historyClose').onclick = () => ov.classList.add('hidden');
+async function resetGame() {
+  store.del('wd_state');
+  try {
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.update();
+        const worker = registration.installing || registration.waiting;
+        if (worker && worker.state !== 'activated') {
+          await new Promise(resolve => {
+            const done = () => {
+              if (worker.state === 'activated' || worker.state === 'redundant') {
+                worker.removeEventListener('statechange', done);
+                resolve();
+              }
+            };
+            worker.addEventListener('statechange', done);
+            done();
+          });
+        }
+      }
+    }
+  } catch (e) {}
+  location.reload();
+}
 syncSound();
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
